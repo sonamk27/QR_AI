@@ -1,8 +1,18 @@
 "use client";
 
-export function Stars({ value, onChange, size = 44 }: { value: number; onChange: (n: number) => void; size?: number }) {
+export function Stars({
+  value,
+  onChange,
+  size = 44,
+  label = "Rating",
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  size?: number;
+  label?: string;
+}) {
   return (
-    <div className="flex justify-center gap-2" role="radiogroup" aria-label="Rating">
+    <div className="flex justify-center gap-2" role="radiogroup" aria-label={label}>
       {[1, 2, 3, 4, 5].map((n) => (
         <button
           key={n}

@@ -27,7 +27,16 @@ export async function POST(req: Request) {
 
   const gateway = getGateway();
   const paymentResult = await db.$transaction(async (tx): Promise<PaymentOrderResult> => {
-    const locked = await lockRestaurantQrRequest(tx, qrRequestId, ctx.restaurant.id);
+    const ownedRequest = await tx.qrRequest.findFirst({
+      where: {
+        id: qrRequestId,
+        restaurant: { ownerId: ctx.user.id },
+      },
+      select: { restaurantId: true },
+    });
+    if (!ownedRequest) return { error: "NOT_FOUND" as const };
+
+    const locked = await lockRestaurantQrRequest(tx, qrRequestId, ownedRequest.restaurantId);
     if (locked.length === 0) return { error: "NOT_FOUND" as const };
 
     const qrRequest = await tx.qrRequest.findUniqueOrThrow({
@@ -68,7 +77,7 @@ export async function POST(req: Request) {
     const order = await gateway.createOrder({ amount: totalAmount, receipt });
     const payment = await tx.payment.create({
       data: {
-        restaurantId: ctx.restaurant.id,
+        restaurantId: qrRequest.restaurantId,
         qrRequestId: qrRequest.id,
         amount: totalAmount,
         method: "GATEWAY",
@@ -82,7 +91,7 @@ export async function POST(req: Request) {
         actorId: ctx.user.id,
         action: "payment.order_created",
         target: payment.id,
-        restaurantId: ctx.restaurant.id,
+        restaurantId: qrRequest.restaurantId,
         meta: { orderId: order.id, amount: totalAmount, isMock: gateway.isMock },
       },
     });

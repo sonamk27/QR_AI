@@ -12,7 +12,16 @@ export async function restaurantStats(restaurantId: string, days = 30) {
       where: { ...qrWhere, completedAt: { gte: from } },
       _avg: { overallRating: true, foodRating: true, serviceRating: true },
     }),
-    db.draft.count({ where: { session: { ...qrWhere, completedAt: { gte: from } }, googleClickedAt: { not: null } } }),
+    db.feedbackSession.count({
+      where: {
+        ...qrWhere,
+        completedAt: { gte: from },
+        OR: [
+          { googleClickedAt: { not: null } },
+          { draft: { is: { googleClickedAt: { not: null } } } },
+        ],
+      },
+    }),
     db.feedbackSession.groupBy({
       by: ["overallRating"],
       where: { ...qrWhere, completedAt: { gte: from } },
@@ -74,7 +83,14 @@ export async function platformStats() {
     }),
     db.scan.count(),
     db.feedbackSession.count(),
-    db.draft.count({ where: { googleClickedAt: { not: null } } }),
+    db.feedbackSession.count({
+      where: {
+        OR: [
+          { googleClickedAt: { not: null } },
+          { draft: { is: { googleClickedAt: { not: null } } } },
+        ],
+      },
+    }),
     db.payment.aggregate({
       where: { status: { in: ["CONFIRMED", "PAID"] } },
       _sum: { amount: true },

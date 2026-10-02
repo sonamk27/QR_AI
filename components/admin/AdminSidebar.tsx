@@ -40,7 +40,7 @@ export function AdminSidebar({
     },
     { href: "/dashboard/qr", label: "QR Codes", icon: "📱" },
     { href: "/dashboard/feedback", label: "Guest Feedback", icon: "💬" },
-    { href: "/dashboard/drafts", label: "Review Drafts", icon: "✨" },
+    { href: "/dashboard/drafts", label: "Past Drafts", icon: "✨" },
     { href: "/dashboard/insights", label: "AI Insights", icon: "💡" },
     { href: "/dashboard/payments", label: "Payments & Invoices", icon: "🧾" },
     { href: "/dashboard/profile", label: "Restaurant Profile", icon: "⚙️" },

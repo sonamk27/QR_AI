@@ -15,12 +15,13 @@ export default async function Overview() {
     restaurantStats(restaurant.id, 30),
     db.qrRequest.findMany({
       where: {
-        restaurantId: restaurant.id,
+      restaurant: { ownerId: user.id },
         status: { in: ["APPROVED_PAYMENT_DUE", "PAID", "ACTIVE"] },
       },
       orderBy: { createdAt: "desc" },
       include: {
-        qrCodes: { select: { id: true, slug: true, status: true } },
+      restaurant: { select: { name: true } },
+      qrCodes: { select: { id: true, slug: true, status: true } },
         payments: {
           select: {
             id: true,

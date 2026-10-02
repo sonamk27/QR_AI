@@ -27,12 +27,13 @@ export default async function DashboardPaymentsPage() {
     }),
     db.qrRequest.findMany({
       where: {
-        restaurantId: ctx.restaurant.id,
+        restaurant: { ownerId: ctx.user.id },
         status: "APPROVED_PAYMENT_DUE",
         payments: { none: { status: "PAID" } },
       },
       orderBy: { createdAt: "desc" },
       include: {
+        restaurant: { select: { name: true } },
         qrCodes: { select: { id: true, slug: true, status: true } },
         payments: {
           select: {

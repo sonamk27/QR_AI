@@ -11,7 +11,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
 
   const pendingRequestsCount = await db.qrRequest.count({
     where: {
-      restaurantId: ctx.restaurant.id,
+      restaurant: { ownerId: ctx.user.id },
       status: { in: ["PENDING_APPROVAL", "APPROVED_PAYMENT_DUE"] },
     },
   });

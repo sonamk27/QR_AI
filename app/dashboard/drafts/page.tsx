@@ -16,11 +16,14 @@ export default async function Drafts() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-3xl font-semibold">Review drafts</h1>
-        <p className="text-ink/70">Drafts written for guests. “Continued to Google” means the guest tapped the button. Only Google knows if a review was posted.</p>
+        <h1 className="text-3xl font-semibold">Previous review drafts</h1>
+        <p className="text-ink/70">
+          Earlier drafts are kept here for reference. New guest feedback uses rating-based
+          suggestions instead of AI-written reviews.
+        </p>
       </div>
       {rows.length === 0 ? (
-        <Empty title="No drafts yet" body="A draft is created each time a guest finishes the flow." />
+        <Empty title="No previous drafts" body="New QR feedback is collected in Guest Feedback." />
       ) : (
         <ul className="space-y-3">
           {rows.map((d) => (

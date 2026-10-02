@@ -10,9 +10,10 @@ export default async function QrRequestsPage() {
   if (!ctx) return null;
 
   const requests = await db.qrRequest.findMany({
-    where: { restaurantId: ctx.restaurant.id },
+    where: { restaurant: { ownerId: ctx.user.id } },
     orderBy: { createdAt: "desc" },
     include: {
+      restaurant: { select: { name: true } },
       qrCodes: { select: { id: true, slug: true, status: true } },
       payments: {
         select: {

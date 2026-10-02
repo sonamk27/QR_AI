@@ -1,6 +1,6 @@
 # ReviewFlow
 
-Multi-tenant SaaS for restaurants: boost genuine Google reviews with smart QR codes. Guests scan at tables, rate their experience, get an AI-drafted review in their own voice, and post it to Google.
+Multi-tenant SaaS for restaurants: collect guest feedback with smart QR codes. Guests scan at tables, rate their visit, select AI-suggested feedback based on their ratings, and can leave their own review on Google.
 
 **Stack:** Next.js 14 (App Router) · TypeScript · Tailwind CSS · PostgreSQL (Neon / Supabase) · Prisma · Claude 3.5 Haiku · Vercel Cron
 
@@ -17,7 +17,7 @@ Multi-tenant SaaS for restaurants: boost genuine Google reviews with smart QR co
 4. **Owner Experience (`/dashboard`):**
    - Owner logs in with their credentials.
    - Downloads high-resolution print-ready files (**PNG** and vector **SVG**).
-   - Views real-time scan analytics, guest ratings, feedback breakdown, and AI review drafts.
+   - Views real-time scan analytics, guest ratings, and selected feedback suggestions.
    - Owners cannot create or alter QR code validities directly.
 5. **Renewal (`/super-admin`):**
    - Upon renewal payment, the Super Admin clicks **"Renew (+1 yr)"** on the QR row, logs the new payment UTR, and validity extends by 365 days. The printed physical QR never changes.
@@ -28,8 +28,8 @@ Multi-tenant SaaS for restaurants: boost genuine Google reviews with smart QR co
 
 | Role | Area | Description |
 |---|---|---|
-| **Guest (no login)** | `/r/[slug]` | Customer scans QR at the table, submits rating and tags, receives AI review draft to copy & post to Google. |
-| **ADMIN (Restaurant Owner)** | `/dashboard` | View feedback, ratings breakdown, AI review drafts, and download high-res QR codes. |
+| **Guest (no login)** | `/r/[slug]` | Customer scans QR at the table, rates the visit, selects rating-based feedback suggestions, and may continue to Google to write their own review. |
+| **ADMIN (Restaurant Owner)** | `/dashboard` | View feedback, ratings breakdown, and download high-res QR codes. |
 | **SUPER_ADMIN (Platform Owner)** | `/super-admin` | Full control: onboard restaurants, create & activate 365-day QRs, log direct payments, renew, suspend, enable/disable QRs, and share credentials. |
 
 ---
@@ -40,7 +40,7 @@ Multi-tenant SaaS for restaurants: boost genuine Google reviews with smart QR co
 2. Create a Postgres database (Neon or Supabase). Copy `.env.example` to `.env` and fill in:
    - `DATABASE_URL` (pooled) and `DIRECT_URL` (direct)
    - `AUTH_SECRET` (generate with `openssl rand -base64 32`)
-   - `ANTHROPIC_API_KEY` (for AI review draft generation)
+   - `ANTHROPIC_API_KEY` (for rating-based AI feedback suggestions; rule-based suggestions are used if omitted)
    - `SEED_ADMIN_EMAIL` & `SEED_ADMIN_PASSWORD` (for super admin account)
 3. Apply the checked-in database migrations with `npx prisma migrate deploy`.
 4. `npm run db:seed` (creates the Super Admin user)
@@ -71,5 +71,5 @@ against a database branch before applying them to production.
 ## Google Compliance Built In
 
 - **No Gating / Filtering:** Every rating tier gets the same Google Review link (strictly compliant with Google Review Guidelines).
-- **Guest Control:** AI generates a draft based exclusively on guest-selected chips and feedback; the guest edits and posts from their own Google account.
-- **Fair-use Protection:** Capped at 3,000 AI draft generations per QR per month to safeguard API usage.
+- **Guest Control:** AI suggests feedback phrases based exclusively on guest ratings. Guests choose what matches their experience and write any Google review themselves.
+- **Fair-use Protection:** Capped at 3,000 feedback submissions per QR per month to safeguard API usage.

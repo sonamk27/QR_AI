@@ -31,7 +31,16 @@ export async function POST(req: Request) {
 
   let amount = 0;
   const payment = await db.$transaction(async (tx) => {
-    const locked = await lockRestaurantQrRequest(tx, qrRequestId, ctx.restaurant.id);
+    const ownedRequest = await tx.qrRequest.findFirst({
+      where: {
+        id: qrRequestId,
+        restaurant: { ownerId: ctx.user.id },
+      },
+      select: { restaurantId: true },
+    });
+    if (!ownedRequest) return { error: "NOT_FOUND" as const };
+
+    const locked = await lockRestaurantQrRequest(tx, qrRequestId, ownedRequest.restaurantId);
     if (locked.length === 0) return { error: "NOT_FOUND" as const };
 
     const qrRequest = await tx.qrRequest.findUniqueOrThrow({
@@ -50,7 +59,7 @@ export async function POST(req: Request) {
 
     const created = await tx.payment.create({
       data: {
-        restaurantId: ctx.restaurant.id,
+        restaurantId: qrRequest.restaurantId,
         qrRequestId: qrRequest.id,
         amount,
         method: "UPI",
@@ -63,7 +72,7 @@ export async function POST(req: Request) {
         actorId: ctx.user.id,
         action: "payment.utr_submitted",
         target: created.id,
-        restaurantId: ctx.restaurant.id,
+        restaurantId: qrRequest.restaurantId,
         meta: { qrRequestId: qrRequest.id, amount, reference },
       },
     });

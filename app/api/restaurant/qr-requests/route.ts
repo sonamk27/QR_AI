@@ -17,9 +17,10 @@ export async function GET() {
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const requests = await db.qrRequest.findMany({
-    where: { restaurantId: ctx.restaurant.id },
+    where: { restaurant: { ownerId: ctx.user.id } },
     orderBy: { createdAt: "desc" },
     include: {
+      restaurant: { select: { name: true } },
       qrCodes: { select: { id: true, slug: true, status: true } },
       payments: {
         select: {

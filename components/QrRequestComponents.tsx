@@ -13,6 +13,7 @@ type QrRequestItem = {
   status: "PENDING_APPROVAL" | "APPROVED_PAYMENT_DUE" | "PAID" | "ACTIVE" | "REJECTED";
   rejectionReason?: string | null;
   createdAt: string;
+  restaurant?: { name: string };
   qrCodes: { id: string; slug: string; status: string }[];
   payments: {
     id: string;
@@ -424,6 +425,9 @@ export function QrRequestList({
             <div className="flex-1 space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-semibold text-ink">{req.name}</p>
+                {req.restaurant && (
+                  <span className="text-xs text-ink/60">{req.restaurant.name}</span>
+                )}
                 <span
                   className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${statusCfg.className}`}
                 >

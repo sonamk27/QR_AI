@@ -8,9 +8,16 @@ const schema = z.object({ sessionId: z.string(), editedText: z.string().max(2000
 export async function POST(req: Request) {
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ ok: true });
-  await db.draft.updateMany({
-    where: { sessionId: parsed.data.sessionId, googleClickedAt: null },
-    data: { googleClickedAt: new Date(), editedText: parsed.data.editedText },
-  });
+  const clickedAt = new Date();
+  await Promise.all([
+    db.feedbackSession.updateMany({
+      where: { id: parsed.data.sessionId, googleClickedAt: null },
+      data: { googleClickedAt: clickedAt },
+    }),
+    db.draft.updateMany({
+      where: { sessionId: parsed.data.sessionId, googleClickedAt: null },
+      data: { googleClickedAt: clickedAt, editedText: parsed.data.editedText },
+    }),
+  ]);
   return NextResponse.json({ ok: true });
 }

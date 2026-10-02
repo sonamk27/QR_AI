@@ -118,6 +118,7 @@ model FeedbackSession {
   chips         String[]
   freeText      String?
   completedAt   DateTime @default(now())
+  googleClickedAt DateTime?
   draft         Draft?
 
   @@index([qrId, completedAt])
