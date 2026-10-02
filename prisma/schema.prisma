@@ -1,0 +1,198 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  restaurant_admin @map("ADMIN")
+  super_admin      @map("SUPER_ADMIN")
+}
+
+enum QrStatus {
+  ACTIVE
+  GRACE
+  EXPIRED
+  DISABLED
+  PENDING_PAYMENT
+}
+
+enum PaymentMethod {
+  UPI
+  CASH
+  BANK
+  GATEWAY
+}
+
+enum PaymentStatus {
+  RECORDED
+  CONFIRMED
+  REJECTED
+  PENDING
+  PAID
+}
+
+enum QrRequestStatus {
+  PENDING_APPROVAL
+  APPROVED_PAYMENT_DUE
+  PAID
+  ACTIVE
+  REJECTED
+}
+
+model User {
+  id               String       @id @default(cuid())
+  email            String       @unique
+  passwordHash     String
+  name             String
+  role             Role         @default(restaurant_admin)
+  createdAt        DateTime     @default(now())
+  restaurants      Restaurant[] @relation("Owner")
+  recordedPayments Payment[]    @relation("RecordedBy")
+}
+
+model Restaurant {
+  id              String       @id @default(cuid())
+  ownerId         String
+  owner           User         @relation("Owner", fields: [ownerId], references: [id])
+  name            String
+  city            String?
+  logoUrl         String?
+  brandColor      String       @default("#1F6F5C")
+  googleReviewUrl String?
+  referredByName  String?      // seller name — plain text, no account needed
+  status          String       @default("ACTIVE") // ACTIVE | SUSPENDED
+  createdAt       DateTime     @default(now())
+  qrCodes         QrCode[]
+  payments        Payment[]
+  qrRequests      QrRequest[]
+  auditLogs       AuditLog[]
+
+  @@index([ownerId])
+}
+
+model QrCode {
+  id           String            @id @default(cuid())
+  restaurantId String            @map("restaurant_id")
+  restaurant   Restaurant        @relation(fields: [restaurantId], references: [id])
+  name         String
+  location     String?
+  tableNo      String?
+  slug         String            @unique
+  status       QrStatus          @default(ACTIVE)
+  validFrom    DateTime?
+  validUntil   DateTime?
+  createdAt    DateTime          @default(now())
+  scans        Scan[]
+  sessions     FeedbackSession[]
+  payments     Payment[]
+  qrRequest    QrRequest?        @relation(fields: [qrRequestId], references: [id])
+  qrRequestId  String?
+
+  @@index([restaurantId])
+  @@index([status, validUntil])
+  @@map("qr_codes")
+}
+
+model Scan {
+  id        String   @id @default(cuid())
+  qrId      String
+  qr        QrCode   @relation(fields: [qrId], references: [id])
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([qrId, createdAt])
+}
+
+model FeedbackSession {
+  id            String   @id @default(cuid())
+  qrId          String
+  qr            QrCode   @relation(fields: [qrId], references: [id])
+  overallRating Int
+  foodRating    Int?
+  serviceRating Int?
+  chips         String[]
+  freeText      String?
+  completedAt   DateTime @default(now())
+  draft         Draft?
+
+  @@index([qrId, completedAt])
+}
+
+model Draft {
+  id              String          @id @default(cuid())
+  sessionId       String          @unique
+  session         FeedbackSession @relation(fields: [sessionId], references: [id])
+  text            String
+  editedText      String?
+  regenerations   Int             @default(0)
+  googleClickedAt DateTime?
+  createdAt       DateTime        @default(now())
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  restaurantId  String        @map("restaurant_id")
+  restaurant    Restaurant    @relation(fields: [restaurantId], references: [id])
+  qrId          String?
+  qr            QrCode?       @relation(fields: [qrId], references: [id])
+  qrRequestId   String?
+  qrRequest     QrRequest?    @relation(fields: [qrRequestId], references: [id])
+  amount        Int           // paise
+  method        PaymentMethod @default(UPI)
+  reference     String        // UTR / receipt number / cash ref / gateway order id
+  status        PaymentStatus @default(CONFIRMED)
+  recordedById  String?
+  recordedBy    User?         @relation("RecordedBy", fields: [recordedById], references: [id])
+  invoiceNo     String?       @unique
+  gatewayOrderId String?      @unique
+  gatewayPaymentId String?    @unique
+  createdAt     DateTime      @default(now())
+
+  @@index([restaurantId])
+  @@index([status])
+  @@index([recordedById])
+  @@index([gatewayOrderId])
+  @@map("payments")
+}
+
+/// A restaurant's request to create one or more QR codes
+model QrRequest {
+  id           String          @id @default(cuid())
+  restaurantId String          @map("restaurant_id")
+  restaurant   Restaurant      @relation(fields: [restaurantId], references: [id])
+  name         String          // QR label / name
+  location     String?
+  tableNo      String?
+  quantity     Int             @default(1)
+  note         String?
+  status       QrRequestStatus @default(PENDING_APPROVAL)
+  rejectionReason String?
+  reviewedById String?         // super admin who reviewed
+  reviewedAt   DateTime?
+  createdAt    DateTime        @default(now())
+  qrCodes      QrCode[]
+  payments     Payment[]
+
+  @@index([restaurantId])
+  @@index([status])
+  @@map("qr_requests")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  restaurantId String? @map("restaurant_id")
+  restaurant Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: SetNull)
+  actorId   String
+  action    String
+  target    String?
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([restaurantId, createdAt], map: "audit_log_restaurant_id_created_at_idx")
+  @@map("audit_log")
+}

@@ -1,0 +1,166 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Inspect database migration state",
+			"type": "shell",
+			"command": "npx prisma migrate status",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Apply pending Prisma migration",
+			"type": "shell",
+			"command": "npx prisma migrate deploy; if ($?) { npx prisma migrate status }",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Inspect existing database schema",
+			"type": "shell",
+			"command": "npx prisma db pull --print",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Compare database to app schema",
+			"type": "shell",
+			"command": "npx prisma migrate diff --from-url \"$env:DIRECT_URL\" --to-schema-datamodel prisma/schema.prisma --script",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Compare live schema drift",
+			"type": "shell",
+			"command": "npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --script",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Inventory existing database data",
+			"type": "shell",
+			"command": "npx tsx prisma/inspect-live-db.ts",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Inspect legacy database views",
+			"type": "shell",
+			"command": "npx tsx prisma/inspect-live-db.ts",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Check legacy status data",
+			"type": "shell",
+			"command": "npx tsx prisma/inspect-live-db.ts",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Capture pre-migration schema",
+			"type": "shell",
+			"command": "npx prisma db pull --schema prisma/schema.legacy.prisma",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Generate legacy baseline schema",
+			"type": "shell",
+			"command": "npx prisma db pull --schema prisma/schema.legacy.prisma",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Generate legacy baseline migration",
+			"type": "shell",
+			"command": "npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.legacy.prisma --script --output prisma/migrations/20261001000000_legacy_baseline/migration.sql",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Check request references",
+			"type": "shell",
+			"command": "npx tsx prisma/inspect-live-db.ts",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Validate database reconciliation",
+			"type": "shell",
+			"command": "npx prisma validate; if ($?) { npm run typecheck }; if ($?) { npm run build }",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Baseline existing database",
+			"type": "shell",
+			"command": "npx prisma migrate resolve --applied 20261001000000_legacy_baseline",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Deploy lifecycle migration",
+			"type": "shell",
+			"command": "npx prisma migrate deploy",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Verify Prisma database queries",
+			"type": "shell",
+			"command": "npx tsx prisma/verify-live-db.ts; if ($?) { npx prisma migrate status }",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Review remaining schema drift",
+			"type": "shell",
+			"command": "npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Align migration constraints",
+			"type": "shell",
+			"command": "npx prisma migrate deploy; if ($?) { npx prisma migrate status }",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Check final schema alignment",
+			"type": "shell",
+			"command": "npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Retry production build",
+			"type": "shell",
+			"command": "npm run build",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Build app without regeneration",
+			"type": "shell",
+			"command": "npx next build",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Final database and type checks",
+			"type": "shell",
+			"command": "npm run typecheck; if ($?) { npx prisma migrate status }",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Build role-separated portals",
+			"type": "shell",
+			"command": "npm run typecheck; if ($?) { npx next build }",
+			"isBackground": false,
+			"problemMatcher": []
+		}
+	]
+}
