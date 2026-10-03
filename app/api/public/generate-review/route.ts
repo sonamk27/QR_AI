@@ -29,19 +29,42 @@ export async function POST(req: Request) {
   if (!qr || !isActive(qr) || qr.restaurant.status !== "ACTIVE") {
     return NextResponse.json({ error: "Feedback is temporarily unavailable." }, { status: 403 });
   }
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-  const used = await db.feedbackSession.count({ where: { qrId: qr.id, completedAt: { gte: monthStart } } });
-  if (used >= MAX_DRAFTS_PER_QR_PER_MONTH) {
-    return NextResponse.json({ error: "Feedback is temporarily unavailable." }, { status: 403 });
-  }
 
-  // Regenerate reuses the same session; otherwise record a new one.
   let sessionId = d.sessionId;
+  let previousDraft: string | null = null;
   if (sessionId) {
-    const exists = await db.feedbackSession.findFirst({ where: { id: sessionId, qrId: qr.id } });
-    if (!exists) sessionId = undefined;
+    const existingSession = await db.feedbackSession.findFirst({
+      where: { id: sessionId, qrId: qr.id },
+      select: { id: true },
+    });
+    if (!existingSession) {
+      return NextResponse.json({ error: "Feedback session not found." }, { status: 404 });
+    }
+    const existingDraft = await db.draft.findUnique({
+      where: { sessionId },
+      select: { text: true },
+    });
+    previousDraft = existingDraft?.text ?? null;
+    await db.feedbackSession.update({
+      where: { id: sessionId },
+      data: {
+        overallRating: d.overall,
+        foodRating: d.food,
+        serviceRating: d.service,
+        chips: d.chips,
+        freeText: d.text || null,
+      },
+    });
   }
   if (!sessionId) {
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const used = await db.feedbackSession.count({
+      where: { qrId: qr.id, completedAt: { gte: monthStart } },
+    });
+    if (used >= MAX_DRAFTS_PER_QR_PER_MONTH) {
+      return NextResponse.json({ error: "Feedback is temporarily unavailable." }, { status: 403 });
+    }
+
     const s = await db.feedbackSession.create({
       data: {
         qrId: qr.id,
@@ -62,6 +85,7 @@ export async function POST(req: Request) {
     service: d.service,
     chips: d.chips,
     text: d.text,
+    previousDraft,
     variant: d.variant,
   });
   const draft = await db.draft.upsert({

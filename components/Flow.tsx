@@ -24,6 +24,7 @@ export function Flow({
   const [draft, setDraft] = useState("");
   const [sessionId, setSessionId] = useState<string>();
   const [googleUrl, setGoogleUrl] = useState<string | null>(null);
+  const [draftVariantIndex, setDraftVariantIndex] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [listening, setListening] = useState(false);
@@ -42,6 +43,10 @@ export function Flow({
   }
 
   async function generateReview(regenerate = false) {
+    const variants = ["casual", "short", "detailed"] as const;
+    const variant = regenerate
+      ? variants[draftVariantIndex % variants.length]
+      : variants[0];
     setBusy(true);
     setError("");
     try {
@@ -56,7 +61,7 @@ export function Flow({
           service,
           chips: [],
           text: details.trim() || undefined,
-          variant: "casual",
+          variant,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -66,6 +71,9 @@ export function Flow({
       setSessionId(data.sessionId);
       setGoogleUrl(data.googleUrl);
       setDraft(data.text);
+      if (regenerate) {
+        setDraftVariantIndex((index) => index + 1);
+      }
       setStep(4);
     } catch (err: unknown) {
       setError(
