@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSuperAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { resolveStatus } from "@/lib/qr-status";
+import { appBaseUrl } from "@/lib/qr";
 import { QrCodesAdminTable } from "@/components/QrCodesAdminTable";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +37,7 @@ export default async function SuperAdminQrCodesPage() {
     }),
   ]);
 
-  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+  const appUrl = appBaseUrl();
 
   const serialized = qrCodes.map((q) => ({
     id: q.id,

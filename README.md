@@ -46,6 +46,15 @@ Multi-tenant SaaS for restaurants: collect guest feedback with smart QR codes. G
 4. `npm run db:seed` (creates the Super Admin user)
 5. `npm run dev` and navigate to `http://localhost:3000`
 
+### Render deployment
+
+In the Render service environment, set `APP_URL` to the public HTTPS URL for your
+service (for example, `https://your-service.onrender.com`). QR downloads and
+dashboard links use this value to build `/r/<slug>` scan URLs. On Render,
+`RENDER_EXTERNAL_URL` is also used as a fallback when `APP_URL` is not set.
+Production QR generation fails rather than silently embedding a localhost URL
+when neither public URL is configured.
+
 For an existing database that already has the legacy schema but no Prisma migration
 history, mark the matching baseline as applied once, then deploy the remaining
 migrations:
