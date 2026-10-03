@@ -58,7 +58,10 @@ export default async function Overview() {
               Submit UTRs for manual UPI or bank transfers and access your activated QR codes.
             </p>
           </div>
-          <QrRequestList requests={serializedApprovedRequests} />
+          <QrRequestList
+            requests={serializedApprovedRequests}
+            allowTestPayment={process.env.NODE_ENV !== "production"}
+          />
           <Link
             href="/dashboard/payments"
             className="inline-flex text-sm font-medium text-blue-800 underline underline-offset-2"

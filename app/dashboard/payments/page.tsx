@@ -111,7 +111,10 @@ export default async function DashboardPaymentsPage() {
               Submit the UTR for your UPI or bank transfer for admin verification.
             </p>
           </div>
-          <QrRequestList requests={serializedRequests} />
+          <QrRequestList
+            requests={serializedRequests}
+            allowTestPayment={process.env.NODE_ENV !== "production"}
+          />
         </section>
       )}
     </div>

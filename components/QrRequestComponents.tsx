@@ -60,7 +60,13 @@ const STATUS_CONFIG: Record<
   },
 };
 
-function ManualPaymentForm({ request }: { request: QrRequestItem }) {
+function ManualPaymentForm({
+  request,
+  allowTestPayment,
+}: {
+  request: QrRequestItem;
+  allowTestPayment: boolean;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -99,6 +105,25 @@ function ManualPaymentForm({ request }: { request: QrRequestItem }) {
     }
   }
 
+  async function simulateTestPayment() {
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/restaurant/qr-requests/test-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ qrRequestId: request.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to simulate test payment");
+      router.refresh();
+    } catch (err: any) {
+      setError(err.message || "Something went wrong");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (recordedPayment) {
     return (
       <div className="text-xs text-violet-700">
@@ -112,6 +137,16 @@ function ManualPaymentForm({ request }: { request: QrRequestItem }) {
 
   return (
     <div className="flex flex-col gap-2">
+      {allowTestPayment && (
+        <button
+          type="button"
+          onClick={simulateTestPayment}
+          disabled={busy}
+          className="btn !bg-amber-600 !px-3 !py-1.5 text-xs hover:!bg-amber-700"
+        >
+          {busy ? "Processing…" : "Simulate test payment"}
+        </button>
+      )}
       <form onSubmit={submitUtr} className="flex flex-col gap-1.5">
         <label className="text-xs text-ink/70" htmlFor={`utr-${request.id}`}>
           Paid by UPI or bank? Enter UTR
@@ -314,8 +349,10 @@ export function QrRequestForm() {
 
 export function QrRequestList({
   requests,
+  allowTestPayment = false,
 }: {
   requests: QrRequestItem[];
+  allowTestPayment?: boolean;
 }) {
   if (requests.length === 0) {
     return (
@@ -411,7 +448,7 @@ export function QrRequestList({
 
             <div className="flex items-center gap-2 sm:flex-shrink-0">
               {req.status === "APPROVED_PAYMENT_DUE" && activeQrs.length === 0 && !paidPayment && (
-                <ManualPaymentForm request={req} />
+                <ManualPaymentForm request={req} allowTestPayment={allowTestPayment} />
               )}
             </div>
           </div>

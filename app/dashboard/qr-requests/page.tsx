@@ -84,7 +84,10 @@ export default async function QrRequestsPage() {
 
       <div className="space-y-3">
         <h2 className="text-xl font-semibold">Your Requests</h2>
-        <QrRequestList requests={serialized} />
+        <QrRequestList
+          requests={serialized}
+          allowTestPayment={process.env.NODE_ENV !== "production"}
+        />
       </div>
     </div>
   );
