@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -433,11 +434,14 @@ export function QrRequestList({
               {activeQrs.length > 0 && (
                 <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800">
                   <p className="font-semibold">
-                    🎉 {activeQrs.length} QR code{activeQrs.length > 1 ? "s" : ""} active!
+                    🎉 {activeQrs.length} QR code{activeQrs.length > 1 ? "s are" : " is"} ready!
                   </p>
-                  <p className="mt-0.5">
-                    Go to the QR codes page to download and print them.
-                  </p>
+                  <Link
+                    href="/dashboard/qr"
+                    className="mt-1 inline-flex font-medium underline underline-offset-2"
+                  >
+                    Preview, download, or print QR codes
+                  </Link>
                 </div>
               )}
 
