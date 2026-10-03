@@ -1,6 +1,5 @@
 import { getOwnerContext } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getGateway } from "@/lib/gateway";
 import { QrRequestForm, QrRequestList } from "@/components/QrRequestComponents";
 
 export const dynamic = "force-dynamic";
@@ -20,15 +19,12 @@ export default async function QrRequestsPage() {
           id: true,
           status: true,
           amount: true,
-          gatewayOrderId: true,
           method: true,
           reference: true,
         },
       },
     },
   });
-
-  const gateway = getGateway();
 
   const serialized = requests.map((r) => ({
     ...r,
@@ -42,11 +38,11 @@ export default async function QrRequestsPage() {
         <div>
           <h1 className="text-3xl font-semibold">QR Requests</h1>
           <p className="mt-1 text-ink/70">
-            Request new QR codes. After admin approval, complete payment to activate
-            them.
+            Request new QR codes. After approval, pay by UPI or bank transfer and
+            submit the UTR for verification.
           </p>
         </div>
-        <QrRequestForm isMockGateway={gateway.isMock} />
+        <QrRequestForm />
       </div>
 
       {/* Flow explanation */}
@@ -66,8 +62,8 @@ export default async function QrRequestsPage() {
           },
           {
             step: "3",
-            title: "Pay & Go Live",
-            desc: "Complete payment and your QR codes activate instantly.",
+            title: "Pay by UPI or Bank",
+            desc: "Submit your transfer UTR for admin verification and QR activation.",
             color: "bg-emerald-50 border-emerald-200",
           },
         ].map((item) => (
@@ -88,7 +84,7 @@ export default async function QrRequestsPage() {
 
       <div className="space-y-3">
         <h2 className="text-xl font-semibold">Your Requests</h2>
-        <QrRequestList requests={serialized} isMockGateway={gateway.isMock} />
+        <QrRequestList requests={serialized} />
       </div>
     </div>
   );

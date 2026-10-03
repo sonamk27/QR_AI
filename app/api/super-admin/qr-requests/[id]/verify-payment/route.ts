@@ -13,7 +13,7 @@ export async function POST(
   const qrRequest = await db.qrRequest.findUnique({
     where: { id: params.id },
     include: {
-      payments: { where: { status: "RECORDED", method: "UPI" }, take: 1 },
+      payments: { where: { status: "RECORDED", method: { in: ["UPI", "BANK"] } }, take: 1 },
     },
   });
   if (!qrRequest) {
@@ -24,14 +24,14 @@ export async function POST(
   }
   const payment = qrRequest.payments[0];
   if (!payment) {
-    return NextResponse.json({ error: "No submitted UPI payment is awaiting verification." }, { status: 404 });
+    return NextResponse.json({ error: "No submitted UPI or bank payment is awaiting verification." }, { status: 404 });
   }
 
   const activated = await db.$transaction((tx) =>
     confirmQrRequestPayment(
       tx,
       qrRequest,
-      { id: payment.id, status: "RECORDED", method: "UPI" },
+      { id: payment.id, status: "RECORDED", method: payment.method },
       admin.id,
       "payment.utr_verified",
       { qrRequestId: qrRequest.id, qrCount: qrRequest.quantity },

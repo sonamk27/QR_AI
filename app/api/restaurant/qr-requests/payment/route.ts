@@ -7,6 +7,7 @@ import { lockRestaurantQrRequest } from "@/lib/qr-request-lifecycle";
 const schema = z.object({
   qrRequestId: z.string().min(1),
   reference: z.string().trim().min(1, "UTR is required").max(120),
+  method: z.enum(["UPI", "BANK"]).default("UPI"),
 });
 
 export async function POST(req: Request) {
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { qrRequestId, reference } = parsed.data;
+  const { qrRequestId, reference, method } = parsed.data;
   const pricePerQr = Number.parseInt(process.env.QR_PRICE_PAISE || "99900", 10);
   if (!Number.isSafeInteger(pricePerQr) || pricePerQr <= 0) {
     console.error("[PAYMENT] QR_PRICE_PAISE must be a positive integer");
@@ -45,38 +46,51 @@ export async function POST(req: Request) {
 
     const qrRequest = await tx.qrRequest.findUniqueOrThrow({
       where: { id: qrRequestId },
-      include: { payments: { select: { status: true } } },
+      include: { payments: { select: { id: true, status: true } } },
     });
     if (qrRequest.status !== "APPROVED_PAYMENT_DUE") {
       return { error: "INVALID_STATUS" as const };
     }
-    if (qrRequest.payments.some((payment) => ["PENDING", "RECORDED", "PAID"].includes(payment.status))) {
+    if (qrRequest.payments.some((payment) => ["RECORDED", "PAID"].includes(payment.status))) {
       return { error: "PAYMENT_EXISTS" as const };
     }
 
     amount = pricePerQr * qrRequest.quantity;
     if (!Number.isSafeInteger(amount)) return { error: "AMOUNT_OUT_OF_RANGE" as const };
 
-    const created = await tx.payment.create({
-      data: {
-        restaurantId: qrRequest.restaurantId,
-        qrRequestId: qrRequest.id,
-        amount,
-        method: "UPI",
-        reference,
-        status: "RECORDED",
-      },
-    });
+    const pendingPayment = qrRequest.payments.find((payment) => payment.status === "PENDING");
+    const savedPayment = pendingPayment
+      ? await tx.payment.update({
+          where: { id: pendingPayment.id },
+          data: {
+            amount,
+            method,
+            reference,
+            status: "RECORDED",
+            gatewayOrderId: null,
+            gatewayPaymentId: null,
+          },
+        })
+      : await tx.payment.create({
+          data: {
+            restaurantId: qrRequest.restaurantId,
+            qrRequestId: qrRequest.id,
+            amount,
+            method,
+            reference,
+            status: "RECORDED",
+          },
+        });
     await tx.auditLog.create({
       data: {
         actorId: ctx.user.id,
         action: "payment.utr_submitted",
-        target: created.id,
+        target: savedPayment.id,
         restaurantId: qrRequest.restaurantId,
-        meta: { qrRequestId: qrRequest.id, amount, reference },
+        meta: { qrRequestId: qrRequest.id, amount, reference, method },
       },
     });
-    return { payment: created };
+    return { payment: savedPayment };
   });
 
   if ("error" in payment) {
@@ -88,7 +102,7 @@ export async function POST(req: Request) {
     }
     if (payment.error === "PAYMENT_EXISTS") {
       return NextResponse.json(
-        { error: "A payment is already pending verification for this request." },
+        { error: "A payment is already pending verification or has been paid for this request." },
         { status: 409 },
       );
     }

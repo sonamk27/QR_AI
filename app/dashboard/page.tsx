@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 import { restaurantStats, buildInsights } from "@/lib/analytics";
 import { Empty, Stat } from "@/components/Shell";
 import { QrRequestList } from "@/components/QrRequestComponents";
-import { getGateway } from "@/lib/gateway";
 
 export const dynamic = "force-dynamic";
 
@@ -15,19 +14,18 @@ export default async function Overview() {
     restaurantStats(restaurant.id, 30),
     db.qrRequest.findMany({
       where: {
-      restaurant: { ownerId: user.id },
+        restaurant: { ownerId: user.id },
         status: { in: ["APPROVED_PAYMENT_DUE", "PAID", "ACTIVE"] },
       },
       orderBy: { createdAt: "desc" },
       include: {
-      restaurant: { select: { name: true } },
-      qrCodes: { select: { id: true, slug: true, status: true } },
+        restaurant: { select: { name: true } },
+        qrCodes: { select: { id: true, slug: true, status: true } },
         payments: {
           select: {
             id: true,
             status: true,
             amount: true,
-            gatewayOrderId: true,
             method: true,
             reference: true,
           },
@@ -40,10 +38,6 @@ export default async function Overview() {
     createdAt: request.createdAt.toISOString(),
     reviewedAt: request.reviewedAt?.toISOString() ?? null,
   }));
-  const isMockGateway =
-    serializedApprovedRequests.some((request) => request.status === "APPROVED_PAYMENT_DUE")
-      ? getGateway().isMock
-      : false;
   const insights = buildInsights(s);
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -61,13 +55,10 @@ export default async function Overview() {
           <div>
             <h2 className="font-semibold text-blue-950">Approved QR requests</h2>
             <p className="mt-1 text-sm text-blue-800">
-              Review payment status and access the QR codes created for your approved requests.
+              Submit UTRs for manual UPI or bank transfers and access your activated QR codes.
             </p>
           </div>
-          <QrRequestList
-            requests={serializedApprovedRequests}
-            isMockGateway={isMockGateway}
-          />
+          <QrRequestList requests={serializedApprovedRequests} />
           <Link
             href="/dashboard/payments"
             className="inline-flex text-sm font-medium text-blue-800 underline underline-offset-2"

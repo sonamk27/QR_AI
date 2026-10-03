@@ -25,7 +25,7 @@ export async function confirmQrRequestPayment(
   payment: {
     id: string;
     status: "PENDING" | "RECORDED";
-    method: "GATEWAY" | "UPI";
+    method: "GATEWAY" | "UPI" | "BANK";
     gatewayPaymentId?: string;
     reference?: string;
   },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 type QrRequestItem = {
@@ -19,7 +19,6 @@ type QrRequestItem = {
     id: string;
     status: string;
     amount: number;
-    gatewayOrderId?: string | null;
     method?: string;
     reference?: string;
   }[];
@@ -37,7 +36,7 @@ const STATUS_CONFIG: Record<
   APPROVED_PAYMENT_DUE: {
     label: "Approved – Payment Due",
     className: "bg-blue-50 text-blue-700 border-blue-200",
-    description: "Your request is approved. Complete payment to activate QR codes.",
+    description: "Your request is approved. Submit your UPI or bank transfer UTR for verification.",
   },
   REJECTED: {
     label: "Rejected",
@@ -61,20 +60,11 @@ const STATUS_CONFIG: Record<
   },
 };
 
-function PayButton({
-  request,
-  isMockGateway,
-}: {
-  request: QrRequestItem;
-  isMockGateway: boolean;
-}) {
+function ManualPaymentForm({ request }: { request: QrRequestItem }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [simulating, setSimulating] = useState(false);
-  const [success, setSuccess] = useState(false);
 
-  const pendingPayment = request.payments.find((p) => p.status === "PENDING");
   const recordedPayment = request.payments.find((p) => p.status === "RECORDED");
   const paidPayment = request.payments.find((p) => p.status === "PAID");
 
@@ -86,25 +76,18 @@ function PayButton({
     );
   }
 
-  if (success) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 px-2.5 py-0.5 text-xs font-medium">
-        ✓ Payment simulated! Refreshing…
-      </span>
-    );
-  }
-
   async function submitUtr(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const reference = String(formData.get("reference") ?? "").trim();
+    const method = String(formData.get("method") ?? "UPI");
     setBusy(true);
     setError("");
     try {
       const res = await fetch("/api/restaurant/qr-requests/payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qrRequestId: request.id, reference }),
+        body: JSON.stringify({ qrRequestId: request.id, reference, method }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to submit UTR");
@@ -127,91 +110,39 @@ function PayButton({
     );
   }
 
-  async function handlePay() {
-    setBusy(true);
-    setError("");
-    try {
-      const res = await fetch("/api/restaurant/create-payment-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qrRequestId: request.id }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create payment order");
-
-      if (data.isMock) {
-        // Auto-simulate payment for mock gateway
-        setSimulating(true);
-        const simRes = await fetch("/api/payments/mock-simulate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderId: data.orderId }),
-        });
-        const simData = await simRes.json();
-        if (!simRes.ok) throw new Error(simData.error || "Simulation failed");
-        setSuccess(true);
-        setTimeout(() => router.refresh(), 1500);
-      } else {
-        // Real Razorpay – open Razorpay checkout
-        const Razorpay = (window as any).Razorpay;
-        if (!Razorpay) throw new Error("Razorpay script not loaded");
-        new Razorpay({
-          key: data.keyId,
-          order_id: data.orderId,
-          amount: data.amount,
-          currency: data.currency,
-          name: "ReviewFlow",
-          description: `QR Code – ${request.name}`,
-          handler: () => {
-            setSuccess(true);
-            setTimeout(() => router.refresh(), 2000);
-          },
-        }).open();
-      }
-    } catch (err: any) {
-      setError(err.message || "Something went wrong");
-    } finally {
-      setBusy(false);
-      setSimulating(false);
-    }
-  }
-
   return (
     <div className="flex flex-col gap-2">
-      <button
-        onClick={handlePay}
-        disabled={busy || simulating}
-        className="btn !px-3 !py-1.5 text-xs"
-      >
-        {simulating ? "Processing…" : busy ? "Creating order…" : "Pay now"}
-      </button>
-      {isMockGateway && (
-        <span className="text-xs text-amber-600 font-medium">⚠️ Mock gateway</span>
-      )}
-      {!pendingPayment && (
-        <form onSubmit={submitUtr} className="flex flex-col gap-1.5">
-          <label className="text-xs text-ink/70" htmlFor={`utr-${request.id}`}>
-            Paid manually? Enter UTR
-          </label>
-          <input
-            id={`utr-${request.id}`}
-            name="reference"
-            required
-            maxLength={120}
-            className="input !py-1.5 text-xs"
-            placeholder="UPI / bank reference"
-          />
-          <button type="submit" disabled={busy} className="btn-ghost !px-3 !py-1.5 text-xs">
-            {busy ? "Submitting…" : "Submit UTR"}
-          </button>
-        </form>
-      )}
+      <form onSubmit={submitUtr} className="flex flex-col gap-1.5">
+        <label className="text-xs text-ink/70" htmlFor={`utr-${request.id}`}>
+          Paid by UPI or bank? Enter UTR
+        </label>
+        <select
+          id={`method-${request.id}`}
+          name="method"
+          defaultValue="UPI"
+          className="input !py-1.5 text-xs"
+        >
+          <option value="UPI">UPI</option>
+          <option value="BANK">Bank transfer</option>
+        </select>
+        <input
+          id={`utr-${request.id}`}
+          name="reference"
+          required
+          maxLength={120}
+          className="input !py-1.5 text-xs"
+          placeholder="UPI / bank reference"
+        />
+        <button type="submit" disabled={busy} className="btn-ghost !px-3 !py-1.5 text-xs">
+          {busy ? "Submitting…" : "Submit UTR"}
+        </button>
+      </form>
       {error && <p className="text-xs text-rose-600">{error}</p>}
     </div>
   );
 }
 
-export function QrRequestForm({ isMockGateway }: { isMockGateway: boolean }) {
+export function QrRequestForm() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -383,22 +314,17 @@ export function QrRequestForm({ isMockGateway }: { isMockGateway: boolean }) {
 
 export function QrRequestList({
   requests,
-  isMockGateway,
 }: {
   requests: QrRequestItem[];
-  isMockGateway: boolean;
 }) {
-  const router = useRouter();
-  const [, startTransition] = useTransition();
-
   if (requests.length === 0) {
     return (
       <div className="panel p-8 text-center">
         <p className="text-4xl mb-3">📋</p>
         <p className="font-display text-lg font-semibold">No QR requests yet</p>
         <p className="mx-auto mt-1 max-w-sm text-sm text-ink/70">
-          Submit a request using the button above. Once approved by an admin, you'll be
-          able to complete payment and your QR codes will go live.
+          Submit a request using the button above. Once approved, transfer payment by
+          UPI or bank and submit the UTR for admin verification.
         </p>
       </div>
     );
@@ -460,9 +386,9 @@ export function QrRequestList({
                 <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-800">
                   <p className="font-semibold">✅ Approved! Payment required</p>
                   <p className="mt-0.5">
-                    Complete payment to activate your {req.quantity} QR code
-                    {req.quantity > 1 ? "s" : ""}. QR codes are not usable until payment
-                    is confirmed.
+                    Transfer payment by UPI or bank, then submit the UTR below. Your{" "}
+                    {req.quantity} QR code{req.quantity > 1 ? "s" : ""} will activate
+                    after admin verification.
                   </p>
                 </div>
               )}
@@ -485,7 +411,7 @@ export function QrRequestList({
 
             <div className="flex items-center gap-2 sm:flex-shrink-0">
               {req.status === "APPROVED_PAYMENT_DUE" && activeQrs.length === 0 && !paidPayment && (
-                <PayButton request={req} isMockGateway={isMockGateway} />
+                <ManualPaymentForm request={req} />
               )}
             </div>
           </div>

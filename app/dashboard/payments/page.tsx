@@ -5,7 +5,6 @@ import { rupees } from "@/lib/plans";
 import { Stat } from "@/components/Shell";
 import { OwnerPaymentsClientTable } from "@/components/OwnerPaymentsClientTable";
 import { QrRequestList } from "@/components/QrRequestComponents";
-import { getGateway } from "@/lib/gateway";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +39,6 @@ export default async function DashboardPaymentsPage() {
             id: true,
             status: true,
             amount: true,
-            gatewayOrderId: true,
             method: true,
             reference: true,
           },
@@ -70,7 +68,6 @@ export default async function DashboardPaymentsPage() {
     createdAt: request.createdAt.toISOString(),
     reviewedAt: request.reviewedAt?.toISOString() ?? null,
   }));
-  const gateway = getGateway();
 
   return (
     <div className="space-y-6">
@@ -111,10 +108,10 @@ export default async function DashboardPaymentsPage() {
           <div>
             <h2 className="text-xl font-semibold">Approved QR requests</h2>
             <p className="mt-1 text-sm text-ink/70">
-              Complete payment or submit a UTR for a manual UPI/bank transfer.
+              Submit the UTR for your UPI or bank transfer for admin verification.
             </p>
           </div>
-          <QrRequestList requests={serializedRequests} isMockGateway={gateway.isMock} />
+          <QrRequestList requests={serializedRequests} />
         </section>
       )}
     </div>
