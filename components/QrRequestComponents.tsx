@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { rupees } from "@/lib/plans";
+import { buildUpiPaymentUri } from "@/lib/upi-payment";
 
 type QrRequestItem = {
   id: string;
@@ -64,9 +66,15 @@ const STATUS_CONFIG: Record<
 function ManualPaymentForm({
   request,
   allowTestPayment,
+  paymentUnitPaise,
+  upiVpa,
+  upiPayeeName,
 }: {
   request: QrRequestItem;
   allowTestPayment: boolean;
+  paymentUnitPaise: number;
+  upiVpa: string;
+  upiPayeeName: string;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -74,6 +82,15 @@ function ManualPaymentForm({
 
   const recordedPayment = request.payments.find((p) => p.status === "RECORDED");
   const paidPayment = request.payments.find((p) => p.status === "PAID");
+  const totalPaise = paymentUnitPaise * request.quantity;
+  const upiPaymentUri = upiVpa
+    ? buildUpiPaymentUri({
+        payeeVpa: upiVpa,
+        payeeName: upiPayeeName,
+        amountPaise: totalPaise,
+        requestId: request.id,
+      })
+    : null;
 
   if (paidPayment) {
     return (
@@ -138,6 +155,35 @@ function ManualPaymentForm({
 
   return (
     <div className="flex flex-col gap-2">
+      {upiPaymentUri ? (
+        <div className="rounded-xl border border-line bg-white p-3 text-center">
+          <p className="text-sm font-semibold text-ink">
+            Scan to pay {rupees(totalPaise)}
+          </p>
+          <img
+            src={`/api/restaurant/qr-requests/${encodeURIComponent(request.id)}/payment-qr`}
+            alt={`UPI payment QR for ${rupees(totalPaise)}`}
+            className="mx-auto my-2 h-48 w-48"
+          />
+          <p className="text-xs text-ink/60">
+            Scan with any UPI app and pay to {upiPayeeName} ({upiVpa}).
+          </p>
+          <p className="mt-1 text-xs text-ink/60">
+            After paying, enter the UTR below. QR codes activate after admin verification.
+          </p>
+          <a
+            href={upiPaymentUri}
+            className="btn mt-3 !bg-leaf !px-3 !py-1.5 text-xs hover:!bg-ink"
+          >
+            Open UPI app
+          </a>
+        </div>
+      ) : (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+          UPI payment QR is not configured yet. Contact the administrator to make
+          payment.
+        </p>
+      )}
       {allowTestPayment && (
         <button
           type="button"
@@ -351,9 +397,15 @@ export function QrRequestForm() {
 export function QrRequestList({
   requests,
   allowTestPayment = false,
+  paymentUnitPaise = 99900,
+  upiVpa = "",
+  upiPayeeName = "ReviewFlow",
 }: {
   requests: QrRequestItem[];
   allowTestPayment?: boolean;
+  paymentUnitPaise?: number;
+  upiVpa?: string;
+  upiPayeeName?: string;
 }) {
   if (requests.length === 0) {
     return (
@@ -452,7 +504,13 @@ export function QrRequestList({
 
             <div className="flex items-center gap-2 sm:flex-shrink-0">
               {req.status === "APPROVED_PAYMENT_DUE" && activeQrs.length === 0 && !paidPayment && (
-                <ManualPaymentForm request={req} allowTestPayment={allowTestPayment} />
+                <ManualPaymentForm
+                  request={req}
+                  allowTestPayment={allowTestPayment}
+                  paymentUnitPaise={paymentUnitPaise}
+                  upiVpa={upiVpa}
+                  upiPayeeName={upiPayeeName}
+                />
               )}
             </div>
           </div>

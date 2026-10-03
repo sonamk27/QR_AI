@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getOwnerContext } from "@/lib/auth";
+import { getQrPricePaise } from "@/lib/plans";
 import { lockRestaurantQrRequest } from "@/lib/qr-request-lifecycle";
 
 const schema = z.object({
@@ -24,9 +25,11 @@ export async function POST(req: Request) {
   }
 
   const { qrRequestId, reference, method } = parsed.data;
-  const pricePerQr = Number.parseInt(process.env.QR_PRICE_PAISE || "99900", 10);
-  if (!Number.isSafeInteger(pricePerQr) || pricePerQr <= 0) {
-    console.error("[PAYMENT] QR_PRICE_PAISE must be a positive integer");
+  let pricePerQr: number;
+  try {
+    pricePerQr = getQrPricePaise();
+  } catch (error) {
+    console.error("[PAYMENT] Invalid QR price configuration", error);
     return NextResponse.json({ error: "Payment amount is not configured correctly." }, { status: 500 });
   }
 

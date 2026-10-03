@@ -1,6 +1,6 @@
 # ReviewFlow
 
-Multi-tenant SaaS for restaurants: collect guest feedback with smart QR codes. Guests scan at tables, rate their visit, select AI-suggested feedback based on their ratings, and can leave their own review on Google.
+Multi-tenant SaaS for restaurants: collect guest feedback with smart QR codes. Guests scan at tables, rate their overall visit, food, and service, optionally add a detail, then receive an editable AI-generated review draft to use if they choose to continue to Google.
 
 **Stack:** Next.js 14 (App Router) · TypeScript · Tailwind CSS · PostgreSQL (Neon / Supabase) · Prisma · Claude 3.5 Haiku · Vercel Cron
 
@@ -28,7 +28,7 @@ Multi-tenant SaaS for restaurants: collect guest feedback with smart QR codes. G
 
 | Role | Area | Description |
 |---|---|---|
-| **Guest (no login)** | `/r/[slug]` | Customer scans QR at the table, rates the visit, selects rating-based feedback suggestions, and may continue to Google to write their own review. |
+| **Guest (no login)** | `/r/[slug]` | Customer scans the QR, rates the overall visit, food, and service, optionally adds a comment, and receives an editable AI review draft before choosing whether to continue to Google. |
 | **ADMIN (Restaurant Owner)** | `/dashboard` | View feedback, ratings breakdown, and download high-res QR codes. |
 | **SUPER_ADMIN (Platform Owner)** | `/super-admin` | Full control: onboard restaurants, create & activate 365-day QRs, log direct payments, renew, suspend, enable/disable QRs, and share credentials. |
 
@@ -45,6 +45,12 @@ Multi-tenant SaaS for restaurants: collect guest feedback with smart QR codes. G
 3. Apply the checked-in database migrations with `npx prisma migrate deploy`.
 4. `npm run db:seed` (creates the Super Admin user)
 5. `npm run dev` and navigate to `http://localhost:3000`
+
+For UPI QR payments, set `UPI_VPA` to the receiving UPI ID and optionally set
+`UPI_PAYEE_NAME` to the account name shown to customers. Add both variables to
+the Render service environment as well. Approved QR requests then show a QR
+with the request total prefilled; owners scan it with a UPI app and submit the
+payment reference for admin verification.
 
 ### Render deployment
 
@@ -80,5 +86,5 @@ against a database branch before applying them to production.
 ## Google Compliance Built In
 
 - **No Gating / Filtering:** Every rating tier gets the same Google Review link (strictly compliant with Google Review Guidelines).
-- **Guest Control:** AI suggests feedback phrases based exclusively on guest ratings. Guests choose what matches their experience and write any Google review themselves.
+- **Guest Control:** AI drafts review text from the guest's ratings and optional comments. Guests can edit or ignore the draft, and choose what to post on Google themselves.
 - **Fair-use Protection:** Capped at 3,000 feedback submissions per QR per month to safeguard API usage.

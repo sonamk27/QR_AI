@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getOwnerContext } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getQrPricePaise } from "@/lib/plans";
 import {
   confirmQrRequestPayment,
   lockRestaurantQrRequest,
@@ -61,9 +62,15 @@ export async function POST(req: Request) {
       return { error: "PAYMENT_EXISTS" as const };
     }
 
-    const pricePerQr = Number.parseInt(process.env.QR_PRICE_PAISE || "99900", 10);
+    let pricePerQr: number;
+    try {
+      pricePerQr = getQrPricePaise();
+    } catch (error) {
+      console.error("[TEST PAYMENT] Invalid QR price configuration", error);
+      return { error: "INVALID_AMOUNT" as const };
+    }
     const amount = pricePerQr * request.quantity;
-    if (!Number.isSafeInteger(pricePerQr) || pricePerQr <= 0 || !Number.isSafeInteger(amount)) {
+    if (!Number.isSafeInteger(amount)) {
       return { error: "INVALID_AMOUNT" as const };
     }
 

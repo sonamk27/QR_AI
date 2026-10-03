@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getOwnerContext } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { rupees } from "@/lib/plans";
+import { getQrPricePaise, rupees } from "@/lib/plans";
 import { Stat } from "@/components/Shell";
 import { OwnerPaymentsClientTable } from "@/components/OwnerPaymentsClientTable";
 import { QrRequestList } from "@/components/QrRequestComponents";
@@ -114,6 +114,9 @@ export default async function DashboardPaymentsPage() {
           <QrRequestList
             requests={serializedRequests}
             allowTestPayment={process.env.NODE_ENV !== "production"}
+            paymentUnitPaise={getQrPricePaise()}
+            upiVpa={process.env.UPI_VPA?.trim() ?? ""}
+            upiPayeeName={process.env.UPI_PAYEE_NAME?.trim() || "ReviewFlow"}
           />
         </section>
       )}

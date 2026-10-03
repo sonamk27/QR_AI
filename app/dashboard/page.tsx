@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getOwnerContext } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { restaurantStats, buildInsights } from "@/lib/analytics";
+import { getQrPricePaise } from "@/lib/plans";
 import { Empty, Stat } from "@/components/Shell";
 import { QrRequestList } from "@/components/QrRequestComponents";
 
@@ -61,6 +62,9 @@ export default async function Overview() {
           <QrRequestList
             requests={serializedApprovedRequests}
             allowTestPayment={process.env.NODE_ENV !== "production"}
+            paymentUnitPaise={getQrPricePaise()}
+            upiVpa={process.env.UPI_VPA?.trim() ?? ""}
+            upiPayeeName={process.env.UPI_PAYEE_NAME?.trim() || "ReviewFlow"}
           />
           <Link
             href="/dashboard/payments"

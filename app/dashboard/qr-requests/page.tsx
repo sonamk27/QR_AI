@@ -1,5 +1,6 @@
 import { getOwnerContext } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getQrPricePaise } from "@/lib/plans";
 import { QrRequestForm, QrRequestList } from "@/components/QrRequestComponents";
 
 export const dynamic = "force-dynamic";
@@ -87,6 +88,9 @@ export default async function QrRequestsPage() {
         <QrRequestList
           requests={serialized}
           allowTestPayment={process.env.NODE_ENV !== "production"}
+          paymentUnitPaise={getQrPricePaise()}
+          upiVpa={process.env.UPI_VPA?.trim() ?? ""}
+          upiPayeeName={process.env.UPI_PAYEE_NAME?.trim() || "ReviewFlow"}
         />
       </div>
     </div>
