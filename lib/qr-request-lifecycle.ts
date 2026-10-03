@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { PaymentMethod, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { newSlug } from "@/lib/qr";
 import { QR_VALID_DAYS } from "@/lib/plans";
@@ -25,7 +25,7 @@ export async function confirmQrRequestPayment(
   payment: {
     id: string;
     status: "PENDING" | "RECORDED";
-    method: "GATEWAY" | "UPI" | "BANK";
+    method: PaymentMethod;
     gatewayPaymentId?: string;
     reference?: string;
   },
