@@ -46,6 +46,29 @@ Multi-tenant SaaS for restaurants: collect guest feedback with smart QR codes. G
 4. `npm run db:seed` (creates the Super Admin user)
 5. `npm run dev` and navigate to `http://localhost:3000`
 
+### Connect Google Business Profiles
+
+To connect a restaurant from **Super Admin → Restaurants & Owners**:
+
+1. In Google Cloud Console, enable the Google Business Profile Account Management
+   and Business Information APIs, and create an OAuth client for a web application.
+2. Add `http://localhost:3000/api/super-admin/google/callback` as an authorized
+   redirect URI for local testing. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
+   `GOOGLE_REDIRECT_URI`, and `GOOGLE_TOKEN_ENCRYPTION_KEY` in `.env`.
+   Generate the encryption key with `openssl rand -hex 32`.
+3. Start the app, sign in as Super Admin, and click **Connect Google** for a
+   restaurant. Authorize using a Google account that can manage that restaurant's
+   Business Profile, then choose the matching location in the admin table.
+4. In production, set `GOOGLE_REDIRECT_URI` to the exact public HTTPS callback
+   URL and register that same URL in Google Cloud Console. Add all four variables
+   to the hosting service environment; never commit `.env` or OAuth secrets.
+   Keep the token encryption key unchanged while connections are stored; changing
+   it makes existing Google connections unreadable and they must be reauthorized.
+
+Google may require Business Profile API access to be approved for the Cloud
+project. This feature stores the association and encrypted refresh token; it
+does not import reviews or post replies.
+
 For UPI QR payments, set `UPI_VPA` to the receiving UPI ID and optionally set
 `UPI_PAYEE_NAME` to the account name shown to customers. Add both variables to
 the Render service environment as well. Approved QR requests then show a QR

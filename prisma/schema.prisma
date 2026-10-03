@@ -71,8 +71,20 @@ model Restaurant {
   payments        Payment[]
   qrRequests      QrRequest[]
   auditLogs       AuditLog[]
+  googleBusinessConnection GoogleBusinessConnection?
 
   @@index([ownerId])
+}
+
+model GoogleBusinessConnection {
+  id                    String     @id @default(cuid())
+  restaurantId          String     @unique
+  restaurant            Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  encryptedRefreshToken String
+  locationName          String?
+  locationTitle         String?
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
 }
 
 model QrCode {

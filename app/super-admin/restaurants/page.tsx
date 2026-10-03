@@ -5,7 +5,11 @@ import { RestaurantsAdminTable } from "@/components/RestaurantsAdminTable";
 
 export const dynamic = "force-dynamic";
 
-export default async function SuperAdminRestaurantsPage() {
+export default async function SuperAdminRestaurantsPage({
+  searchParams,
+}: {
+  searchParams?: { google?: string };
+}) {
   const admin = await getSuperAdmin();
   if (!admin) redirect("/login");
 
@@ -14,6 +18,9 @@ export default async function SuperAdminRestaurantsPage() {
     include: {
       owner: { select: { id: true, name: true, email: true } },
       _count: { select: { qrCodes: true } },
+      googleBusinessConnection: {
+        select: { locationName: true, locationTitle: true },
+      },
     },
   });
 
@@ -27,6 +34,7 @@ export default async function SuperAdminRestaurantsPage() {
     createdAt: r.createdAt.toISOString(),
     owner: r.owner,
     _count: r._count,
+    googleBusinessConnection: r.googleBusinessConnection,
   }));
 
   const activeCount = restaurants.filter((r) => r.status === "ACTIVE").length;
@@ -38,7 +46,7 @@ export default async function SuperAdminRestaurantsPage() {
         <div>
           <h1 className="text-3xl font-semibold text-ink">Restaurants &amp; Owners</h1>
           <p className="mt-1 text-sm text-ink/70">
-            View all onboarded restaurants, manage account statuses, and track partner attribution.
+            Manage restaurant accounts, Google Business Profile connections, and partner attribution.
           </p>
         </div>
         <div className="flex gap-2 text-xs">
@@ -58,6 +66,25 @@ export default async function SuperAdminRestaurantsPage() {
           )}
         </div>
       </div>
+
+      {searchParams?.google && (
+        <div
+          role="status"
+          className={`rounded-lg border px-4 py-3 text-sm ${
+            searchParams.google === "connected"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border-amber-200 bg-amber-50 text-amber-900"
+          }`}
+        >
+          {searchParams.google === "connected"
+            ? "Google account connected. Load locations below and associate the right restaurant location."
+            : searchParams.google === "setup_required"
+              ? "Google OAuth is not configured yet. Add the required Google credentials and encryption key to the app environment."
+              : searchParams.google === "access_denied"
+                ? "Google access was cancelled. No connection was changed."
+                : "Google could not be connected. Check the OAuth credentials, registered redirect URL, and server logs, then try again."}
+        </div>
+      )}
 
       <RestaurantsAdminTable restaurants={serialized} />
     </div>

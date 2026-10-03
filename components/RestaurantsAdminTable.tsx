@@ -20,6 +20,17 @@ type RestaurantRow = {
   _count: {
     qrCodes: number;
   };
+  googleBusinessConnection: {
+    locationName: string | null;
+    locationTitle: string | null;
+  } | null;
+};
+
+type GoogleLocation = {
+  name: string;
+  title: string;
+  address: string;
+  accountName: string;
 };
 
 export function RestaurantsAdminTable({
@@ -30,6 +41,10 @@ export function RestaurantsAdminTable({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "SUSPENDED">("ALL");
   const [sellerFilter, setSellerFilter] = useState("ALL");
+  const [googleLocations, setGoogleLocations] = useState<Record<string, GoogleLocation[]>>({});
+  const [selectedGoogleLocations, setSelectedGoogleLocations] = useState<Record<string, string>>({});
+  const [googleBusyRestaurant, setGoogleBusyRestaurant] = useState<string | null>(null);
+  const [googleErrors, setGoogleErrors] = useState<Record<string, string>>({});
 
   const sellers = useMemo(() => {
     const set = new Set<string>();
@@ -55,6 +70,60 @@ export function RestaurantsAdminTable({
       );
     });
   }, [restaurants, search, statusFilter, sellerFilter]);
+
+  async function loadGoogleLocations(restaurantId: string) {
+    setGoogleBusyRestaurant(restaurantId);
+    setGoogleErrors((current) => ({ ...current, [restaurantId]: "" }));
+    try {
+      const response = await fetch(`/api/super-admin/restaurants/${restaurantId}/google/locations`);
+      const result = (await response.json()) as {
+        locations?: GoogleLocation[];
+        error?: string;
+      };
+      if (!response.ok) throw new Error(result.error || "Could not load Google locations.");
+      const locations = result.locations ?? [];
+      setGoogleLocations((current) => ({ ...current, [restaurantId]: locations }));
+      setSelectedGoogleLocations((current) => ({
+        ...current,
+        [restaurantId]:
+          current[restaurantId] ||
+          restaurants.find((restaurant) => restaurant.id === restaurantId)?.googleBusinessConnection?.locationName ||
+          locations[0]?.name ||
+          "",
+      }));
+    } catch (error) {
+      setGoogleErrors((current) => ({
+        ...current,
+        [restaurantId]: error instanceof Error ? error.message : "Could not load Google locations.",
+      }));
+    } finally {
+      setGoogleBusyRestaurant(null);
+    }
+  }
+
+  async function associateGoogleLocation(restaurantId: string) {
+    const locationName = selectedGoogleLocations[restaurantId];
+    if (!locationName) return;
+
+    setGoogleBusyRestaurant(restaurantId);
+    setGoogleErrors((current) => ({ ...current, [restaurantId]: "" }));
+    try {
+      const response = await fetch(`/api/super-admin/restaurants/${restaurantId}/google/location`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ locationName }),
+      });
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(result.error || "Could not associate the Google location.");
+      window.location.reload();
+    } catch (error) {
+      setGoogleErrors((current) => ({
+        ...current,
+        [restaurantId]: error instanceof Error ? error.message : "Could not associate the Google location.",
+      }));
+      setGoogleBusyRestaurant(null);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -113,12 +182,13 @@ export function RestaurantsAdminTable({
 
       {/* Table */}
       <div className="panel overflow-x-auto">
-        <table className="w-full min-w-[800px]">
+        <table className="w-full min-w-[1100px]">
           <thead>
             <tr>
               <th className="th">Restaurant</th>
               <th className="th">Owner &amp; Contact</th>
               <th className="th">QR Codes</th>
+              <th className="th">Google Business Profile</th>
               <th className="th">Referred By (Seller)</th>
               <th className="th">Joined</th>
               <th className="th">Status</th>
@@ -128,7 +198,7 @@ export function RestaurantsAdminTable({
           <tbody className="divide-y divide-line">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className="td text-center text-ink/60 py-10">
+                <td colSpan={8} className="td text-center text-ink/60 py-10">
                   {restaurants.length === 0
                     ? "No restaurants onboarded yet. Click '+ Add Restaurant & Owner' to start."
                     : "No restaurants matched your filters."}
@@ -157,6 +227,74 @@ export function RestaurantsAdminTable({
                     <span className="inline-flex items-center rounded-md bg-paper px-2 py-0.5 text-xs font-semibold text-ink border border-line">
                       {r._count.qrCodes} QR{r._count.qrCodes !== 1 ? "s" : ""}
                     </span>
+                  </td>
+                  <td className="td">
+                    <div className="space-y-2">
+                      <p className="text-xs text-ink/70">
+                        {r.googleBusinessConnection
+                          ? r.googleBusinessConnection.locationTitle
+                            ? `Linked: ${r.googleBusinessConnection.locationTitle}`
+                            : "Google account connected; location not selected"
+                          : "Not connected"}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <a
+                          href={`/api/super-admin/restaurants/${r.id}/google/connect`}
+                          className="rounded-md border border-line bg-white px-2 py-1 text-xs font-medium text-ink hover:bg-paper"
+                        >
+                          {r.googleBusinessConnection ? "Reconnect" : "Connect Google"}
+                        </a>
+                        {r.googleBusinessConnection && (
+                          <button
+                            type="button"
+                            onClick={() => loadGoogleLocations(r.id)}
+                            disabled={googleBusyRestaurant === r.id}
+                            className="rounded-md border border-line px-2 py-1 text-xs font-medium text-ink hover:bg-paper disabled:opacity-50"
+                          >
+                            {googleBusyRestaurant === r.id ? "Loading…" : "Choose location"}
+                          </button>
+                        )}
+                      </div>
+                      {googleLocations[r.id] && googleLocations[r.id].length > 0 && (
+                        <div className="flex flex-col gap-2">
+                          <select
+                            aria-label={`Google location for ${r.name}`}
+                            value={selectedGoogleLocations[r.id] ?? ""}
+                            onChange={(event) =>
+                              setSelectedGoogleLocations((current) => ({
+                                ...current,
+                                [r.id]: event.target.value,
+                              }))
+                            }
+                            className="input !w-full text-xs"
+                          >
+                            {googleLocations[r.id].map((location) => (
+                              <option key={location.name} value={location.name}>
+                                {location.title}
+                                {location.accountName ? ` (${location.accountName})` : ""}
+                                {location.address ? ` — ${location.address}` : ""}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => associateGoogleLocation(r.id)}
+                            disabled={googleBusyRestaurant === r.id}
+                            className="self-start rounded-md bg-brand px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50"
+                          >
+                            Associate location
+                          </button>
+                        </div>
+                      )}
+                      {googleLocations[r.id]?.length === 0 && (
+                        <p className="text-xs text-ink/60">No accessible locations found.</p>
+                      )}
+                      {googleErrors[r.id] && (
+                        <p role="alert" className="max-w-xs text-xs text-rose-700">
+                          {googleErrors[r.id]}
+                        </p>
+                      )}
+                    </div>
                   </td>
                   <td className="td">
                     {r.referredByName ? (
