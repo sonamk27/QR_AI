@@ -109,15 +109,30 @@ export async function POST(req: Request) {
   });
 
   if ("error" in result) {
-    const errors = {
-      NOT_FOUND: { error: "QR request not found.", status: 404 },
-      INVALID_STATUS: { error: "This request is not awaiting payment.", status: 409 },
-      PAYMENT_EXISTS: { error: "A payment is already submitted or complete.", status: 409 },
-      INVALID_AMOUNT: { error: "Payment amount is not configured correctly.", status: 500 },
-      ALREADY_PROCESSED: { error: "This request has already been processed.", status: 409 },
-    } as const;
-    const failure = errors[result.error];
-    return NextResponse.json({ error: failure.error }, { status: failure.status });
+    switch (result.error) {
+      case "NOT_FOUND":
+        return NextResponse.json({ error: "QR request not found." }, { status: 404 });
+      case "INVALID_STATUS":
+        return NextResponse.json(
+          { error: "This request is not awaiting payment." },
+          { status: 409 },
+        );
+      case "PAYMENT_EXISTS":
+        return NextResponse.json(
+          { error: "A payment is already submitted or complete." },
+          { status: 409 },
+        );
+      case "INVALID_AMOUNT":
+        return NextResponse.json(
+          { error: "Payment amount is not configured correctly." },
+          { status: 500 },
+        );
+      case "ALREADY_PROCESSED":
+        return NextResponse.json(
+          { error: "This request has already been processed." },
+          { status: 409 },
+        );
+    }
   }
 
   return NextResponse.json({ ok: true, testPayment: true, reference: result.reference });
