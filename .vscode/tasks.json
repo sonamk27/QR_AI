@@ -161,6 +161,13 @@
 			"command": "npm run typecheck; if ($?) { npx next build }",
 			"isBackground": false,
 			"problemMatcher": []
+		},
+		{
+			"label": "Type check project",
+			"type": "shell",
+			"command": "npm run typecheck",
+			"isBackground": false,
+			"problemMatcher": []
 		}
 	]
 }

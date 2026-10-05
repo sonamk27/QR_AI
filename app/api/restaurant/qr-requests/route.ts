@@ -7,7 +7,7 @@ const schema = z.object({
   name: z.string().min(1).max(60),
   location: z.string().max(60).optional(),
   tableNo: z.string().max(20).optional(),
-  quantity: z.number().int().min(1).max(20).default(1),
+  quantity: z.number().int().min(1).max(1).default(1),
   note: z.string().max(500).optional(),
 });
 
@@ -50,7 +50,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 
-  const { name, location, tableNo, quantity, note } = parsed.data;
+  const { name, location, tableNo, note } = parsed.data;
+  const quantity = 1;
+
+  const existingQr = await db.qrCode.findFirst({
+    where: { restaurantId: ctx.restaurant.id },
+    select: { id: true },
+  });
+  if (existingQr) {
+    return NextResponse.json(
+      { error: "This restaurant already has a QR code. Only one QR is allowed per restaurant." },
+      { status: 409 },
+    );
+  }
 
   const request = await db.qrRequest.create({
     data: {

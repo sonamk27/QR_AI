@@ -1,7 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { getFirebaseAuth } from "@/lib/firebase-client";
 
 type Portal = "restaurant_admin" | "super_admin";
 
@@ -15,22 +17,75 @@ export function AuthForm({
   const router = useRouter();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
     setError("");
-    const body = Object.fromEntries(new FormData(e.currentTarget).entries());
-    if (mode === "login" && portal) body.portal = portal;
-    const res = await fetch(`/api/auth/${mode}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(data.error ?? "Something went wrong. Try again.");
+    try {
+      const body = Object.fromEntries(new FormData(e.currentTarget).entries());
+      if (mode === "login" && portal) body.portal = portal;
+      const res = await fetch(`/api/auth/${mode}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "Something went wrong. Try again.");
+        return;
+      }
+      router.push(data.redirect);
+      router.refresh();
+    } catch {
+      setError("Unable to reach the server. Check your connection and try again.");
+    } finally {
       setBusy(false);
+    }
+  }
+
+  async function signInWithGoogle() {
+    const formData = formRef.current ? new FormData(formRef.current) : new FormData();
+    if (
+      mode === "signup" &&
+      (!String(formData.get("name") ?? "").trim() ||
+        !String(formData.get("restaurantName") ?? "").trim())
+    ) {
+      setError("Enter your name and restaurant name to create an account.");
       return;
     }
-    router.push(data.redirect);
-    router.refresh();
+
+    setBusy(true);
+    setError("");
+    try {
+      const credential = await signInWithPopup(getFirebaseAuth(), new GoogleAuthProvider());
+      const body: Record<string, string> = {
+        idToken: await credential.user.getIdToken(),
+        mode,
+      };
+      if (mode === "signup") {
+        body.name = String(formData.get("name") ?? "");
+        body.restaurantName = String(formData.get("restaurantName") ?? "");
+        body.city = String(formData.get("city") ?? "");
+        body.refCode = String(formData.get("refCode") ?? "");
+      }
+      if (portal) body.portal = portal;
+
+      const response = await fetch("/api/auth/firebase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(data.error ?? "Google sign-in failed. Please try again.");
+        return;
+      }
+      router.push(data.redirect);
+      router.refresh();
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "Google sign-in failed.";
+      setError(message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   const field = (name: string, label: string, type = "text", required = true) => (
@@ -55,7 +110,7 @@ export function AuthForm({
               : "Sign in"
           : "Create your restaurant account"}
       </h1>
-      <form onSubmit={submit} className="mt-6 space-y-4">
+      <form ref={formRef} onSubmit={submit} className="mt-6 space-y-4">
         {mode === "signup" && field("name", "Your name")}
         {mode === "signup" && field("restaurantName", "Restaurant name")}
         {mode === "signup" && field("city", "City", "text", false)}
@@ -65,6 +120,18 @@ export function AuthForm({
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
         <button className="btn w-full" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>
       </form>
+      {portal !== "super_admin" && (
+        <>
+          <div className="my-5 flex items-center gap-3 text-xs text-ink/45">
+            <span className="h-px flex-1 bg-line" />
+            <span>OR</span>
+            <span className="h-px flex-1 bg-line" />
+          </div>
+          <button type="button" className="btn-ghost w-full" onClick={signInWithGoogle} disabled={busy}>
+            Continue with Google
+          </button>
+        </>
+      )}
       {mode === "login" && portal === "super_admin" ? (
         <p className="mt-6 text-sm text-ink/70">
           Super Admin accounts are provisioned by the system administrator.

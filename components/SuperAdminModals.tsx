@@ -180,11 +180,11 @@ export function CreateRestaurantModal() {
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="label">Google Review URL</label>
+                    <label className="label">Google Business Profile URL</label>
                     <input
                       className="input"
                       type="url"
-                      placeholder="https://g.page/r/..."
+                      placeholder="https://www.google.com/maps/place/..."
                       value={form.googleReviewUrl}
                       onChange={(e) => setForm({ ...form, googleReviewUrl: e.target.value })}
                     />

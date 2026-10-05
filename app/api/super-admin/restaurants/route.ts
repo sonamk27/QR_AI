@@ -4,11 +4,15 @@ import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { db } from "@/lib/db";
 import { getSuperAdmin } from "@/lib/auth";
+import { isGoogleBusinessUrl } from "@/lib/google-business-url";
 
 const schema = z.object({
   name: z.string().min(2, "Restaurant name is required").max(100),
   city: z.string().max(80).optional(),
-  googleReviewUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  googleReviewUrl: z.string().trim().max(500).optional().or(z.literal("")).refine(
+    (url) => !url || isGoogleBusinessUrl(url),
+    "Enter a valid Google Maps or Google Business Profile URL using HTTPS.",
+  ),
   ownerName: z.string().min(2, "Owner name is required").max(80),
   ownerEmail: z.string().email("Valid owner email is required").max(120),
   password: z.string().min(6).max(100).optional(),

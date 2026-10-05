@@ -40,34 +40,49 @@ Multi-tenant SaaS for restaurants: collect guest feedback with smart QR codes. G
 2. Create a Postgres database (Neon or Supabase). Copy `.env.example` to `.env` and fill in:
    - `DATABASE_URL` (pooled) and `DIRECT_URL` (direct)
    - `AUTH_SECRET` (generate with `openssl rand -base64 32`)
+   - Firebase web app settings (`NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, and `NEXT_PUBLIC_FIREBASE_APP_ID`) for Google sign-in
    - `ANTHROPIC_API_KEY` (for rating-based AI feedback suggestions; rule-based suggestions are used if omitted)
    - `SEED_ADMIN_EMAIL` & `SEED_ADMIN_PASSWORD` (for super admin account)
 3. Apply the checked-in database migrations with `npx prisma migrate deploy`.
 4. `npm run db:seed` (creates the Super Admin user)
 5. `npm run dev` and navigate to `http://localhost:3000`
 
-### Connect Google Business Profiles
+### Google sign-in
 
-To connect a restaurant from **Super Admin → Restaurants & Owners**:
+Create a Firebase project and register a web app, then enable the Google provider
+under **Authentication → Sign-in method**. Add the web app settings listed above
+to `.env` and configure the app's authorized domains in Firebase Authentication.
+Google sign-in is available for restaurant admins on the login and signup pages;
+Super Admin accounts continue to use password sign-in. Firebase ID tokens are
+verified by the server before a ReviewFlow session is created.
+Only Firebase web app configuration is used by the browser; do not put any
+Firebase service-account or other private server credentials in `NEXT_PUBLIC_*`
+variables.
 
-1. In Google Cloud Console, enable the Google Business Profile Account Management
-   and Business Information APIs, and create an OAuth client for a web application.
-2. Add `http://localhost:3000/api/super-admin/google/callback` as an authorized
-   redirect URI for local testing. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
-   `GOOGLE_REDIRECT_URI`, and `GOOGLE_TOKEN_ENCRYPTION_KEY` in `.env`.
-   Generate the encryption key with `openssl rand -hex 32`.
-3. Start the app, sign in as Super Admin, and click **Connect Google** for a
-   restaurant. Authorize using a Google account that can manage that restaurant's
-   Business Profile, then choose the matching location in the admin table.
-4. In production, set `GOOGLE_REDIRECT_URI` to the exact public HTTPS callback
-   URL and register that same URL in Google Cloud Console. Add all four variables
-   to the hosting service environment; never commit `.env` or OAuth secrets.
-   Keep the token encryption key unchanged while connections are stored; changing
-   it makes existing Google connections unreadable and they must be reauthorized.
+### Google Business Profile URL
 
-Google may require Business Profile API access to be approved for the Cloud
-project. This feature stores the association and encrypted refresh token; it
-does not import reviews or post replies.
+The initial version does not connect to or retrieve data from Google Business
+Profile. The restaurant owner pastes a public Maps or Business Profile URL into
+**Dashboard → Profile**; the app validates the URL format locally and saves it
+to the existing restaurant record. Super Admin can review and open the submitted
+URL from **Restaurants & Owners**. No Google Cloud OAuth credentials, Business
+Profile API access, or Google API key is used for this workflow.
+
+```text
+Firebase Authentication
+    ↓
+Restaurant Owner Login
+    ↓
+Restaurant Dashboard
+    ↓
+Manually enter Google Business Profile URL
+    ↓
+Save URL in database
+    ↓
+Super Admin reviews URL
+    ↓
+Existing QR/payment workflow
+```
 
 For UPI QR payments, set `UPI_VPA` to the receiving UPI ID and optionally set
 `UPI_PAYEE_NAME` to the account name shown to customers. Add both variables to

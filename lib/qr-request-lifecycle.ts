@@ -59,11 +59,12 @@ export async function confirmQrRequestPayment(
   }
 
   const now = Date.now();
+  const qrCount = Math.min(request.quantity, 1);
   await tx.qrCode.createMany({
-    data: Array.from({ length: request.quantity }, (_, index) => ({
+    data: Array.from({ length: qrCount }, () => ({
       restaurantId: request.restaurantId,
       qrRequestId: request.id,
-      name: `${request.name}${request.quantity > 1 ? ` #${index + 1}` : ""}`,
+      name: request.name,
       location: request.location ?? undefined,
       tableNo: request.tableNo ?? undefined,
       slug: newSlug(),

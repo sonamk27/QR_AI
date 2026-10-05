@@ -344,20 +344,14 @@ export function QrRequestForm() {
                   </div>
 
                   <div>
-                    <label className="label">Quantity *</label>
+                    <label className="label">QR Count</label>
                     <input
-                      required
-                      type="number"
-                      min={1}
-                      max={20}
-                      className="input"
-                      value={form.quantity}
-                      onChange={(e) =>
-                        setForm({ ...form, quantity: Number(e.target.value) })
-                      }
+                      readOnly
+                      className="input bg-slate-100"
+                      value={1}
                     />
                     <p className="mt-1 text-xs text-ink/50">
-                      Number of QR codes to generate (max 20 per request)
+                      Each restaurant can have only one QR code.
                     </p>
                   </div>
 
