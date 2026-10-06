@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getSuperAdmin } from "@/lib/auth";
 import { getQrPricePaise } from "@/lib/plans";
@@ -22,80 +23,92 @@ export async function POST(
     return NextResponse.json({ error: "Payment amount is not configured correctly." }, { status: 500 });
   }
 
-  const result = await db.$transaction(async (tx) => {
-    const requestSummary = await tx.qrRequest.findUnique({
-      where: { id: params.id },
-      select: { id: true, restaurantId: true },
-    });
-    if (!requestSummary) return "NOT_FOUND" as const;
+  let result: "NOT_FOUND" | "INVALID_STATUS" | "INVALID_AMOUNT" | "ALREADY_PROCESSED" | "OK";
+  try {
+    result = await db.$transaction(async (tx) => {
+      const requestSummary = await tx.qrRequest.findUnique({
+        where: { id: params.id },
+        select: { id: true, restaurantId: true },
+      });
+      if (!requestSummary) return "NOT_FOUND" as const;
 
-    const locked = await lockRestaurantQrRequest(tx, params.id, requestSummary.restaurantId);
-    if (locked.length === 0) return "NOT_FOUND" as const;
+      const locked = await lockRestaurantQrRequest(tx, params.id, requestSummary.restaurantId);
+      if (locked.length === 0) return "NOT_FOUND" as const;
 
-    const qrRequest = await tx.qrRequest.findUniqueOrThrow({
-      where: { id: params.id },
-      include: {
-        payments: {
-          where: {
-            status: { in: ["RECORDED", "PENDING"] },
-            method: { in: ["UPI", "BANK"] },
+      const qrRequest = await tx.qrRequest.findUniqueOrThrow({
+        where: { id: params.id },
+        include: {
+          payments: {
+            where: {
+              status: { in: ["RECORDED", "PENDING"] },
+              method: { in: ["UPI", "BANK"] },
+            },
+            orderBy: { createdAt: "desc" },
           },
-          orderBy: { createdAt: "desc" },
         },
-      },
-    });
-    if (qrRequest.status !== "APPROVED_PAYMENT_DUE") return "INVALID_STATUS" as const;
+      });
+      if (qrRequest.status !== "APPROVED_PAYMENT_DUE") return "INVALID_STATUS" as const;
 
-    const amount = pricePerQr * qrRequest.quantity;
-    if (!Number.isSafeInteger(amount)) return "INVALID_AMOUNT" as const;
+      const amount = pricePerQr * qrRequest.quantity;
+      if (!Number.isSafeInteger(amount)) return "INVALID_AMOUNT" as const;
 
-    const payment = qrRequest.payments.find((candidate) => candidate.status === "RECORDED")
-      ?? qrRequest.payments[0];
-    const manualReference = `MANUAL-${qrRequest.id}`;
-    const paymentToConfirm = payment
-      ? payment.status === "PENDING"
-        ? await tx.payment.update({
-            where: { id: payment.id },
+      const payment = qrRequest.payments.find((candidate) => candidate.status === "RECORDED")
+        ?? qrRequest.payments[0];
+      const manualReference = `MANUAL-${qrRequest.id}`;
+      const paymentToConfirm = payment
+        ? payment.status === "PENDING"
+          ? await tx.payment.update({
+              where: { id: payment.id },
+              data: {
+                amount,
+                method: "UPI",
+                reference: manualReference,
+                gatewayOrderId: null,
+                gatewayPaymentId: null,
+              },
+            })
+          : payment
+        : await tx.payment.create({
             data: {
+              restaurantId: qrRequest.restaurantId,
+              qrRequestId: qrRequest.id,
               amount,
               method: "UPI",
               reference: manualReference,
-              gatewayOrderId: null,
-              gatewayPaymentId: null,
+              status: "PENDING",
             },
-          })
-        : payment
-      : await tx.payment.create({
-          data: {
-            restaurantId: qrRequest.restaurantId,
-            qrRequestId: qrRequest.id,
-            amount,
-            method: "UPI",
-            reference: manualReference,
-            status: "PENDING",
-          },
-        });
-    const paymentStatus = payment?.status === "RECORDED" ? "RECORDED" : "PENDING";
-    const activated = await confirmQrRequestPayment(
-      tx,
-      qrRequest,
-      {
-        id: paymentToConfirm.id,
-        status: paymentStatus,
-        method: paymentToConfirm.method,
-        reference: paymentToConfirm.reference,
-      },
-      admin.id,
-      "payment.manual_qr_verified",
-      {
-        qrRequestId: qrRequest.id,
-        qrCount: qrRequest.quantity,
-        amount,
-        paymentMethod: paymentToConfirm.method,
-      },
+          });
+      const paymentStatus = payment?.status === "RECORDED" ? "RECORDED" : "PENDING";
+      const activated = await confirmQrRequestPayment(
+        tx,
+        qrRequest,
+        {
+          id: paymentToConfirm.id,
+          status: paymentStatus,
+          method: paymentToConfirm.method,
+          reference: paymentToConfirm.reference,
+        },
+        admin.id,
+        "payment.manual_qr_verified",
+        {
+          qrRequestId: qrRequest.id,
+          qrCount: qrRequest.quantity,
+          amount,
+          paymentMethod: paymentToConfirm.method,
+        },
+      );
+      return activated ? "OK" as const : "ALREADY_PROCESSED" as const;
+    }, { maxWait: 10_000, timeout: 30_000 });
+  } catch (error) {
+    console.error("[QR PAYMENT VERIFY] Failed to verify payment", error);
+    const code = error instanceof Prisma.PrismaClientKnownRequestError
+      ? error.code
+      : "INTERNAL_ERROR";
+    return NextResponse.json(
+      { error: "Payment verification failed.", code },
+      { status: 500 },
     );
-    return activated ? "OK" as const : "ALREADY_PROCESSED" as const;
-  }, { maxWait: 10_000, timeout: 30_000 });
+  }
 
   if (result === "NOT_FOUND") {
     return NextResponse.json({ error: "QR request not found." }, { status: 404 });
