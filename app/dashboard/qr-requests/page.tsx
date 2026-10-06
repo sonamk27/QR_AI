@@ -39,8 +39,8 @@ export default async function QrRequestsPage() {
         <div>
           <h1 className="text-3xl font-semibold">QR Requests</h1>
           <p className="mt-1 text-ink/70">
-            Request new QR codes. After approval, pay by UPI or bank transfer and
-            submit the UTR for verification.
+            Request new QR codes. After approval, scan the payment QR and our team will
+            verify your payment and activate the QR code.
           </p>
         </div>
         <QrRequestForm />
@@ -63,8 +63,8 @@ export default async function QrRequestsPage() {
           },
           {
             step: "3",
-            title: "Pay by UPI or Bank",
-            desc: "Submit your transfer UTR for admin verification and QR activation.",
+            title: "Pay by UPI",
+            desc: "Scan the payment QR. The administrator verifies payment and activates your QR.",
             color: "bg-emerald-50 border-emerald-200",
           },
         ].map((item) => (
@@ -89,8 +89,6 @@ export default async function QrRequestsPage() {
           requests={serialized}
           allowTestPayment={process.env.NODE_ENV !== "production"}
           paymentUnitPaise={getQrPricePaise()}
-          upiVpa={process.env.UPI_VPA?.trim() ?? ""}
-          upiPayeeName={process.env.UPI_PAYEE_NAME?.trim() || "ReviewFlow"}
         />
       </div>
     </div>

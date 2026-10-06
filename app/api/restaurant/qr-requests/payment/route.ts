@@ -94,7 +94,7 @@ export async function POST(req: Request) {
       },
     });
     return { payment: savedPayment };
-  });
+  }, { maxWait: 10_000, timeout: 30_000 });
 
   if ("error" in payment) {
     if (payment.error === "NOT_FOUND") {

@@ -108,15 +108,13 @@ export default async function DashboardPaymentsPage() {
           <div>
             <h2 className="text-xl font-semibold">Approved QR requests</h2>
             <p className="mt-1 text-sm text-ink/70">
-              Submit the UTR for your UPI or bank transfer for admin verification.
+              Scan the payment QR. The administrator will verify payment and activate your QR request.
             </p>
           </div>
           <QrRequestList
             requests={serializedRequests}
             allowTestPayment={process.env.NODE_ENV !== "production"}
             paymentUnitPaise={getQrPricePaise()}
-            upiVpa={process.env.UPI_VPA?.trim() ?? ""}
-            upiPayeeName={process.env.UPI_PAYEE_NAME?.trim() || "ReviewFlow"}
           />
         </section>
       )}

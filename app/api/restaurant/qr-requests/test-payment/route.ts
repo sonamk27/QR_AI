@@ -113,7 +113,7 @@ export async function POST(req: Request) {
     if (!activated) return { error: "ALREADY_PROCESSED" as const };
 
     return { ok: true, reference };
-  });
+  }, { maxWait: 10_000, timeout: 30_000 });
 
   if ("error" in result) {
     switch (result.error) {

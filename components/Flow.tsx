@@ -26,6 +26,7 @@ export function Flow({
   const [googleUrl, setGoogleUrl] = useState<string | null>(null);
   const [draftVariantIndex, setDraftVariantIndex] = useState(1);
   const [busy, setBusy] = useState(false);
+  const [copyingAndContinuing, setCopyingAndContinuing] = useState(false);
   const [error, setError] = useState("");
   const [listening, setListening] = useState(false);
   const rec = useRef<Rec | null>(null);
@@ -95,6 +96,21 @@ export function Flow({
         { type: "application/json" },
       ),
     );
+  }
+
+  async function copyAndContinue() {
+    if (!googleUrl) return;
+    setCopyingAndContinuing(true);
+    setError("");
+    try {
+      await navigator.clipboard.writeText(draft);
+    } catch {
+      setError("Could not copy your review. Please allow clipboard access and try again.");
+      setCopyingAndContinuing(false);
+      return;
+    }
+    trackClick();
+    window.location.assign(googleUrl);
   }
 
   function voice() {
@@ -234,21 +250,20 @@ export function Flow({
               type="button"
               className="btn-ghost"
               onClick={() => generateReview(true)}
-              disabled={busy}
+              disabled={busy || copyingAndContinuing}
             >
               {busy ? "Regenerating…" : "Generate another draft"}
             </button>
             {googleUrl ? (
-              <a
+              <button
+                type="button"
                 className="btn"
                 style={accent}
-                href={googleUrl}
-                target="_blank"
-                rel="noreferrer"
-                onClick={trackClick}
+                onClick={copyAndContinue}
+                disabled={busy || copyingAndContinuing}
               >
-                Continue to Google
-              </a>
+                {copyingAndContinuing ? "Copying and opening…" : busy ? "Regenerating…" : "Copy and continue"}
+              </button>
             ) : (
               <p className="text-center text-sm text-ink/60">
                 Your draft is ready. This restaurant has not added its Google review link yet.

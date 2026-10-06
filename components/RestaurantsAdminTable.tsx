@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { CreateRestaurantModal } from "@/components/SuperAdminModals";
 import { AdminButton } from "@/components/AdminActions";
 import { isGoogleBusinessUrl } from "@/lib/google-business-url";
@@ -23,6 +24,212 @@ type RestaurantRow = {
     qrCodes: number;
   };
 };
+
+function EditRestaurantOwnerButton({
+  restaurantId,
+  owner,
+}: {
+  restaurantId: string;
+  owner: RestaurantRow["owner"];
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(owner.name);
+  const [email, setEmail] = useState(owner.email);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+
+    try {
+      const response = await fetch(`/api/super-admin/restaurants/${restaurantId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update_owner",
+          ownerName: name,
+          ownerEmail: email,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to update restaurant owner.");
+
+      setOpen(false);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update restaurant owner.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className="btn-ghost !px-2.5 !py-1.5 text-xs"
+        onClick={() => {
+          setName(owner.name);
+          setEmail(owner.email);
+          setError("");
+          setOpen(true);
+        }}
+      >
+        Edit owner
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm">
+          <form onSubmit={submit} className="w-full max-w-md space-y-4 rounded-2xl border border-line bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <h3 className="text-lg font-semibold text-ink">Edit Restaurant Owner</h3>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="text-ink/50 hover:text-ink text-sm"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {error && <p role="alert" className="rounded bg-rose-50 p-2 text-xs text-rose-700">{error}</p>}
+
+            <div>
+              <label className="label" htmlFor={`owner-name-${restaurantId}`}>Owner Name</label>
+              <input
+                id={`owner-name-${restaurantId}`}
+                required
+                maxLength={80}
+                className="input"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </div>
+            <div>
+              <label className="label" htmlFor={`owner-email-${restaurantId}`}>Owner Email</label>
+              <input
+                id={`owner-email-${restaurantId}`}
+                required
+                type="email"
+                maxLength={120}
+                className="input"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-line pt-3">
+              <button type="button" className="btn-ghost text-xs" onClick={() => setOpen(false)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn text-xs" disabled={busy}>
+                {busy ? "Saving…" : "Save owner"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </>
+  );
+}
+
+function EditRestaurantLinkButton({
+  restaurantId,
+  googleReviewUrl,
+}: {
+  restaurantId: string;
+  googleReviewUrl: string | null;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState(googleReviewUrl ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+
+    try {
+      const response = await fetch(`/api/super-admin/restaurants/${restaurantId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "update_google_link", googleReviewUrl: url }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to update Google Business Profile link.");
+
+      setOpen(false);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update Google Business Profile link.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className="mt-1 text-xs text-leaf underline"
+        onClick={() => {
+          setUrl(googleReviewUrl ?? "");
+          setError("");
+          setOpen(true);
+        }}
+      >
+        Edit link
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm">
+          <form onSubmit={submit} className="w-full max-w-md space-y-4 rounded-2xl border border-line bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <h3 className="text-lg font-semibold text-ink">Edit Google Business Profile Link</h3>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="text-ink/50 hover:text-ink text-sm"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {error && <p role="alert" className="rounded bg-rose-50 p-2 text-xs text-rose-700">{error}</p>}
+
+            <div>
+              <label className="label" htmlFor={`google-link-${restaurantId}`}>Google Business Profile URL</label>
+              <input
+                id={`google-link-${restaurantId}`}
+                type="url"
+                maxLength={500}
+                className="input"
+                placeholder="https://www.google.com/maps/place/..."
+                value={url}
+                onChange={(event) => setUrl(event.target.value)}
+              />
+              <p className="mt-1 text-xs text-ink/50">Leave blank to remove the link.</p>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-line pt-3">
+              <button type="button" className="btn-ghost text-xs" onClick={() => setOpen(false)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn text-xs" disabled={busy}>
+                {busy ? "Saving…" : "Save link"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </>
+  );
+}
 
 export function RestaurantsAdminTable({
   restaurants,
@@ -162,20 +369,23 @@ export function RestaurantsAdminTable({
                     </span>
                   </td>
                   <td className="td">
-                    {r.googleReviewUrl && isGoogleBusinessUrl(r.googleReviewUrl) ? (
-                      <a
-                        href={r.googleReviewUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="break-all text-xs text-leaf underline"
-                      >
-                        {r.googleReviewUrl}
-                      </a>
-                    ) : r.googleReviewUrl ? (
-                      <span className="break-all text-xs text-ink/70">{r.googleReviewUrl}</span>
-                    ) : (
-                      <span className="text-xs text-ink/50">Not submitted</span>
-                    )}
+                    <div className="flex flex-col items-start">
+                      {r.googleReviewUrl && isGoogleBusinessUrl(r.googleReviewUrl) ? (
+                        <a
+                          href={r.googleReviewUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="break-all text-xs text-leaf underline"
+                        >
+                          {r.googleReviewUrl}
+                        </a>
+                      ) : r.googleReviewUrl ? (
+                        <span className="break-all text-xs text-ink/70">{r.googleReviewUrl}</span>
+                      ) : (
+                        <span className="text-xs text-ink/50">Not submitted</span>
+                      )}
+                      <EditRestaurantLinkButton restaurantId={r.id} googleReviewUrl={r.googleReviewUrl} />
+                    </div>
                   </td>
                   <td className="td">
                     {r.referredByName ? (
@@ -202,6 +412,7 @@ export function RestaurantsAdminTable({
                   </td>
                   <td className="td">
                     <div className="flex items-center gap-2">
+                      <EditRestaurantOwnerButton restaurantId={r.id} owner={r.owner} />
                       <AdminButton
                         url={`/api/super-admin/restaurants/${r.id}`}
                         method="PATCH"

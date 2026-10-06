@@ -197,13 +197,13 @@ function RejectButton({ requestId }: { requestId: string }) {
   );
 }
 
-function VerifyManualPaymentButton({ requestId }: { requestId: string }) {
+function ConfirmManualPaymentButton({ requestId }: { requestId: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   async function verify() {
-    if (!confirm("Confirm this UTR and activate the requested QR codes?")) return;
+    if (!confirm("Confirm that you received this payment and activate the requested QR code?")) return;
     setBusy(true);
     setError("");
     try {
@@ -223,7 +223,7 @@ function VerifyManualPaymentButton({ requestId }: { requestId: string }) {
   return (
     <div className="flex flex-col gap-1">
       <button onClick={verify} disabled={busy} className="btn !px-3 !py-1.5 text-xs">
-        {busy ? "Verifying…" : "Verify payment"}
+        {busy ? "Activating…" : "Confirm payment"}
       </button>
       {error && <p className="text-xs text-rose-600">{error}</p>}
     </div>
@@ -488,7 +488,7 @@ export function QrRequestsAdminPanel({
                         <span className="text-amber-600">Awaiting payment</span>
                       ) : recordedPayment ? (
                         <span className="text-violet-700">
-                          ₹{(recordedPayment.amount / 100).toLocaleString("en-IN")} · UTR submitted
+                          ₹{(recordedPayment.amount / 100).toLocaleString("en-IN")} · awaiting verification
                         </span>
                       ) : (
                         <span className="text-ink/40">—</span>
@@ -502,8 +502,8 @@ export function QrRequestsAdminPanel({
                     <td className="td">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <DetailPanel request={req} />
-                        {recordedPayment && (
-                          <VerifyManualPaymentButton requestId={req.id} />
+                        {req.status === "APPROVED_PAYMENT_DUE" && !paidPayment && (
+                          <ConfirmManualPaymentButton requestId={req.id} />
                         )}
                         {req.status === "PENDING_APPROVAL" && (
                           <>

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { rupees } from "@/lib/plans";
-import { buildUpiPaymentUri } from "@/lib/upi-payment";
 
 type QrRequestItem = {
   id: string;
@@ -39,7 +38,7 @@ const STATUS_CONFIG: Record<
   APPROVED_PAYMENT_DUE: {
     label: "Approved – Payment Due",
     className: "bg-blue-50 text-blue-700 border-blue-200",
-    description: "Your request is approved. Submit your UPI or bank transfer UTR for verification.",
+    description: "Your request is approved. Scan the payment QR; an administrator will verify your payment.",
   },
   REJECTED: {
     label: "Rejected",
@@ -49,7 +48,7 @@ const STATUS_CONFIG: Record<
   RECORDED: {
     label: "Payment submitted – verification pending",
     className: "bg-violet-50 text-violet-700 border-violet-200",
-    description: "Your UTR was submitted and is awaiting admin verification.",
+    description: "Your payment is awaiting admin verification.",
   },
   PAID: {
     label: "Paid",
@@ -67,14 +66,10 @@ function ManualPaymentForm({
   request,
   allowTestPayment,
   paymentUnitPaise,
-  upiVpa,
-  upiPayeeName,
 }: {
   request: QrRequestItem;
   allowTestPayment: boolean;
   paymentUnitPaise: number;
-  upiVpa: string;
-  upiPayeeName: string;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -83,14 +78,6 @@ function ManualPaymentForm({
   const recordedPayment = request.payments.find((p) => p.status === "RECORDED");
   const paidPayment = request.payments.find((p) => p.status === "PAID");
   const totalPaise = paymentUnitPaise * request.quantity;
-  const upiPaymentUri = upiVpa
-    ? buildUpiPaymentUri({
-        payeeVpa: upiVpa,
-        payeeName: upiPayeeName,
-        amountPaise: totalPaise,
-        requestId: request.id,
-      })
-    : null;
 
   if (paidPayment) {
     return (
@@ -98,29 +85,6 @@ function ManualPaymentForm({
         ✓ Payment Complete
       </span>
     );
-  }
-
-  async function submitUtr(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const reference = String(formData.get("reference") ?? "").trim();
-    const method = String(formData.get("method") ?? "UPI");
-    setBusy(true);
-    setError("");
-    try {
-      const res = await fetch("/api/restaurant/qr-requests/payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qrRequestId: request.id, reference, method }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to submit UTR");
-      router.refresh();
-    } catch (err: any) {
-      setError(err.message || "Something went wrong");
-    } finally {
-      setBusy(false);
-    }
   }
 
   async function simulateTestPayment() {
@@ -145,45 +109,25 @@ function ManualPaymentForm({
   if (recordedPayment) {
     return (
       <div className="text-xs text-violet-700">
-        UTR submitted; awaiting verification.
-        {recordedPayment.reference && (
-          <p className="mt-1 font-mono text-[11px]">UTR: {recordedPayment.reference}</p>
-        )}
+        Payment submitted; awaiting admin verification.
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-2">
-      {upiPaymentUri ? (
-        <div className="rounded-xl border border-line bg-white p-3 text-center">
-          <p className="text-sm font-semibold text-ink">
-            Scan to pay {rupees(totalPaise)}
-          </p>
-          <img
-            src={`/api/restaurant/qr-requests/${encodeURIComponent(request.id)}/payment-qr`}
-            alt={`UPI payment QR for ${rupees(totalPaise)}`}
-            className="mx-auto my-2 h-48 w-48"
-          />
-          <p className="text-xs text-ink/60">
-            Scan with any UPI app and pay to {upiPayeeName} ({upiVpa}).
-          </p>
-          <p className="mt-1 text-xs text-ink/60">
-            After paying, enter the UTR below. QR codes activate after admin verification.
-          </p>
-          <a
-            href={upiPaymentUri}
-            className="btn mt-3 !bg-leaf !px-3 !py-1.5 text-xs hover:!bg-ink"
-          >
-            Open UPI app
-          </a>
-        </div>
-      ) : (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-          UPI payment QR is not configured yet. Contact the administrator to make
-          payment.
+      <div className="rounded-xl border border-line bg-white p-3 text-center">
+        <p className="text-sm font-semibold text-ink">Scan to pay {rupees(totalPaise)}</p>
+        <img
+          src="/payment-qr.jpeg"
+          alt="UPI payment QR code"
+          className="mx-auto my-2 h-48 w-48 object-contain"
+        />
+        <p className="text-xs text-ink/60">
+          Scan with any UPI app and enter the amount shown above. Once you have paid,
+          the administrator will verify the payment and activate your QR code.
         </p>
-      )}
+      </div>
       {allowTestPayment && (
         <button
           type="button"
@@ -194,31 +138,6 @@ function ManualPaymentForm({
           {busy ? "Processing…" : "Simulate test payment"}
         </button>
       )}
-      <form onSubmit={submitUtr} className="flex flex-col gap-1.5">
-        <label className="text-xs text-ink/70" htmlFor={`utr-${request.id}`}>
-          Paid by UPI or bank? Enter UTR
-        </label>
-        <select
-          id={`method-${request.id}`}
-          name="method"
-          defaultValue="UPI"
-          className="input !py-1.5 text-xs"
-        >
-          <option value="UPI">UPI</option>
-          <option value="BANK">Bank transfer</option>
-        </select>
-        <input
-          id={`utr-${request.id}`}
-          name="reference"
-          required
-          maxLength={120}
-          className="input !py-1.5 text-xs"
-          placeholder="UPI / bank reference"
-        />
-        <button type="submit" disabled={busy} className="btn-ghost !px-3 !py-1.5 text-xs">
-          {busy ? "Submitting…" : "Submit UTR"}
-        </button>
-      </form>
       {error && <p className="text-xs text-rose-600">{error}</p>}
     </div>
   );
@@ -392,14 +311,10 @@ export function QrRequestList({
   requests,
   allowTestPayment = false,
   paymentUnitPaise = 99900,
-  upiVpa = "",
-  upiPayeeName = "ReviewFlow",
 }: {
   requests: QrRequestItem[];
   allowTestPayment?: boolean;
   paymentUnitPaise?: number;
-  upiVpa?: string;
-  upiPayeeName?: string;
 }) {
   if (requests.length === 0) {
     return (
@@ -407,8 +322,8 @@ export function QrRequestList({
         <p className="text-4xl mb-3">📋</p>
         <p className="font-display text-lg font-semibold">No QR requests yet</p>
         <p className="mx-auto mt-1 max-w-sm text-sm text-ink/70">
-          Submit a request using the button above. Once approved, transfer payment by
-          UPI or bank and submit the UTR for admin verification.
+          Submit a request using the button above. Once approved, scan the payment QR.
+          The administrator will verify your payment and activate your QR.
         </p>
       </div>
     );
@@ -470,9 +385,9 @@ export function QrRequestList({
                 <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-800">
                   <p className="font-semibold">✅ Approved! Payment required</p>
                   <p className="mt-0.5">
-                    Transfer payment by UPI or bank, then submit the UTR below. Your{" "}
+                    Scan the payment QR to pay. Your{" "}
                     {req.quantity} QR code{req.quantity > 1 ? "s" : ""} will activate
-                    after admin verification.
+                    after the administrator verifies your payment.
                   </p>
                 </div>
               )}
@@ -502,8 +417,6 @@ export function QrRequestList({
                   request={req}
                   allowTestPayment={allowTestPayment}
                   paymentUnitPaise={paymentUnitPaise}
-                  upiVpa={upiVpa}
-                  upiPayeeName={upiPayeeName}
                 />
               )}
             </div>

@@ -1,9 +1,8 @@
 import { getOwnerContext } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { resolveStatus } from "@/lib/qr-status";
-import { qrUrl } from "@/lib/qr";
 import { Empty } from "@/components/Shell";
-import { CopyLinkButton } from "@/components/QrActions";
+import { OpenQrButton } from "@/components/QrActions";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -91,7 +90,6 @@ export default async function QrPage() {
                 {qrs.map((q) => {
                   const status = resolveStatus(q);
                   const badge = STATUS_BADGE[status] || STATUS_BADGE.ACTIVE;
-                  const targetUrl = qrUrl(q.slug);
                   const isActive = status === "ACTIVE" || status === "GRACE";
 
                   const days = q.validUntil
@@ -145,43 +143,7 @@ export default async function QrPage() {
                       <td className="td text-sm font-medium">{q._count.sessions}</td>
                       <td className="td">
                         {isActive ? (
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <a
-                              className="btn-ghost !px-2.5 !py-1 text-xs"
-                              href={`/api/qr/${q.id}/download?format=png`}
-                              download
-                              title="Download high-res PNG image for printing"
-                            >
-                              PNG
-                            </a>
-                            <a
-                              className="btn-ghost !px-2.5 !py-1 text-xs"
-                              href={`/api/qr/${q.id}/download?format=svg`}
-                              download
-                              title="Download scalable vector SVG for print shops"
-                            >
-                              SVG
-                            </a>
-                            <a
-                              className="btn-ghost !px-2.5 !py-1 text-xs"
-                              href={targetUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              title="Open live scan view"
-                            >
-                              Preview
-                            </a>
-                            <CopyLinkButton url={targetUrl} />
-                            {days <= 45 && (
-                              <Link
-                                href="/dashboard/qr-requests"
-                                className="btn !px-2.5 !py-1 text-xs !bg-amber-600 hover:!bg-amber-700"
-                                title="Renew this QR code subscription"
-                              >
-                                Renew
-                              </Link>
-                            )}
-                          </div>
+                          <OpenQrButton qrId={q.id} name={q.name} />
                         ) : (
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-ink/50">

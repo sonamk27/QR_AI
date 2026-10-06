@@ -56,15 +56,13 @@ export default async function Overview() {
           <div>
             <h2 className="font-semibold text-blue-950">Approved QR requests</h2>
             <p className="mt-1 text-sm text-blue-800">
-              Submit UTRs for manual UPI or bank transfers and access your activated QR codes.
+              Scan the payment QR. The administrator will verify payment and activate your QR codes.
             </p>
           </div>
           <QrRequestList
             requests={serializedApprovedRequests}
             allowTestPayment={process.env.NODE_ENV !== "production"}
             paymentUnitPaise={getQrPricePaise()}
-            upiVpa={process.env.UPI_VPA?.trim() ?? ""}
-            upiPayeeName={process.env.UPI_PAYEE_NAME?.trim() || "ReviewFlow"}
           />
           <Link
             href="/dashboard/payments"
