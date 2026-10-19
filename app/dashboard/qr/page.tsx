@@ -39,7 +39,7 @@ export default async function QrPage() {
         <div>
           <h1 className="text-3xl font-semibold">QR codes</h1>
           <p className="mt-1 text-ink/70">
-            Download and print your QR codes for table stands, billing counters, and takeaway menus.
+            Download high-res QR codes and print branded table tent cards (with Instagram, Facebook &amp; Google badges) for table stands, billing counters, and takeaway menus.
           </p>
         </div>
         <Link href="/dashboard/qr-requests" className="btn whitespace-nowrap self-start">
@@ -143,7 +143,34 @@ export default async function QrPage() {
                       <td className="td text-sm font-medium">{q._count.sessions}</td>
                       <td className="td">
                         {isActive ? (
-                          <OpenQrButton qrId={q.id} name={q.name} />
+                          <div className="flex items-center gap-2">
+                            <OpenQrButton
+                              qrId={q.id}
+                              name={q.name}
+                              location={q.location}
+                              tableNo={q.tableNo}
+                              restaurantName={restaurant.name}
+                              logoUrl={restaurant.logoUrl}
+                              brandColor={restaurant.brandColor}
+                              googleReviewUrl={restaurant.googleReviewUrl}
+                              instagramUrl={restaurant.instagramUrl}
+                              facebookUrl={restaurant.facebookUrl}
+                              shareCaption={restaurant.shareCaption}
+                            />
+                            <Link
+                              href={`/dashboard/qr/${q.id}/print`}
+                              target="_blank"
+                              className="btn !px-2.5 !py-1 text-xs whitespace-nowrap flex items-center gap-1"
+                              title="Print Table Tent Card"
+                            >
+                              <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="6 9 6 2 18 2 18 9" />
+                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                                <rect x="6" y="14" width="12" height="8" />
+                              </svg>
+                              Print Card
+                            </Link>
+                          </div>
                         ) : (
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-ink/50">

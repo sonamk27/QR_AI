@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 type RestaurantItem = {
   id: string;
@@ -745,6 +746,15 @@ export function QrRowActions({
       >
         SVG
       </a>
+
+      <Link
+        href={`/dashboard/qr/${qrId}/print`}
+        target="_blank"
+        className="btn-ghost !px-2.5 !py-1 text-xs"
+        title="Print Table Tent Card"
+      >
+        Card 🖨️
+      </Link>
 
       <a
         href={targetUrl}
