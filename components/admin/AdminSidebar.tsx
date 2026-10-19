@@ -39,6 +39,7 @@ export function AdminSidebar({
       badge: pendingRequestsCount && pendingRequestsCount > 0 ? pendingRequestsCount : undefined,
     },
     { href: "/dashboard/qr", label: "QR Codes", icon: "📱" },
+    { href: "/dashboard/loyalty", label: "Stamp & Loyalty", icon: "☕" },
     { href: "/dashboard/feedback", label: "Guest Feedback", icon: "💬" },
     { href: "/dashboard/drafts", label: "Past Drafts", icon: "✨" },
     { href: "/dashboard/insights", label: "AI Insights", icon: "💡" },

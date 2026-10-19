@@ -75,6 +75,7 @@ model Restaurant {
   qrRequests      QrRequest[]
   auditLogs       AuditLog[]
   socialClicks    SocialClick[]
+  loyaltyProgram  LoyaltyProgram?
 
   @@index([ownerId])
 }
@@ -148,6 +149,7 @@ model Payment {
   qrRequestId   String?
   qrRequest     QrRequest?    @relation(fields: [qrRequestId], references: [id])
   amount        Int           // paise
+  currency      String        @default("INR")
   method        PaymentMethod @default(UPI)
   reference     String        // UTR / receipt number / cash ref / gateway order id
   status        PaymentStatus @default(CONFIRMED)
@@ -161,7 +163,6 @@ model Payment {
   @@index([restaurantId])
   @@index([status])
   @@index([recordedById])
-  @@index([gatewayOrderId])
   @@map("payments")
 }
 
@@ -213,4 +214,86 @@ model SocialClick {
 
   @@index([restaurantId, createdAt])
   @@map("social_clicks")
+}
+
+enum RewardStatus {
+  UNREDEEMED
+  REDEEMED
+  EXPIRED
+}
+
+model LoyaltyProgram {
+  id               String               @id @default(cuid())
+  restaurantId     String               @unique @map("restaurant_id")
+  restaurant       Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  title            String               @default("Rewards Program")
+  isActive         Boolean              @default(true)
+  stampsRequired   Int                  @default(10)
+  minBillAmount    Int                  @default(20000) // in paise (e.g. ₹200)
+  rewardTitle      String               @default("₹100 Off Your Bill")
+  rewardDiscount   Int                  @default(10000) // in paise (e.g. ₹100)
+  rewardExpiryDays Int                  @default(30)
+  terminalPin      String               @default("1234") // 4-digit PIN for staff counter terminal
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  customers        LoyaltyCustomer[]
+  transactions     LoyaltyTransaction[]
+  rewards          LoyaltyReward[]
+
+  @@map("loyalty_programs")
+}
+
+model LoyaltyCustomer {
+  id             String               @id @default(cuid())
+  programId      String               @map("program_id")
+  program        LoyaltyProgram       @relation(fields: [programId], references: [id], onDelete: Cascade)
+  phone          String
+  name           String?
+  currentStamps  Int                  @default(0)
+  lifetimeStamps Int                  @default(0)
+  lastVisitAt    DateTime?
+  createdAt      DateTime             @default(now())
+  transactions   LoyaltyTransaction[]
+  rewards        LoyaltyReward[]
+
+  @@unique([programId, phone])
+  @@index([phone])
+  @@map("loyalty_customers")
+}
+
+model LoyaltyTransaction {
+  id            String          @id @default(cuid())
+  programId     String          @map("program_id")
+  program       LoyaltyProgram  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  customerId    String          @map("customer_id")
+  customer      LoyaltyCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  stampsCount   Int             @default(1)
+  billAmount    Int?            // in paise
+  billReference String?         // receipt / invoice ref
+  staffNote     String?
+  createdAt     DateTime        @default(now())
+
+  @@index([programId, createdAt])
+  @@index([customerId, createdAt])
+  @@map("loyalty_transactions")
+}
+
+model LoyaltyReward {
+  id              String          @id @default(cuid())
+  programId       String          @map("program_id")
+  program         LoyaltyProgram  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  customerId      String          @map("customer_id")
+  customer        LoyaltyCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  code            String          @unique
+  rewardTitle     String
+  discountAmount  Int             // in paise
+  status          RewardStatus    @default(UNREDEEMED)
+  expiresAt       DateTime
+  redeemedAt      DateTime?
+  redeemedByStaff String?
+  createdAt       DateTime        @default(now())
+
+  @@index([programId, status])
+  @@index([customerId, status])
+  @@map("loyalty_rewards")
 }

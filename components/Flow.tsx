@@ -261,6 +261,15 @@ export function Flow({
               First, rate your overall experience.
             </p>
             <Stars value={overall} onChange={rate(setOverall)} label="Overall experience rating" />
+            <div className="pt-2 text-center">
+              <a
+                href={`/r/${slug}/loyalty`}
+                className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50/90 px-3.5 py-1.5 text-xs font-semibold text-amber-900 shadow-xs hover:bg-amber-100 transition"
+              >
+                <span>☕ Collect Stamps & Rewards</span>
+                <span className="text-amber-700">→</span>
+              </a>
+            </div>
           </>
         )}
 
@@ -598,6 +607,24 @@ export function Flow({
                 )}
               </div>
             </div>
+
+            <a
+              href={`/r/${slug}/loyalty`}
+              className="flex items-center justify-between rounded-2xl border border-amber-200 bg-amber-50/80 p-3.5 text-xs text-amber-950 shadow-xs hover:bg-amber-100 transition"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-200/60 text-lg">
+                  ☕
+                </span>
+                <div>
+                  <div className="font-bold">Earn Rewards on Today&apos;s Order</div>
+                  <div className="text-[11px] text-amber-800">
+                    Open your digital loyalty stamp card
+                  </div>
+                </div>
+              </div>
+              <span className="font-bold text-amber-900">View Card →</span>
+            </a>
 
             <p className="text-center text-xs text-ink/50">
               Thank you for visiting {name}. We hope to see you again soon!
