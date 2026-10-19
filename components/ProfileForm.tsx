@@ -122,14 +122,14 @@ export function ProfileForm({ r }: { r: R }) {
       {/* Social links form */}
       <form onSubmit={saveSocialLinks} className="panel max-w-xl space-y-4 p-5">
         <div>
-          <h2 className="label mb-3 text-base font-semibold">Social media &amp; thank-you screen</h2>
+          <h2 className="label mb-3 text-base font-semibold">Social media &amp; review destinations</h2>
           <p className="mb-3 text-xs text-ink/60">
-            After guests submit their Google review, they see a thank-you screen. Add your social links and an optional caption to grow your following.
+            Guests can choose to copy and post their AI review draft directly to Google, Instagram, or Facebook, and also see your links on the thank-you screen.
           </p>
         </div>
 
         <div>
-          <label className="label" htmlFor="instagramUrl">Instagram profile URL</label>
+          <label className="label" htmlFor="instagramUrl">Instagram profile or review link</label>
           <input
             id="instagramUrl"
             type="url"
@@ -141,7 +141,7 @@ export function ProfileForm({ r }: { r: R }) {
         </div>
 
         <div>
-          <label className="label" htmlFor="facebookUrl">Facebook page URL</label>
+          <label className="label" htmlFor="facebookUrl">Facebook page or reviews link</label>
           <input
             id="facebookUrl"
             type="url"
@@ -153,7 +153,7 @@ export function ProfileForm({ r }: { r: R }) {
         </div>
 
         <div>
-          <label className="label" htmlFor="shareCaption">Thank-you caption (optional)</label>
+          <label className="label" htmlFor="shareCaption">Caption or hashtags (optional)</label>
           <textarea
             id="shareCaption"
             value={shareCaption}
@@ -161,9 +161,9 @@ export function ProfileForm({ r }: { r: R }) {
             className="input"
             rows={2}
             maxLength={500}
-            placeholder="e.g. Follow us for daily specials and upcoming events!"
+            placeholder="e.g. Loved our visit to @RestaurantName! #delicious #foodie"
           />
-          <p className="mt-1 text-xs text-ink/60">Shown as a short quote on the thank-you screen.</p>
+          <p className="mt-1 text-xs text-ink/60">Suggested caption shown on the review &amp; thank-you screen.</p>
         </div>
 
         {socialError && <p role="alert" className="text-sm text-red-700">{socialError}</p>}

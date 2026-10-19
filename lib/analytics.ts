@@ -5,7 +5,7 @@ const since = (days: number) => new Date(Date.now() - days * 86_400_000);
 export async function restaurantStats(restaurantId: string, days = 30) {
   const qrWhere = { qr: { restaurantId } };
   const from = since(days);
-  const [scans, sessions, avg, clicks, socialClicks, dist, chipRows] = await Promise.all([
+  const [scans, sessions, avg, clicks, socialClicks, dist, chipRows, instagramClicks, facebookClicks] = await Promise.all([
     db.scan.count({ where: { ...qrWhere, createdAt: { gte: from } } }),
     db.feedbackSession.count({ where: { ...qrWhere, completedAt: { gte: from } } }),
     db.feedbackSession.aggregate({
@@ -39,6 +39,12 @@ export async function restaurantStats(restaurantId: string, days = 30) {
       select: { chips: true },
       take: 5000,
     }),
+    db.$queryRaw<{ count: number | bigint }[]>`SELECT COUNT(*)::int AS count FROM "social_clicks" WHERE "restaurant_id" = ${restaurantId} AND "platform" = 'instagram' AND "createdAt" >= ${from}`
+      .then((rows) => Number(rows[0]?.count ?? 0))
+      .catch(() => 0),
+    db.$queryRaw<{ count: number | bigint }[]>`SELECT COUNT(*)::int AS count FROM "social_clicks" WHERE "restaurant_id" = ${restaurantId} AND "platform" = 'facebook' AND "createdAt" >= ${from}`
+      .then((rows) => Number(rows[0]?.count ?? 0))
+      .catch(() => 0),
   ]);
   const chips: Record<string, number> = {};
   chipRows.forEach((r) => r.chips.forEach((c) => (chips[c] = (chips[c] ?? 0) + 1)));
@@ -51,6 +57,8 @@ export async function restaurantStats(restaurantId: string, days = 30) {
     sessions,
     googleClicks: clicks,
     socialClicks,
+    instagramClicks,
+    facebookClicks,
     avgOverall: avg._avg.overallRating,
     avgFood: avg._avg.foodRating,
     avgService: avg._avg.serviceRating,

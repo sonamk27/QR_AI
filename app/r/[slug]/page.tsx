@@ -31,6 +31,7 @@ export default async function Customer({ params }: { params: { slug: string } })
       name={qr.restaurant.name}
       logoUrl={qr.restaurant.logoUrl}
       color={qr.restaurant.brandColor}
+      googleReviewUrl={qr.restaurant.googleReviewUrl}
       instagramUrl={qr.restaurant.instagramUrl}
       facebookUrl={qr.restaurant.facebookUrl}
       shareCaption={qr.restaurant.shareCaption}

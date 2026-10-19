@@ -83,8 +83,16 @@ export default async function Overview() {
             <Stat label="Average rating" value={s.avgOverall ? s.avgOverall.toFixed(1) : "–"} hint={`${s.sessions} responses`} />
             <Stat label="QR scans" value={s.scans} />
             <Stat label="Completed feedback" value={s.sessions} />
-            <Stat label="Continued to Google" value={s.googleClicks} hint="Tapped the button. Not a count of posted reviews." />
-            <Stat label="Social clicks" value={s.socialClicks} hint="Instagram or Facebook taps from the thank-you screen." />
+            <Stat label="Continued to Google" value={s.googleClicks} hint="Tapped to post on Google." />
+            <Stat
+              label="Social clicks"
+              value={s.socialClicks}
+              hint={
+                s.socialClicks > 0
+                  ? `${s.instagramClicks} Instagram · ${s.facebookClicks} Facebook`
+                  : "Instagram or Facebook taps from review flow."
+              }
+            />
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">

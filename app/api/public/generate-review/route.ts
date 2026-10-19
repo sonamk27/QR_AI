@@ -93,6 +93,14 @@ export async function POST(req: Request) {
     create: { sessionId, text },
     update: { text, editedText: null, regenerations: { increment: 1 } },
   });
-  // The Google link is the same for every rating. We never hide it from low-rating customers.
-  return NextResponse.json({ sessionId, draftId: draft.id, text, googleUrl: qr.restaurant.googleReviewUrl });
+  // Review destinations are the same for every rating.
+  return NextResponse.json({
+    sessionId,
+    draftId: draft.id,
+    text,
+    googleUrl: qr.restaurant.googleReviewUrl,
+    instagramUrl: qr.restaurant.instagramUrl,
+    facebookUrl: qr.restaurant.facebookUrl,
+    shareCaption: qr.restaurant.shareCaption,
+  });
 }
