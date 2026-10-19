@@ -117,18 +117,33 @@ export function LoyaltySettingsView({
             href="/dashboard/loyalty/terminal"
             className="inline-flex items-center gap-1.5 rounded-xl bg-stone-900 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-stone-800 transition"
           >
-            <span>💻 Open Staff Counter Terminal</span>
+            <span>💻 Staff Terminal</span>
           </Link>
 
           {qrSlug && (
-            <Link
-              href={`/r/${qrSlug}/loyalty`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-xs font-bold text-ink shadow-xs hover:bg-stone-50 transition"
-            >
-              <span>📱 Preview Card ↗</span>
-            </Link>
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  const url = `${window.location.origin}/terminal/${qrSlug}`;
+                  navigator.clipboard.writeText(url);
+                  alert(`Staff Terminal Link copied to clipboard:\n${url}\n\nStaff PIN: ${terminalPin}`);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-xs font-bold text-stone-800 shadow-xs hover:bg-stone-50 transition"
+                title="Send this URL to counter cashiers to stamp cards"
+              >
+                <span>🔗 Copy Cashier Link (PIN: {terminalPin})</span>
+              </button>
+
+              <Link
+                href={`/r/${qrSlug}/loyalty`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-2.5 text-xs font-bold text-ink shadow-xs hover:bg-stone-100 transition"
+              >
+                <span>📱 Customer Card ↗</span>
+              </Link>
+            </>
           )}
         </div>
       </div>

@@ -115,15 +115,15 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      const nextStamps = customer.currentStamps + 1;
       const nextLifetime = customer.lifetimeStamps + 1;
-      const targetReached = nextStamps >= program.stampsRequired;
+      
+      // If customer previously completed a full card (>= stampsRequired), start new card cycle with 1 stamp
+      let finalStamps = customer.currentStamps >= program.stampsRequired ? 1 : customer.currentStamps + 1;
+      const targetReached = finalStamps === program.stampsRequired;
 
       let newReward = null;
-      let finalStamps = nextStamps;
 
       if (targetReached) {
-        finalStamps = nextStamps - program.stampsRequired;
         const expiryDate = new Date();
         expiryDate.setDate(expiryDate.getDate() + (program.rewardExpiryDays || 30));
 

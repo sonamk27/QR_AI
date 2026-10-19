@@ -6,6 +6,7 @@ import Link from "next/link";
 export function StaffTerminalView({
   restaurant,
   initialPin,
+  slug,
 }: {
   restaurant: {
     id: string;
@@ -13,11 +14,23 @@ export function StaffTerminalView({
     brandColor: string;
   };
   initialPin?: string;
+  slug?: string;
 }) {
   const [pin, setPin] = useState(initialPin || "");
   const [pinVerified, setPinVerified] = useState(Boolean(initialPin));
   const [pinInput, setPinInput] = useState("");
   const [tab, setTab] = useState<"award" | "redeem">("award");
+
+  // Restore PIN from sessionStorage on mount
+  useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem(`staff_terminal_pin_${restaurant.id}`);
+      if (saved) {
+        setPin(saved);
+        setPinVerified(true);
+      }
+    }
+  });
 
   // Award stamp form state
   const [phone, setPhone] = useState("");
@@ -37,8 +50,21 @@ export function StaffTerminalView({
   function handlePinSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!pinInput.trim()) return;
-    setPin(pinInput.trim());
+    const cleanPin = pinInput.trim();
+    setPin(cleanPin);
     setPinVerified(true);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(`staff_terminal_pin_${restaurant.id}`, cleanPin);
+    }
+  }
+
+  function handleLock() {
+    setPinVerified(false);
+    setPinInput("");
+    setPin("");
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem(`staff_terminal_pin_${restaurant.id}`);
+    }
   }
 
   async function handleAwardStamp(e: React.FormEvent) {
@@ -133,10 +159,7 @@ export function StaffTerminalView({
         <div className="flex items-center gap-2">
           {pinVerified && (
             <button
-              onClick={() => {
-                setPinVerified(false);
-                setPinInput("");
-              }}
+              onClick={handleLock}
               className="text-[11px] font-semibold text-stone-400 hover:text-stone-700 underline"
             >
               Lock Terminal
@@ -340,9 +363,15 @@ export function StaffTerminalView({
       </div>
 
       <div className="mt-4 flex items-center justify-between px-2 text-xs text-stone-400">
-        <Link href="/dashboard/loyalty" className="hover:text-stone-700 underline">
-          ← Back to Loyalty Settings
-        </Link>
+        {slug ? (
+          <Link href={`/r/${slug}/loyalty`} className="hover:text-stone-700 underline">
+            ← Customer Card View
+          </Link>
+        ) : (
+          <Link href="/dashboard/loyalty" className="hover:text-stone-700 underline">
+            ← Back to Loyalty Settings
+          </Link>
+        )}
         <span>ReviewFlow Terminal</span>
       </div>
     </div>
