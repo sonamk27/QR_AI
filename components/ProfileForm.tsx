@@ -122,14 +122,14 @@ export function ProfileForm({ r }: { r: R }) {
       {/* Social links form */}
       <form onSubmit={saveSocialLinks} className="panel max-w-xl space-y-4 p-5">
         <div>
-          <h2 className="label mb-3 text-base font-semibold">Social media &amp; review destinations</h2>
+          <h2 className="label mb-3 text-base font-semibold">Follow for Reviewing &amp; Social Destinations</h2>
           <p className="mb-3 text-xs text-ink/60">
-            Guests can choose to copy and post their AI review draft directly to Google, Instagram, or Facebook, and also see your links on the thank-you screen.
+            Guests can follow your Instagram &amp; Facebook pages, copy their AI review draft with your @tag pre-filled, and share their experience on social media.
           </p>
         </div>
 
         <div>
-          <label className="label" htmlFor="instagramUrl">Instagram profile or review link</label>
+          <label className="label" htmlFor="instagramUrl">Instagram profile (Follow &amp; Review link)</label>
           <input
             id="instagramUrl"
             type="url"
@@ -138,10 +138,11 @@ export function ProfileForm({ r }: { r: R }) {
             className="input"
             placeholder="https://www.instagram.com/yourrestaurant"
           />
+          <p className="mt-1 text-xs text-ink/50">Used for &quot;Follow &amp; Review on Instagram&quot; and table tent QR cards.</p>
         </div>
 
         <div>
-          <label className="label" htmlFor="facebookUrl">Facebook page or reviews link</label>
+          <label className="label" htmlFor="facebookUrl">Facebook page (Follow &amp; Review link)</label>
           <input
             id="facebookUrl"
             type="url"
@@ -150,10 +151,11 @@ export function ProfileForm({ r }: { r: R }) {
             className="input"
             placeholder="https://www.facebook.com/yourrestaurant"
           />
+          <p className="mt-1 text-xs text-ink/50">Used for &quot;Follow &amp; Review on Facebook&quot; and table tent QR cards.</p>
         </div>
 
         <div>
-          <label className="label" htmlFor="shareCaption">Caption or hashtags (optional)</label>
+          <label className="label" htmlFor="shareCaption">Caption, hashtags or offer text (optional)</label>
           <textarea
             id="shareCaption"
             value={shareCaption}
@@ -161,9 +163,9 @@ export function ProfileForm({ r }: { r: R }) {
             className="input"
             rows={2}
             maxLength={500}
-            placeholder="e.g. Loved our visit to @RestaurantName! #delicious #foodie"
+            placeholder="e.g. Follow us &amp; tag @Restaurant to get featured in our stories!"
           />
-          <p className="mt-1 text-xs text-ink/60">Suggested caption shown on the review &amp; thank-you screen.</p>
+          <p className="mt-1 text-xs text-ink/60">Appended to the customer review draft and shown on thank-you screen and table stands.</p>
         </div>
 
         {socialError && <p role="alert" className="text-sm text-red-700">{socialError}</p>}
