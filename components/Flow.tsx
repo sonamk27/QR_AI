@@ -7,14 +7,22 @@ type Rec = { stop: () => void };
 
 export function Flow({
   slug,
+  restaurantId,
   name,
   logoUrl,
   color,
+  instagramUrl,
+  facebookUrl,
+  shareCaption,
 }: {
   slug: string;
+  restaurantId: string;
   name: string;
   logoUrl: string | null;
   color: string;
+  instagramUrl: string | null;
+  facebookUrl: string | null;
+  shareCaption: string | null;
 }) {
   const [step, setStep] = useState(0);
   const [overall, setOverall] = useState(0);
@@ -98,6 +106,16 @@ export function Flow({
     );
   }
 
+  function trackSocialClick(platform: "instagram" | "facebook") {
+    navigator.sendBeacon?.(
+      "/api/public/social-click",
+      new Blob(
+        [JSON.stringify({ restaurantId, platform, sessionId })],
+        { type: "application/json" },
+      ),
+    );
+  }
+
   async function copyAndContinue() {
     if (!googleUrl) return;
     setCopyingAndContinuing(true);
@@ -110,7 +128,11 @@ export function Flow({
       return;
     }
     trackClick();
-    window.location.assign(googleUrl);
+    // Go to thank-you screen instead of leaving immediately
+    setStep(5);
+    setCopyingAndContinuing(false);
+    // Open Google in a new tab
+    window.open(googleUrl, "_blank", "noopener,noreferrer");
   }
 
   function voice() {
@@ -149,7 +171,10 @@ export function Flow({
   }
 
   const accent = { backgroundColor: color };
+  // Step 5 is the thank-you screen — always 100%
   const progress = step < 3 ? ((step + 1) / 4) * 100 : step === 3 ? 85 : 100;
+
+  const hasSocial = instagramUrl || facebookUrl;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col px-5 py-8">
@@ -271,6 +296,83 @@ export function Flow({
             )}
             <p className="text-center text-xs text-ink/50">
               You can choose what to post on Google. Your ratings don&apos;t affect access to the link.
+            </p>
+          </>
+        )}
+
+        {step === 5 && (
+          <>
+            <div className="flex flex-col items-center gap-3 text-center">
+              <span className="text-5xl">🎉</span>
+              <h1 className="text-3xl font-semibold">Thank you!</h1>
+              <p className="text-sm text-ink/70">
+                Your review draft was copied. Paste it when Google opens and tap Post — it means a lot to us.
+              </p>
+            </div>
+
+            {hasSocial && (
+              <div className="rounded-xl border border-line bg-paper p-4 text-center space-y-3">
+                <p className="text-sm font-medium text-ink">
+                  Enjoyed your visit? Follow us for updates &amp; offers!
+                </p>
+
+                {shareCaption && (
+                  <p className="text-xs text-ink/60 italic">&ldquo;{shareCaption}&rdquo;</p>
+                )}
+
+                <div className="flex justify-center gap-3">
+                  {instagramUrl && (
+                    <a
+                      href={instagramUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => trackSocialClick("instagram")}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white px-4 py-2 text-sm font-medium text-ink shadow-sm hover:bg-paper transition"
+                      aria-label="Follow on Instagram"
+                    >
+                      {/* Instagram SVG icon */}
+                      <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current text-pink-500" aria-hidden="true">
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.334 3.608 1.31.975.975 1.247 2.242 1.31 3.608.058 1.265.069 1.645.069 4.849s-.012 3.584-.07 4.85c-.062 1.366-.334 2.633-1.31 3.608-.975.975-2.242 1.247-3.608 1.31-1.265.058-1.645.069-4.849.069s-3.584-.012-4.85-.07c-1.366-.062-2.633-.334-3.608-1.31-.975-.975-1.247-2.242-1.31-3.608C2.175 15.585 2.163 15.205 2.163 12s.012-3.584.07-4.85c.062-1.366.334-2.633 1.31-3.608.975-.975 2.242-1.247 3.608-1.31C8.416 2.175 8.796 2.163 12 2.163zm0-2.163C8.741 0 8.332.013 7.052.072 5.197.163 3.475.705 2.14 2.14.705 3.475.163 5.197.072 7.052.013 8.332 0 8.741 0 12c0 3.259.013 3.668.072 4.948.091 1.854.633 3.576 2.068 5.012C3.475 23.295 5.197 23.837 7.052 23.928 8.332 23.987 8.741 24 12 24s3.668-.013 4.948-.072c1.854-.091 3.576-.633 5.012-2.068 1.435-1.435 1.977-3.158 2.068-5.012.059-1.28.072-1.689.072-4.948 0-3.259-.013-3.668-.072-4.948-.091-1.854-.633-3.576-2.068-5.012C20.525.705 18.803.163 16.948.072 15.668.013 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zm0 10.162a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z" />
+                      </svg>
+                      Instagram
+                    </a>
+                  )}
+
+                  {facebookUrl && (
+                    <a
+                      href={facebookUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => trackSocialClick("facebook")}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white px-4 py-2 text-sm font-medium text-ink shadow-sm hover:bg-paper transition"
+                      aria-label="Follow on Facebook"
+                    >
+                      {/* Facebook SVG icon */}
+                      <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current text-blue-600" aria-hidden="true">
+                        <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.874v2.25h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" />
+                      </svg>
+                      Facebook
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {googleUrl && (
+              <a
+                href={googleUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn text-center"
+                style={accent}
+                onClick={trackClick}
+              >
+                Open Google to post
+              </a>
+            )}
+
+            <p className="text-center text-xs text-ink/50">
+              Thank you for visiting {name}. We hope to see you again soon!
             </p>
           </>
         )}

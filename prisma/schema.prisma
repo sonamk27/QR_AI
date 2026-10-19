@@ -56,21 +56,25 @@ model User {
 }
 
 model Restaurant {
-  id              String       @id @default(cuid())
+  id              String        @id @default(cuid())
   ownerId         String
-  owner           User         @relation("Owner", fields: [ownerId], references: [id])
+  owner           User          @relation("Owner", fields: [ownerId], references: [id])
   name            String
   city            String?
   logoUrl         String?
-  brandColor      String       @default("#1F6F5C")
+  brandColor      String        @default("#1F6F5C")
   googleReviewUrl String?
-  referredByName  String?      // seller name — plain text, no account needed
-  status          String       @default("ACTIVE") // ACTIVE | SUSPENDED
-  createdAt       DateTime     @default(now())
+  instagramUrl    String?       // shown on the thank-you screen
+  facebookUrl     String?       // shown on the thank-you screen
+  shareCaption    String?       // pre-filled caption guests can copy / share
+  referredByName  String?       // seller name — plain text, no account needed
+  status          String        @default("ACTIVE") // ACTIVE | SUSPENDED
+  createdAt       DateTime      @default(now())
   qrCodes         QrCode[]
   payments        Payment[]
   qrRequests      QrRequest[]
   auditLogs       AuditLog[]
+  socialClicks    SocialClick[]
 
   @@index([ownerId])
 }
@@ -196,4 +200,17 @@ model AuditLog {
 
   @@index([restaurantId, createdAt], map: "audit_log_restaurant_id_created_at_idx")
   @@map("audit_log")
+}
+
+/// Tracks taps on Instagram / Facebook links shown on the thank-you screen
+model SocialClick {
+  id           String     @id @default(cuid())
+  restaurantId String     @map("restaurant_id")
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  platform     String     // "instagram" | "facebook"
+  sessionId    String?    // FeedbackSession.id if available
+  createdAt    DateTime   @default(now())
+
+  @@index([restaurantId, createdAt])
+  @@map("social_clicks")
 }

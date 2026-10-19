@@ -27,9 +27,13 @@ export default async function Customer({ params }: { params: { slug: string } })
   return (
     <Flow
       slug={params.slug}
+      restaurantId={qr.restaurant.id}
       name={qr.restaurant.name}
       logoUrl={qr.restaurant.logoUrl}
       color={qr.restaurant.brandColor}
+      instagramUrl={qr.restaurant.instagramUrl}
+      facebookUrl={qr.restaurant.facebookUrl}
+      shareCaption={qr.restaurant.shareCaption}
     />
   );
 }

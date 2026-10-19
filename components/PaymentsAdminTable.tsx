@@ -47,7 +47,12 @@ function VerifyPaymentButton({ payment }: { payment: PaymentRow }) {
         { method: "POST" },
       );
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to verify payment");
+      if (!response.ok) {
+        const message = data.code
+          ? `${data.error || "Failed to verify payment"} (${data.code})`
+          : data.error || "Failed to verify payment";
+        throw new Error(message);
+      }
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to verify payment");

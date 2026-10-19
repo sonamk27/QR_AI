@@ -2,7 +2,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-type R = { name: string; city: string | null; logoUrl: string | null; brandColor: string; googleReviewUrl: string | null };
+type R = {
+  name: string;
+  city: string | null;
+  logoUrl: string | null;
+  brandColor: string;
+  googleReviewUrl: string | null;
+  instagramUrl: string | null;
+  facebookUrl: string | null;
+  shareCaption: string | null;
+};
 
 export function ProfileForm({ r }: { r: R }) {
   const router = useRouter();
@@ -11,6 +20,14 @@ export function ProfileForm({ r }: { r: R }) {
   const [googleBusinessUrl, setGoogleBusinessUrl] = useState(r.googleReviewUrl ?? "");
   const [googleUrlError, setGoogleUrlError] = useState("");
   const [googleUrlSaved, setGoogleUrlSaved] = useState("");
+
+  // Social links state
+  const [instagramUrl, setInstagramUrl] = useState(r.instagramUrl ?? "");
+  const [facebookUrl, setFacebookUrl] = useState(r.facebookUrl ?? "");
+  const [shareCaption, setShareCaption] = useState(r.shareCaption ?? "");
+  const [socialMsg, setSocialMsg] = useState("");
+  const [socialError, setSocialError] = useState("");
+  const [socialBusy, setSocialBusy] = useState(false);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -49,6 +66,31 @@ export function ProfileForm({ r }: { r: R }) {
     }
   }
 
+  async function saveSocialLinks(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSocialBusy(true);
+    setSocialError("");
+    setSocialMsg("");
+    try {
+      const response = await fetch("/api/restaurant/social-links", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ instagramUrl, facebookUrl, shareCaption }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setSocialError(data.error ?? "Could not save social links.");
+        return;
+      }
+      setSocialMsg("Saved.");
+      router.refresh();
+    } catch {
+      setSocialError("Unable to reach the server. Check your connection and try again.");
+    } finally {
+      setSocialBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
       <form onSubmit={saveGoogleBusinessUrl} className="panel max-w-xl space-y-4 p-5">
@@ -74,6 +116,60 @@ export function ProfileForm({ r }: { r: R }) {
         <div className="flex items-center gap-3">
           <button className="btn" disabled={busy}>{busy ? "Saving…" : "Save URL"}</button>
           {googleUrlSaved && <span role="status" className="text-sm">{googleUrlSaved}</span>}
+        </div>
+      </form>
+
+      {/* Social links form */}
+      <form onSubmit={saveSocialLinks} className="panel max-w-xl space-y-4 p-5">
+        <div>
+          <h2 className="label mb-3 text-base font-semibold">Social media &amp; thank-you screen</h2>
+          <p className="mb-3 text-xs text-ink/60">
+            After guests submit their Google review, they see a thank-you screen. Add your social links and an optional caption to grow your following.
+          </p>
+        </div>
+
+        <div>
+          <label className="label" htmlFor="instagramUrl">Instagram profile URL</label>
+          <input
+            id="instagramUrl"
+            type="url"
+            value={instagramUrl}
+            onChange={(e) => setInstagramUrl(e.target.value)}
+            className="input"
+            placeholder="https://www.instagram.com/yourrestaurant"
+          />
+        </div>
+
+        <div>
+          <label className="label" htmlFor="facebookUrl">Facebook page URL</label>
+          <input
+            id="facebookUrl"
+            type="url"
+            value={facebookUrl}
+            onChange={(e) => setFacebookUrl(e.target.value)}
+            className="input"
+            placeholder="https://www.facebook.com/yourrestaurant"
+          />
+        </div>
+
+        <div>
+          <label className="label" htmlFor="shareCaption">Thank-you caption (optional)</label>
+          <textarea
+            id="shareCaption"
+            value={shareCaption}
+            onChange={(e) => setShareCaption(e.target.value)}
+            className="input"
+            rows={2}
+            maxLength={500}
+            placeholder="e.g. Follow us for daily specials and upcoming events!"
+          />
+          <p className="mt-1 text-xs text-ink/60">Shown as a short quote on the thank-you screen.</p>
+        </div>
+
+        {socialError && <p role="alert" className="text-sm text-red-700">{socialError}</p>}
+        <div className="flex items-center gap-3">
+          <button className="btn" disabled={socialBusy}>{socialBusy ? "Saving…" : "Save social links"}</button>
+          {socialMsg && <span role="status" className="text-sm">{socialMsg}</span>}
         </div>
       </form>
 

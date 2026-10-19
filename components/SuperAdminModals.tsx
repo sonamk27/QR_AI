@@ -26,6 +26,9 @@ export function CreateRestaurantModal() {
     name: "",
     city: "",
     googleReviewUrl: "",
+    instagramUrl: "",
+    facebookUrl: "",
+    shareCaption: "",
     ownerName: "",
     ownerEmail: "",
     password: "",
@@ -187,6 +190,40 @@ export function CreateRestaurantModal() {
                       placeholder="https://www.google.com/maps/place/..."
                       value={form.googleReviewUrl}
                       onChange={(e) => setForm({ ...form, googleReviewUrl: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="label">Instagram URL (optional)</label>
+                    <input
+                      className="input"
+                      type="url"
+                      placeholder="https://www.instagram.com/restaurant"
+                      value={form.instagramUrl}
+                      onChange={(e) => setForm({ ...form, instagramUrl: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="label">Facebook URL (optional)</label>
+                    <input
+                      className="input"
+                      type="url"
+                      placeholder="https://www.facebook.com/restaurant"
+                      value={form.facebookUrl}
+                      onChange={(e) => setForm({ ...form, facebookUrl: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="label">Thank-you caption (optional)</label>
+                    <textarea
+                      className="input"
+                      rows={2}
+                      maxLength={500}
+                      placeholder="e.g. Follow us for daily specials!"
+                      value={form.shareCaption}
+                      onChange={(e) => setForm({ ...form, shareCaption: e.target.value })}
                     />
                   </div>
 

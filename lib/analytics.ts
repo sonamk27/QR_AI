@@ -5,7 +5,7 @@ const since = (days: number) => new Date(Date.now() - days * 86_400_000);
 export async function restaurantStats(restaurantId: string, days = 30) {
   const qrWhere = { qr: { restaurantId } };
   const from = since(days);
-  const [scans, sessions, avg, clicks, dist, chipRows] = await Promise.all([
+  const [scans, sessions, avg, clicks, socialClicks, dist, chipRows] = await Promise.all([
     db.scan.count({ where: { ...qrWhere, createdAt: { gte: from } } }),
     db.feedbackSession.count({ where: { ...qrWhere, completedAt: { gte: from } } }),
     db.feedbackSession.aggregate({
@@ -22,6 +22,13 @@ export async function restaurantStats(restaurantId: string, days = 30) {
         ],
       },
     }),
+    ((db as unknown as { socialClick?: { count: (args: unknown) => Promise<number> } }).socialClick?.count
+      ? (db as unknown as { socialClick: { count: (args: unknown) => Promise<number> } }).socialClick.count({
+          where: { restaurantId, createdAt: { gte: from } },
+        })
+      : db.$queryRaw<{ count: number | bigint }[]>`SELECT COUNT(*)::int AS count FROM "social_clicks" WHERE "restaurant_id" = ${restaurantId} AND "createdAt" >= ${from}`
+          .then((rows) => Number(rows[0]?.count ?? 0))
+          .catch(() => 0)),
     db.feedbackSession.groupBy({
       by: ["overallRating"],
       where: { ...qrWhere, completedAt: { gte: from } },
@@ -43,6 +50,7 @@ export async function restaurantStats(restaurantId: string, days = 30) {
     scans,
     sessions,
     googleClicks: clicks,
+    socialClicks,
     avgOverall: avg._avg.overallRating,
     avgFood: avg._avg.foodRating,
     avgService: avg._avg.serviceRating,

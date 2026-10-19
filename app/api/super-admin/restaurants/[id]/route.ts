@@ -18,6 +18,12 @@ const schema = z.union([
       "Enter a valid Google Maps or Google Business Profile URL using HTTPS.",
     ),
   }),
+  z.object({
+    action: z.literal("update_social_links"),
+    instagramUrl: z.string().trim().url("Enter a valid Instagram URL.").max(300).optional().or(z.literal("")),
+    facebookUrl: z.string().trim().url("Enter a valid Facebook URL.").max(300).optional().or(z.literal("")),
+    shareCaption: z.string().trim().max(500).optional().or(z.literal("")),
+  }),
 ]);
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
@@ -73,6 +79,42 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         },
       }),
     ]);
+    return NextResponse.json({ ok: true });
+  }
+
+  if ("action" in parsed.data && parsed.data.action === "update_social_links") {
+    const d = parsed.data;
+    try {
+      await db.restaurant.update({
+        where: { id: params.id },
+        data: {
+          instagramUrl: d.instagramUrl || null,
+          facebookUrl: d.facebookUrl || null,
+          shareCaption: d.shareCaption || null,
+        },
+      });
+    } catch {
+      await db.$executeRaw`
+        UPDATE "Restaurant"
+        SET "instagramUrl" = ${d.instagramUrl || null},
+            "facebookUrl" = ${d.facebookUrl || null},
+            "shareCaption" = ${d.shareCaption || null}
+        WHERE "id" = ${params.id}
+      `;
+    }
+    await db.auditLog.create({
+      data: {
+        actorId: admin.id,
+        action: "restaurant.social_links_updated",
+        target: params.id,
+        restaurantId: params.id,
+        meta: {
+          instagramUrl: d.instagramUrl || null,
+          facebookUrl: d.facebookUrl || null,
+          shareCaption: d.shareCaption || null,
+        },
+      },
+    }).catch(() => {});
     return NextResponse.json({ ok: true });
   }
 

@@ -211,7 +211,12 @@ function ConfirmManualPaymentButton({ requestId }: { requestId: string }) {
         method: "POST",
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to verify payment");
+      if (!res.ok) {
+        const message = data.code
+          ? `${data.error || "Failed to verify payment"} (${data.code})`
+          : data.error || "Failed to verify payment";
+        throw new Error(message);
+      }
       router.refresh();
     } catch (err: any) {
       setError(err.message || "Error");

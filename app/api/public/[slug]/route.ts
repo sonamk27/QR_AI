@@ -9,6 +9,9 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     name: qr.restaurant.name,
     logoUrl: qr.restaurant.logoUrl,
     brandColor: qr.restaurant.brandColor,
+    instagramUrl: qr.restaurant.instagramUrl,
+    facebookUrl: qr.restaurant.facebookUrl,
+    shareCaption: qr.restaurant.shareCaption,
     available: isActive(qr) && qr.restaurant.status === "ACTIVE",
   });
 }

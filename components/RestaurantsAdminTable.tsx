@@ -14,6 +14,9 @@ type RestaurantRow = {
   status: string;
   referredByName: string | null;
   googleReviewUrl: string | null;
+  instagramUrl?: string | null;
+  facebookUrl?: string | null;
+  shareCaption?: string | null;
   createdAt: string;
   owner: {
     id: string;
@@ -223,6 +226,98 @@ function EditRestaurantLinkButton({
               <button type="submit" className="btn text-xs" disabled={busy}>
                 {busy ? "Saving…" : "Save link"}
               </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </>
+  );
+}
+
+function EditSocialLinksButton({
+  restaurantId,
+  instagramUrl,
+  facebookUrl,
+  shareCaption,
+}: {
+  restaurantId: string;
+  instagramUrl: string | null;
+  facebookUrl: string | null;
+  shareCaption: string | null;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [ig, setIg] = useState(instagramUrl ?? "");
+  const [fb, setFb] = useState(facebookUrl ?? "");
+  const [caption, setCaption] = useState(shareCaption ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/super-admin/restaurants/${restaurantId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update_social_links",
+          instagramUrl: ig,
+          facebookUrl: fb,
+          shareCaption: caption,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to update social links.");
+      setOpen(false);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update social links.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className="mt-1 text-xs text-leaf underline"
+        onClick={() => {
+          setIg(instagramUrl ?? "");
+          setFb(facebookUrl ?? "");
+          setCaption(shareCaption ?? "");
+          setError("");
+          setOpen(true);
+        }}
+      >
+        Edit social links
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm">
+          <form onSubmit={submit} className="w-full max-w-md space-y-4 rounded-2xl border border-line bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <h3 className="text-lg font-semibold text-ink">Edit Social Links</h3>
+              <button type="button" onClick={() => setOpen(false)} className="text-ink/50 hover:text-ink text-sm" aria-label="Close">✕</button>
+            </div>
+            {error && <p role="alert" className="rounded bg-rose-50 p-2 text-xs text-rose-700">{error}</p>}
+            <div>
+              <label className="label" htmlFor={`ig-${restaurantId}`}>Instagram URL</label>
+              <input id={`ig-${restaurantId}`} type="url" maxLength={300} className="input" placeholder="https://www.instagram.com/..." value={ig} onChange={(e) => setIg(e.target.value)} />
+            </div>
+            <div>
+              <label className="label" htmlFor={`fb-${restaurantId}`}>Facebook URL</label>
+              <input id={`fb-${restaurantId}`} type="url" maxLength={300} className="input" placeholder="https://www.facebook.com/..." value={fb} onChange={(e) => setFb(e.target.value)} />
+            </div>
+            <div>
+              <label className="label" htmlFor={`caption-${restaurantId}`}>Thank-you caption</label>
+              <textarea id={`caption-${restaurantId}`} maxLength={500} rows={2} className="input" value={caption} onChange={(e) => setCaption(e.target.value)} />
+            </div>
+            <p className="text-xs text-ink/50">Leave blank to remove a link / caption.</p>
+            <div className="flex justify-end gap-2 border-t border-line pt-3">
+              <button type="button" className="btn-ghost text-xs" onClick={() => setOpen(false)}>Cancel</button>
+              <button type="submit" className="btn text-xs" disabled={busy}>{busy ? "Saving…" : "Save social links"}</button>
             </div>
           </form>
         </div>

@@ -8,7 +8,18 @@ export default async function Profile() {
   return (
     <div className="space-y-5">
       <h1 className="text-3xl font-semibold">Restaurant profile</h1>
-      <ProfileForm r={restaurant} />
+      <ProfileForm
+        r={{
+          name: restaurant.name,
+          city: restaurant.city,
+          logoUrl: restaurant.logoUrl,
+          brandColor: restaurant.brandColor,
+          googleReviewUrl: restaurant.googleReviewUrl,
+          instagramUrl: restaurant.instagramUrl ?? null,
+          facebookUrl: restaurant.facebookUrl ?? null,
+          shareCaption: restaurant.shareCaption ?? null,
+        }}
+      />
     </div>
   );
 }
