@@ -12,7 +12,6 @@ export async function POST(req: NextRequest) {
       restaurantId: reqRestaurantId,
       slug,
       rewardCode: rawCode,
-      terminalPin,
     } = body;
 
     const rewardCode = (rawCode || "").trim().toUpperCase();
@@ -40,22 +39,7 @@ export async function POST(req: NextRequest) {
 
     const program = await getOrCreateLoyaltyProgram(restaurantId);
 
-    // Validate PIN or Owner session
     const isOwner = ownerCtx?.restaurant.id === restaurantId;
-    if (!isOwner) {
-      const { verifyTerminalPinWithRateLimit } = await import("@/lib/loyalty-security");
-      const ip =
-        req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-        req.headers.get("x-real-ip") ||
-        "unknown-ip";
-      const pinResult = await verifyTerminalPinWithRateLimit(restaurantId, terminalPin, ip);
-      if (!pinResult.valid) {
-        return NextResponse.json(
-          { error: pinResult.error || "Invalid staff terminal PIN" },
-          { status: pinResult.isLocked ? 429 : 403 }
-        );
-      }
-    }
 
     const reward = await db.loyaltyReward.findUnique({
       where: { code: rewardCode },
@@ -96,7 +80,7 @@ export async function POST(req: NextRequest) {
       data: {
         status: "REDEEMED",
         redeemedAt: new Date(),
-        redeemedByStaff: isOwner ? "Owner" : "Staff Terminal",
+        redeemedByStaff: isOwner ? "Owner Dashboard" : "Counter Claim",
       },
     });
 

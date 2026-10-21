@@ -78,12 +78,16 @@ export async function PATCH(req: NextRequest) {
       data: {
         title: body.title !== undefined ? String(body.title).trim() : undefined,
         isActive: body.isActive !== undefined ? Boolean(body.isActive) : undefined,
-        stampsRequired: body.stampsRequired !== undefined ? Math.max(2, Math.min(20, Number(body.stampsRequired))) : undefined,
+        discountType: body.discountType === "PERCENT" ? "PERCENT" : "FLAT",
+        stampsRequired: body.stampsRequired !== undefined ? Math.max(1, Math.min(20, Number(body.stampsRequired))) : undefined,
         minBillAmount: body.minBillAmountRupees !== undefined ? Math.round(Number(body.minBillAmountRupees) * 100) : undefined,
         rewardTitle: body.rewardTitle !== undefined ? String(body.rewardTitle).trim() : undefined,
-        rewardDiscount: body.rewardDiscountRupees !== undefined ? Math.round(Number(body.rewardDiscountRupees) * 100) : undefined,
+        rewardDiscount: body.rewardDiscountRupees !== undefined 
+          ? (body.discountType === "PERCENT" 
+              ? Math.max(1, Math.min(100, Math.round(Number(body.rewardDiscountRupees)))) 
+              : Math.round(Number(body.rewardDiscountRupees) * 100))
+          : undefined,
         rewardExpiryDays: body.rewardExpiryDays !== undefined ? Math.max(1, Number(body.rewardExpiryDays)) : undefined,
-        terminalPin: body.terminalPin !== undefined ? String(body.terminalPin).trim() : undefined,
       },
     });
 

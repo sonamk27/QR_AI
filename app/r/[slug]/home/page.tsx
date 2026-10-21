@@ -40,6 +40,7 @@ export default async function RestaurantPublicHomePage({
         id: program.id,
         title: program.title,
         isActive: program.isActive,
+        discountType: program.discountType || "FLAT",
         stampsRequired: program.stampsRequired,
         minBillAmount: program.minBillAmount,
         rewardTitle: program.rewardTitle,

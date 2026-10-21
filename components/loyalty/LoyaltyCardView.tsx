@@ -32,11 +32,13 @@ type LoyaltyCardData = {
   program: {
     id: string;
     title: string;
+    discountType?: string;
     stampsRequired: number;
     minBillAmount: number;
     rewardTitle: string;
     rewardDiscount: number;
     rewardExpiryDays: number;
+    isActive: boolean;
   };
   customer: {
     id: string;
@@ -52,13 +54,22 @@ type LoyaltyCardData = {
 export function LoyaltyCardView({ slug }: { slug: string }) {
   const [phone, setPhone] = useState("");
   const [inputPhone, setInputPhone] = useState("");
-  const [inputName, setInputName] = useState("");
   const [data, setData] = useState<LoyaltyCardData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"card" | "rewards" | "history">("card");
+  
+  // Voucher Modal state
   const [selectedRewardQr, setSelectedRewardQr] = useState<string | null>(null);
   const [selectedRewardCode, setSelectedRewardCode] = useState<string | null>(null);
+  const [selectedRewardTitle, setSelectedRewardTitle] = useState<string | null>(null);
+  const [selectedRewardDiscount, setSelectedRewardDiscount] = useState<number>(0);
+  const [redeeming, setRedeeming] = useState(false);
+  const [redeemSuccess, setRedeemSuccess] = useState<string | null>(null);
+  const [redeemError, setRedeemError] = useState<string | null>(null);
+
+  // Dynamic Diner Bill Calculator
+  const [dinerBillInput, setDinerBillInput] = useState<string>("");
 
   // Load remembered phone from localStorage
   useEffect(() => {
@@ -106,7 +117,12 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
     setInputPhone("");
   }
 
-  async function showRewardQr(code: string) {
+  async function showRewardQr(code: string, title?: string, discountPaise?: number) {
+    setSelectedRewardTitle(title || "Reward Voucher");
+    setSelectedRewardDiscount(discountPaise ? discountPaise / 100 : 0);
+    setRedeemSuccess(null);
+    setRedeemError(null);
+
     try {
       const qrDataUrl = await QRCode.toDataURL(code, {
         width: 240,
@@ -120,12 +136,67 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
     }
   }
 
+  async function handleAvailOffer(rewardCode: string) {
+    setRedeeming(true);
+    setRedeemError(null);
+    try {
+      const res = await fetch("/api/loyalty/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, rewardCode }),
+      });
+      const resData = await res.json();
+      if (!res.ok) {
+        throw new Error(resData.error || "Failed to avail offer");
+      }
+      setRedeemSuccess(resData.message || "Offer successfully availed at counter!");
+
+      // Update local state
+      setData((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          customer: {
+            ...prev.customer,
+            rewards: prev.customer.rewards.map((r) =>
+              r.code === rewardCode
+                ? { ...r, status: "REDEEMED", redeemedAt: new Date().toISOString() }
+                : r
+            ),
+          },
+        };
+      });
+    } catch (err: any) {
+      setRedeemError(err.message || "Failed to avail offer");
+    } finally {
+      setRedeeming(false);
+    }
+  }
+
   const brandColor = data?.restaurant.brandColor || "#1F6F5C";
-  const stampsRequired = data?.program.stampsRequired || 10;
+  const stampsRequired = data?.program.stampsRequired || 1;
   const currentStamps = data?.customer.currentStamps || 0;
   const progressPercent = Math.min(100, Math.round((currentStamps / stampsRequired) * 100));
   const stampsRemaining = Math.max(0, stampsRequired - currentStamps);
   const activeRewards = data?.customer.rewards.filter((r) => r.status === "UNREDEEMED") || [];
+
+  const minBillRupees = data ? data.program.minBillAmount / 100 : 0;
+  const isPercent = data?.program.discountType === "PERCENT";
+  const discountDisplay = data
+    ? isPercent
+      ? `${data.program.rewardDiscount}%`
+      : `₹${(data.program.rewardDiscount / 100).toFixed(0)}`
+    : "";
+
+  // Dynamic savings calculations for diner
+  const numericBill = Number(dinerBillInput) || 0;
+  const dinerMeetsMin = numericBill >= minBillRupees;
+  const calculatedSavings = dinerMeetsMin
+    ? isPercent
+      ? Math.round((numericBill * (data?.program.rewardDiscount || 0)) / 100)
+      : Math.min(numericBill, (data?.program.rewardDiscount || 0) / 100)
+    : 0;
+  const netPayable = Math.max(0, numericBill - calculatedSavings);
 
   return (
     <div className="min-h-screen bg-stone-100/60 pb-12 font-sans text-stone-900 antialiased selection:bg-stone-200">
@@ -140,7 +211,7 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
           </Link>
           <div className="flex items-center gap-2">
             <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs font-medium text-stone-500">Digital Loyalty Card</span>
+            <span className="text-xs font-medium text-stone-500">Digital Offers &amp; Rewards</span>
           </div>
         </div>
       </header>
@@ -154,13 +225,13 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
                 className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl text-3xl shadow-inner"
                 style={{ backgroundColor: `${brandColor}15`, color: brandColor }}
               >
-                ☕
+                🎁
               </div>
               <h1 className="mt-4 font-display text-2xl font-bold tracking-tight text-stone-900">
-                Coffee & Dining Rewards
+                Unlock Dining Offers
               </h1>
               <p className="mt-1 text-sm text-stone-500">
-                Collect stamps on every purchase and earn exclusive discounts!
+                Enter your mobile number to view your active offer discounts &amp; digital vouchers!
               </p>
             </div>
 
@@ -198,20 +269,20 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
                 className="w-full rounded-xl py-3 text-sm font-bold text-white shadow-md transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
                 style={{ backgroundColor: brandColor }}
               >
-                {loading ? "Loading Card..." : "View My Stamp Card →"}
+                {loading ? "Loading Offers..." : "View My Dining Offers →"}
               </button>
             </form>
 
             <div className="mt-6 border-t border-stone-100 pt-4 text-center">
               <p className="text-[11px] text-stone-400">
-                🔒 No app download required. Your stamps stay linked to your phone.
+                🔒 Instant discounts • No app download required.
               </p>
             </div>
           </div>
         ) : loading && !data ? (
           <div className="mt-12 flex flex-col items-center justify-center gap-3 text-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-stone-300 border-t-stone-800" />
-            <p className="text-xs font-medium text-stone-500">Loading your loyalty card...</p>
+            <p className="text-xs font-medium text-stone-500">Loading your offers &amp; rewards...</p>
           </div>
         ) : data ? (
           <div className="space-y-4">
@@ -251,6 +322,72 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
               </button>
             </div>
 
+            {/* DYNAMIC ACTIVE OFFER HIGHLIGHT HERO BANNER */}
+            {data.program.isActive && (
+              <div className="rounded-3xl border border-amber-300 bg-gradient-to-br from-amber-500/10 via-amber-50 to-orange-50/50 p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-900 border border-amber-300">
+                    <span>☕</span>
+                    <span>Active Dining Offer</span>
+                  </span>
+                  <span className="text-xs font-black text-amber-800">
+                    Save {discountDisplay}
+                  </span>
+                </div>
+
+                <div className="mt-3">
+                  <h3 className="font-display text-xl font-extrabold text-stone-900 leading-snug">
+                    {data.program.rewardTitle}
+                  </h3>
+                  <p className="mt-1 text-xs text-stone-600">
+                    Enjoy <strong>{discountDisplay} OFF</strong> on qualifying bills of <strong>₹{minBillRupees} or more</strong> at {data.restaurant.name}!
+                  </p>
+                </div>
+
+                {/* DYNAMIC BILL CALCULATOR */}
+                <div className="mt-4 rounded-2xl bg-white/90 p-3.5 border border-amber-200 shadow-2xs">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500">
+                      🧮 Calculate Your Bill Savings:
+                    </span>
+                    <span className="text-[10px] text-stone-400">Min. ₹{minBillRupees}</span>
+                  </div>
+
+                  <div className="relative">
+                    <span className="absolute left-3 top-2 text-xs font-bold text-stone-400">₹</span>
+                    <input
+                      type="number"
+                      placeholder={`Enter bill amount (e.g. ₹${minBillRupees + 200})`}
+                      value={dinerBillInput}
+                      onChange={(e) => setDinerBillInput(e.target.value)}
+                      className="w-full rounded-xl border border-stone-200 bg-stone-50 pl-7 pr-3 py-1.5 text-xs font-bold text-stone-900 outline-none focus:border-stone-800"
+                    />
+                  </div>
+
+                  {numericBill > 0 && (
+                    <div className="mt-2.5 rounded-xl bg-stone-50 p-2.5 text-xs space-y-1 border border-stone-200/60">
+                      {dinerMeetsMin ? (
+                        <>
+                          <div className="flex justify-between font-bold text-emerald-800">
+                            <span>🎉 Discount Applied:</span>
+                            <span>-₹{calculatedSavings}</span>
+                          </div>
+                          <div className="flex justify-between font-extrabold text-stone-900 text-sm pt-1 border-t border-stone-200">
+                            <span>You Pay at Counter:</span>
+                            <span className="text-emerald-700">₹{netPayable}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-amber-800 font-semibold text-[11px]">
+                          💡 Add ₹{minBillRupees - numericBill} more to reach ₹{minBillRupees} and save {discountDisplay}!
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* TAB SELECTOR */}
             <div className="flex rounded-xl bg-stone-200/70 p-1 text-xs font-semibold text-stone-600">
               <button
@@ -267,7 +404,7 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
                   activeTab === "rewards" ? "bg-white text-stone-900 shadow-xs" : "hover:text-stone-900"
                 }`}
               >
-                🎁 Rewards
+                🎁 Vouchers
                 {activeRewards.length > 0 && (
                   <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
                     {activeRewards.length}
@@ -287,16 +424,10 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
             {/* TAB 1: THE STAMP CARD */}
             {activeTab === "card" && (
               <div className="relative overflow-hidden rounded-3xl border border-stone-200/80 bg-white p-5 shadow-md">
-                {/* Visual Card Accent Header */}
-                <div
-                  className="absolute -top-24 -right-24 h-48 w-48 rounded-full opacity-15 blur-2xl pointer-events-none"
-                  style={{ backgroundColor: brandColor }}
-                />
-
                 <div className="flex items-center justify-between border-b border-stone-100 pb-3">
                   <div>
                     <span className="inline-block rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-stone-600">
-                      {data.customer.lifetimeStamps >= 20 ? "VIP Member 👑" : "Rewards Member ⭐"}
+                      {data.customer.lifetimeStamps >= 5 ? "VIP Regular 👑" : "Rewards Member ⭐"}
                     </span>
                     <h3 className="mt-1 font-display text-lg font-bold text-stone-900">
                       {data.program.title}
@@ -309,7 +440,7 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
                     </span>
                     <span className="text-xs font-semibold text-stone-400"> / {stampsRequired}</span>
                     <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">
-                      {progressPercent}% Done
+                      {progressPercent}% Complete
                     </p>
                   </div>
                 </div>
@@ -327,7 +458,7 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
                   </div>
                 </div>
 
-                {/* STAMP GRID (e.g. 10 spots) */}
+                {/* STAMP SPOTS */}
                 <div className="mt-5 grid grid-cols-5 gap-2.5">
                   {Array.from({ length: stampsRequired }).map((_, idx) => {
                     const stampNum = idx + 1;
@@ -341,7 +472,7 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
                           isStamped
                             ? "border-transparent text-white shadow-sm scale-100"
                             : isGoal
-                            ? "border-amber-300 bg-amber-50/70 border-dashed animate-pulse text-amber-700"
+                            ? "border-amber-300 bg-amber-50/70 border-dashed text-amber-700"
                             : "border-dashed border-stone-200 bg-stone-50/50 text-stone-400"
                         }`}
                         style={{
@@ -359,7 +490,7 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
                           <div className="flex flex-col items-center">
                             <span className="text-lg leading-none">🎁</span>
                             <span className="mt-0.5 text-[9px] font-extrabold text-amber-800">
-                              Goal
+                              Offer
                             </span>
                           </div>
                         ) : (
@@ -375,56 +506,40 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
                   })}
                 </div>
 
-                {/* Motivational Banner */}
-                <div className="mt-5 rounded-2xl bg-stone-50 border border-stone-100 p-3.5 text-center">
-                  {stampsRemaining === 0 ? (
-                    <div className="flex items-center justify-center gap-2 text-emerald-700 font-bold text-xs">
-                      <span>🎉 Congratulations! Reward unlocked. Check the Rewards tab!</span>
-                    </div>
-                  ) : (
-                    <p className="text-xs font-medium text-stone-700">
-                      Collect <strong className="font-bold text-stone-900">{stampsRemaining} more stamp{stampsRemaining > 1 ? "s" : ""}</strong> to unlock <span className="font-bold text-emerald-700">{data.program.rewardTitle}</span>!
-                    </p>
-                  )}
-                  <p className="mt-1 text-[11px] text-stone-400">
-                    Earn 1 stamp for each purchase of ₹{(data.program.minBillAmount / 100).toFixed(0)} or more.
-                  </p>
-                </div>
-
-                {/* Active Reward Alert if any */}
+                {/* Active Reward Alert */}
                 {activeRewards.length > 0 && (
                   <button
                     onClick={() => setActiveTab("rewards")}
-                    className="mt-3 flex w-full items-center justify-between rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-left transition hover:bg-emerald-100/70"
+                    className="mt-5 flex w-full items-center justify-between rounded-2xl bg-emerald-50 border border-emerald-200 p-3.5 text-left transition hover:bg-emerald-100/70"
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className="text-xl">🎁</span>
+                      <span className="text-2xl">🎁</span>
                       <div>
                         <p className="text-xs font-bold text-emerald-900">
-                          {activeRewards.length} Unlocked Reward{activeRewards.length > 1 ? "s" : ""} Ready!
+                          {activeRewards.length} Active Offer Voucher Ready to Use!
                         </p>
                         <p className="text-[11px] text-emerald-700">
-                          Tap to view voucher and show to cashier
+                          Tap to view voucher and avail discount at billing
                         </p>
                       </div>
                     </div>
-                    <span className="text-xs font-bold text-emerald-800">View →</span>
+                    <span className="text-xs font-bold text-emerald-800">Avail →</span>
                   </button>
                 )}
               </div>
             )}
 
-            {/* TAB 2: UNLOCKED REWARDS */}
+            {/* TAB 2: UNLOCKED REWARDS / VOUCHERS */}
             {activeTab === "rewards" && (
               <div className="space-y-3">
                 {activeRewards.length === 0 ? (
                   <div className="rounded-3xl border border-stone-200/80 bg-white p-8 text-center shadow-xs">
                     <span className="text-4xl">🎁</span>
                     <h3 className="mt-3 font-display text-base font-bold text-stone-900">
-                      No Unlocked Rewards Yet
+                      No Active Vouchers
                     </h3>
                     <p className="mt-1 text-xs text-stone-500">
-                      Collect {stampsRemaining} more stamps to earn {data.program.rewardTitle}.
+                      All your previous vouchers have been availed.
                     </p>
                     <button
                       onClick={() => setActiveTab("card")}
@@ -438,7 +553,7 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
                   activeRewards.map((reward) => (
                     <div
                       key={reward.id}
-                      className="rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm transition hover:shadow-md"
+                      className="rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm transition hover:shadow-md space-y-3"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2.5">
@@ -450,19 +565,19 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
                               {reward.rewardTitle}
                             </h4>
                             <p className="text-xs font-semibold text-emerald-700">
-                              ₹{(reward.discountAmount / 100).toFixed(0)} Instant Discount
+                              ₹{(reward.discountAmount / 100).toFixed(0)} Off on Qualifying Bill
                             </p>
                           </div>
                         </div>
 
                         <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700 border border-emerald-200">
-                          ACTIVE
+                          READY TO AVAIL
                         </span>
                       </div>
 
-                      <div className="mt-4 rounded-2xl border border-dashed border-stone-300 bg-stone-50/80 p-3 text-center">
+                      <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50/80 p-3 text-center">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
-                          Redemption Voucher Code
+                          Voucher Code for Cashier
                         </p>
                         <p className="mt-0.5 font-mono text-xl font-extrabold tracking-widest text-stone-900">
                           {reward.code}
@@ -472,22 +587,31 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
                         </p>
                       </div>
 
-                      <button
-                        onClick={() => showRewardQr(reward.code)}
-                        className="mt-3 w-full rounded-xl py-2.5 text-xs font-bold text-white shadow-xs transition hover:brightness-105"
-                        style={{ backgroundColor: brandColor }}
-                      >
-                        Show Voucher QR to Cashier 📱
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => showRewardQr(reward.code, reward.rewardTitle, reward.discountAmount)}
+                          className="flex-1 rounded-xl border border-stone-300 bg-white py-2.5 text-xs font-bold text-stone-800 shadow-xs hover:bg-stone-50 transition"
+                        >
+                          Show Voucher QR 📱
+                        </button>
+                        <button
+                          onClick={() => handleAvailOffer(reward.code)}
+                          disabled={redeeming}
+                          className="flex-1 rounded-xl py-2.5 text-xs font-bold text-white shadow-xs transition hover:brightness-105 active:scale-[0.99] disabled:opacity-50"
+                          style={{ backgroundColor: brandColor }}
+                        >
+                          Avail at Counter ⚡
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}
 
-                {/* Redeemed or Past Rewards history */}
+                {/* Previously Redeemed */}
                 {data.customer.rewards.filter((r) => r.status === "REDEEMED").length > 0 && (
                   <div className="mt-6">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-stone-400 px-1 mb-2">
-                      Previously Redeemed
+                      Previously Availed Offers
                     </h4>
                     <div className="space-y-2 opacity-60">
                       {data.customer.rewards
@@ -502,10 +626,10 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
                                 {r.rewardTitle} ({r.code})
                               </p>
                               <p className="text-[10px] text-stone-400">
-                                Redeemed on {r.redeemedAt ? new Date(r.redeemedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "earlier"}
+                                Availed on {r.redeemedAt ? new Date(r.redeemedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "earlier"}
                               </p>
                             </div>
-                            <span className="font-semibold text-stone-500">USED</span>
+                            <span className="font-semibold text-emerald-700">AVAILED</span>
                           </div>
                         ))}
                     </div>
@@ -518,12 +642,12 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
             {activeTab === "history" && (
               <div className="rounded-3xl border border-stone-200/80 bg-white p-5 shadow-xs">
                 <h3 className="font-display text-sm font-bold text-stone-900 border-b border-stone-100 pb-2">
-                  Stamp Activity Log
+                  Visit &amp; Reward Activity Log
                 </h3>
 
                 {data.customer.transactions.length === 0 ? (
                   <p className="py-6 text-center text-xs text-stone-400">
-                    No transactions recorded yet. Ask your server for a stamp!
+                    No transactions recorded yet. Scan QR when visiting to record your visits!
                   </p>
                 ) : (
                   <div className="divide-y divide-stone-100 mt-2">
@@ -535,7 +659,7 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
                           </span>
                           <div>
                             <p className="text-xs font-bold text-stone-900">
-                              +{tx.stampsCount} Stamp Awarded
+                              +{tx.stampsCount} Visit Recorded
                             </p>
                             <p className="text-[10px] text-stone-400">
                               {new Date(tx.createdAt).toLocaleDateString("en-IN", {
@@ -571,7 +695,7 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
                 href={`/r/${slug}`}
                 className="inline-flex items-center gap-2 text-xs font-bold text-stone-600 hover:text-stone-900 transition"
               >
-                <span>⭐ Leave a Review & Rating for {data.restaurant.name} →</span>
+                <span>⭐ Leave a Review &amp; Rating for {data.restaurant.name} →</span>
               </Link>
             </div>
           </div>
@@ -581,15 +705,15 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
       {/* MODAL: REWARD QR POPUP */}
       {selectedRewardCode && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-xs rounded-3xl bg-white p-6 text-center shadow-2xl">
+          <div className="w-full max-w-xs rounded-3xl bg-white p-6 text-center shadow-2xl space-y-3">
             <h3 className="font-display text-lg font-bold text-stone-900">
-              Redeem Reward
+              {selectedRewardTitle || "Dining Offer Voucher"}
             </h3>
-            <p className="mt-1 text-xs text-stone-500">
-              Show this QR or code to the staff at checkout
+            <p className="text-xs text-stone-500">
+              Show this code to the cashier or tap avail below
             </p>
 
-            <div className="my-5 flex flex-col items-center justify-center rounded-2xl bg-stone-50 p-4 border border-stone-200/80">
+            <div className="flex flex-col items-center justify-center rounded-2xl bg-stone-50 p-4 border border-stone-200/80">
               {selectedRewardQr ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -607,15 +731,42 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
               </p>
             </div>
 
-            <button
-              onClick={() => {
-                setSelectedRewardCode(null);
-                setSelectedRewardQr(null);
-              }}
-              className="w-full rounded-xl bg-stone-900 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-stone-800"
-            >
-              Close
-            </button>
+            {redeemSuccess && (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-bold text-emerald-800">
+                ✅ {redeemSuccess}
+              </div>
+            )}
+
+            {redeemError && (
+              <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800">
+                ❌ {redeemError}
+              </div>
+            )}
+
+            <div className="space-y-2 pt-1">
+              {!redeemSuccess && (
+                <button
+                  disabled={redeeming}
+                  onClick={() => selectedRewardCode && handleAvailOffer(selectedRewardCode)}
+                  className="w-full rounded-xl py-2.5 text-xs font-bold text-white shadow-sm transition hover:brightness-105 disabled:opacity-50"
+                  style={{ backgroundColor: brandColor }}
+                >
+                  {redeeming ? "Availing..." : "Mark as Availed at Counter ⚡"}
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  setSelectedRewardCode(null);
+                  setSelectedRewardQr(null);
+                  setRedeemSuccess(null);
+                  setRedeemError(null);
+                }}
+                className="w-full rounded-xl bg-stone-100 py-2.5 text-xs font-bold text-stone-700 hover:bg-stone-200 transition"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -7,12 +7,13 @@ type Program = {
   id: string;
   title: string;
   isActive: boolean;
+  discountType?: string;
   stampsRequired: number;
-  minBillAmount: number;
+  minBillAmount: number; // in paise
   rewardTitle: string;
-  rewardDiscount: number;
+  rewardDiscount: number; // in paise if FLAT, or percentage if PERCENT
   rewardExpiryDays: number;
-  terminalPin: string;
+  terminalPin?: string | null;
 };
 
 type Stats = {
@@ -49,18 +50,27 @@ export function LoyaltySettingsView({
   const [program, setProgram] = useState(initialProgram);
   const [title, setTitle] = useState(initialProgram.title);
   const [isActive, setIsActive] = useState(initialProgram.isActive);
-  const [stampsRequired, setStampsRequired] = useState(initialProgram.stampsRequired);
+  const [discountType, setDiscountType] = useState<"FLAT" | "PERCENT">(
+    (initialProgram.discountType as "FLAT" | "PERCENT") || "FLAT"
+  );
+  const [stampsRequired, setStampsRequired] = useState(initialProgram.stampsRequired || 1);
   const [minBillRupees, setMinBillRupees] = useState(initialProgram.minBillAmount / 100);
+  
+  const initialDiscountVal = initialProgram.discountType === "PERCENT"
+    ? initialProgram.rewardDiscount
+    : initialProgram.rewardDiscount / 100;
+  const [rewardDiscountVal, setRewardDiscountVal] = useState(initialDiscountVal);
   const [rewardTitle, setRewardTitle] = useState(initialProgram.rewardTitle);
-  const [rewardDiscountRupees, setRewardDiscountRupees] = useState(initialProgram.rewardDiscount / 100);
   const [rewardExpiryDays, setRewardExpiryDays] = useState(initialProgram.rewardExpiryDays);
-  const [terminalPin, setTerminalPin] = useState(initialProgram.terminalPin);
 
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Customer Stamp Manager state
+  // Dynamic test simulator
+  const [testBill, setTestBill] = useState<number>(minBillRupees ? Math.round(minBillRupees * 1.5) : 500);
+
+  // Customer Stamp & Offer Manager state
   const [searchPhone, setSearchPhone] = useState("");
   const [searchedCustomer, setSearchedCustomer] = useState<{
     id: string;
@@ -68,12 +78,21 @@ export function LoyaltySettingsView({
     name: string | null;
     currentStamps: number;
     lifetimeStamps: number;
-    rewards?: Array<{ code: string; rewardTitle: string; status: string }>;
+    rewards?: Array<{ code: string; rewardTitle: string; discountAmount: number; status: string }>;
   } | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchMsg, setSearchMsg] = useState<string | null>(null);
   const [adjustReason, setAdjustReason] = useState("");
   const [adjustLoading, setAdjustLoading] = useState(false);
+  const [redeemingCode, setRedeemingCode] = useState<string | null>(null);
+
+  // Auto-generate suggested title when numbers change
+  function handleAutoSuggestTitle(type: "FLAT" | "PERCENT", disc: number, minBill: number) {
+    if (type === "PERCENT") {
+      return `${disc}% Off on bills above ₹${minBill}`;
+    }
+    return `Flat ₹${disc} Off on bills above ₹${minBill}`;
+  }
 
   async function handleSearchCustomer(e: React.FormEvent) {
     e.preventDefault();
@@ -127,6 +146,40 @@ export function LoyaltySettingsView({
     }
   }
 
+  async function handleDirectRedeem(rewardCode: string) {
+    setRedeemingCode(rewardCode);
+    setSearchMsg(null);
+    try {
+      const res = await fetch("/api/loyalty/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          restaurantId: program.id,
+          rewardCode,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Redemption failed");
+      setSearchMsg(`🎉 Voucher ${rewardCode} redeemed! Discount applied.`);
+      // Refresh customer search
+      if (searchedCustomer) {
+        setSearchedCustomer((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            rewards: prev.rewards?.map((r) =>
+              r.code === rewardCode ? { ...r, status: "REDEEMED" } : r
+            ),
+          };
+        });
+      }
+    } catch (err: any) {
+      setSearchMsg(`❌ ${err.message || "Failed to redeem"}`);
+    } finally {
+      setRedeemingCode(null);
+    }
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -140,12 +193,12 @@ export function LoyaltySettingsView({
         body: JSON.stringify({
           title,
           isActive,
+          discountType,
           stampsRequired: Number(stampsRequired),
           minBillAmountRupees: Number(minBillRupees),
           rewardTitle,
-          rewardDiscountRupees: Number(rewardDiscountRupees),
+          rewardDiscountRupees: Number(rewardDiscountVal),
           rewardExpiryDays: Number(rewardExpiryDays),
-          terminalPin,
         }),
       });
 
@@ -155,7 +208,7 @@ export function LoyaltySettingsView({
       }
 
       setProgram(data.program);
-      setSuccess("Loyalty program settings saved successfully!");
+      setSuccess("Dynamic offer settings saved! Now live for all customers.");
     } catch (err: any) {
       setError(err.message || "Failed to save settings");
     } finally {
@@ -163,52 +216,52 @@ export function LoyaltySettingsView({
     }
   }
 
-  const sampleCustomerSpend = minBillRupees * stampsRequired;
-  const rewardCostRatio = ((rewardDiscountRupees / sampleCustomerSpend) * 100).toFixed(1);
+  // Simulation calculations
+  const simMeetsMin = testBill >= minBillRupees;
+  const simDiscount = simMeetsMin
+    ? discountType === "PERCENT"
+      ? Math.round((testBill * rewardDiscountVal) / 100)
+      : Math.min(testBill, rewardDiscountVal)
+    : 0;
+  const simPayable = Math.max(0, testBill - simDiscount);
+  const simEffectivePercent = testBill > 0 ? ((simDiscount / testBill) * 100).toFixed(1) : "0";
 
   return (
     <div className="space-y-6">
       {/* Top Header & Fast Actions */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 mb-1 border border-emerald-200">
+            <span>⚡ Dynamic Offer Engine</span>
+            <span className="text-[10px] text-emerald-700 opacity-80">• No Staff Terminal Required</span>
+          </div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-ink">
-            Stamp & Loyalty Program
+            Dynamic Offers &amp; Rewards
           </h1>
-          <p className="mt-1 text-sm text-ink/70">
-            Drive repeat visits with a digital loyalty card customers love.
+          <p className="mt-0.5 text-sm text-ink/70">
+            Decide your offer discount and qualifying bill amount once. It applies dynamically to every customer card.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <Link
-            href="/dashboard/loyalty/terminal"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-stone-900 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-stone-800 transition"
-          >
-            <span>💻 Staff Terminal</span>
-          </Link>
-
           {qrSlug && (
             <>
-              <button
-                type="button"
-                onClick={() => {
-                  const url = `${window.location.origin}/terminal/${qrSlug}`;
-                  navigator.clipboard.writeText(url);
-                  alert(`Staff Terminal Link copied to clipboard:\n${url}\n\nStaff PIN: ${terminalPin}`);
-                }}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-xs font-bold text-stone-800 shadow-xs hover:bg-stone-50 transition"
-                title="Send this URL to counter cashiers to stamp cards"
-              >
-                <span>🔗 Copy Cashier Link (PIN: {terminalPin})</span>
-              </button>
-
               <Link
                 href={`/r/${qrSlug}/loyalty`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-2.5 text-xs font-bold text-ink shadow-xs hover:bg-stone-100 transition"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-stone-900 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-stone-800 transition"
               >
-                <span>📱 Customer Card ↗</span>
+                <span>📱 Customer Offer Card ↗</span>
+              </Link>
+
+              <Link
+                href={`/r/${qrSlug}/home`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-xs font-bold text-ink shadow-xs hover:bg-stone-50 transition"
+              >
+                <span>🌐 Public Review Hub ↗</span>
               </Link>
             </>
           )}
@@ -218,42 +271,44 @@ export function LoyaltySettingsView({
       {/* KPI METRICS CARDS */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="panel p-4">
-          <p className="text-xs font-medium text-ink/60">Loyalty Customers</p>
+          <p className="text-xs font-medium text-ink/60">Registered Customers</p>
           <p className="mt-1 font-display text-2xl font-bold text-ink">{stats.totalCustomers}</p>
-          <p className="mt-1 text-[11px] text-ink/50">Verified phone accounts</p>
+          <p className="mt-1 text-[11px] text-ink/50">Diners with active cards</p>
         </div>
 
         <div className="panel p-4">
-          <p className="text-xs font-medium text-ink/60">Stamps Awarded</p>
+          <p className="text-xs font-medium text-ink/60">Stamps / Visits Recorded</p>
           <p className="mt-1 font-display text-2xl font-bold text-ink">{stats.totalTransactions}</p>
-          <p className="mt-1 text-[11px] text-ink/50">Total visits recorded</p>
+          <p className="mt-1 text-[11px] text-ink/50">Total dining visits tracked</p>
         </div>
 
         <div className="panel p-4">
-          <p className="text-xs font-medium text-ink/60">Rewards Unlocked</p>
+          <p className="text-xs font-medium text-ink/60">Available Offers</p>
           <p className="mt-1 font-display text-2xl font-bold text-amber-600">{stats.unredeemedRewards}</p>
-          <p className="mt-1 text-[11px] text-ink/50">Waiting to be redeemed</p>
+          <p className="mt-1 text-[11px] text-ink/50">In customers&apos; digital wallets</p>
         </div>
 
         <div className="panel p-4">
-          <p className="text-xs font-medium text-ink/60">Rewards Redeemed</p>
+          <p className="text-xs font-medium text-ink/60">Offers Redeemed</p>
           <p className="mt-1 font-display text-2xl font-bold text-emerald-600">{stats.redeemedRewards}</p>
-          <p className="mt-1 text-[11px] text-ink/50">Used by happy customers</p>
+          <p className="mt-1 text-[11px] text-ink/50">Applied at checkout</p>
         </div>
       </div>
 
-      {/* SETTINGS FORM & FINANCIAL PROJECTION */}
+      {/* DYNAMIC SETTINGS FORM & LIVE MARGIN SIMULATOR */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <form onSubmit={handleSave} className="panel p-5 lg:col-span-2 space-y-4">
+        <form onSubmit={handleSave} className="panel p-5 lg:col-span-2 space-y-5">
           <div className="border-b border-line pb-3">
-            <h2 className="font-display text-base font-bold text-ink">Program Rules & Configuration</h2>
-            <p className="text-xs text-ink/60">Define how customers qualify for stamps and unlock rewards.</p>
+            <h2 className="font-display text-base font-bold text-ink">Dynamic Offer Rule Configuration</h2>
+            <p className="text-xs text-ink/60">
+              Set how much discount you offer and on what minimum bill amount. Dynamic calculations occur automatically.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-ink/70">
-                Program Title
+                Offer Campaign Title
               </label>
               <input
                 type="text"
@@ -266,52 +321,97 @@ export function LoyaltySettingsView({
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-ink/70">
-                Program Status
+                Offer Campaign Status
               </label>
               <select
                 value={isActive ? "active" : "paused"}
                 onChange={(e) => setIsActive(e.target.value === "active")}
                 className="mt-1 w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm font-medium text-ink outline-none focus:border-stone-800"
               >
-                <option value="active">Active (Customers earn stamps)</option>
+                <option value="active">Active (Available to all diners)</option>
                 <option value="paused">Paused (Temporarily disabled)</option>
               </select>
             </div>
 
+            {/* Offer Discount Type */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-ink/70">
-                Stamps Required for Reward
+                Offer Discount Type
               </label>
-              <input
-                type="number"
-                min={2}
-                max={20}
-                value={stampsRequired}
-                onChange={(e) => setStampsRequired(Number(e.target.value))}
+              <select
+                value={discountType}
+                onChange={(e) => {
+                  const newType = e.target.value as "FLAT" | "PERCENT";
+                  setDiscountType(newType);
+                  const suggested = handleAutoSuggestTitle(newType, rewardDiscountVal, minBillRupees);
+                  setRewardTitle(suggested);
+                }}
                 className="mt-1 w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm font-medium text-ink outline-none focus:border-stone-800"
-                required
-              />
-              <p className="mt-1 text-[11px] text-ink/50">Typically 8 or 10 stamps.</p>
+              >
+                <option value="FLAT">Flat ₹ Discount (e.g. ₹100 Off)</option>
+                <option value="PERCENT">Percentage % Discount (e.g. 15% Off)</option>
+              </select>
             </div>
 
+            {/* On How Much Amount (Min Bill) */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-ink/70">
-                Min. Purchase to Earn 1 Stamp (₹)
+                On How Much Amount? (Min. Bill ₹)
               </label>
-              <input
-                type="number"
-                min={1}
-                value={minBillRupees}
-                onChange={(e) => setMinBillRupees(Number(e.target.value))}
-                className="mt-1 w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm font-medium text-ink outline-none focus:border-stone-800"
-                required
-              />
-              <p className="mt-1 text-[11px] text-ink/50">e.g. ₹200 per stamp.</p>
+              <div className="relative mt-1">
+                <span className="absolute left-3 top-2 text-sm font-bold text-ink/50">₹</span>
+                <input
+                  type="number"
+                  min={1}
+                  step={10}
+                  value={minBillRupees}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setMinBillRupees(val);
+                    const suggested = handleAutoSuggestTitle(discountType, rewardDiscountVal, val);
+                    setRewardTitle(suggested);
+                  }}
+                  className="w-full rounded-xl border border-line bg-paper pl-7 pr-3 py-2 text-sm font-semibold text-ink outline-none focus:border-stone-800"
+                  required
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-ink/50">Diner bill must be at or above this amount.</p>
             </div>
 
+            {/* How Much Offer (Discount Value) */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-ink/70">
-                Reward Title
+                How Much the Offer? ({discountType === "PERCENT" ? "%" : "₹"})
+              </label>
+              <div className="relative mt-1">
+                <span className="absolute left-3 top-2 text-sm font-bold text-ink/50">
+                  {discountType === "PERCENT" ? "%" : "₹"}
+                </span>
+                <input
+                  type="number"
+                  min={1}
+                  max={discountType === "PERCENT" ? 90 : 10000}
+                  step={discountType === "PERCENT" ? 1 : 10}
+                  value={rewardDiscountVal}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setRewardDiscountVal(val);
+                    const suggested = handleAutoSuggestTitle(discountType, val, minBillRupees);
+                    setRewardTitle(suggested);
+                  }}
+                  className="w-full rounded-xl border border-line bg-paper pl-7 pr-3 py-2 text-sm font-semibold text-ink outline-none focus:border-stone-800"
+                  required
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-ink/50">
+                {discountType === "PERCENT" ? "e.g. 15 for 15% discount." : "e.g. 100 for ₹100 discount."}
+              </p>
+            </div>
+
+            {/* Customer Display Headline */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-ink/70">
+                Voucher Headline Shown to Diner
               </label>
               <input
                 type="text"
@@ -320,26 +420,13 @@ export function LoyaltySettingsView({
                 className="mt-1 w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm font-medium text-ink outline-none focus:border-stone-800"
                 required
               />
-              <p className="mt-1 text-[11px] text-ink/50">e.g. ₹100 Off Your Bill</p>
+              <p className="mt-1 text-[11px] text-ink/50">Printed on diner&apos;s digital card.</p>
             </div>
 
+            {/* Validity */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-ink/70">
-                Reward Discount Value (₹)
-              </label>
-              <input
-                type="number"
-                min={1}
-                value={rewardDiscountRupees}
-                onChange={(e) => setRewardDiscountRupees(Number(e.target.value))}
-                className="mt-1 w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm font-medium text-ink outline-none focus:border-stone-800"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-ink/70">
-                Reward Validity (Days)
+                Offer Voucher Validity (Days)
               </label>
               <input
                 type="number"
@@ -353,19 +440,22 @@ export function LoyaltySettingsView({
               <p className="mt-1 text-[11px] text-ink/50">Days before an unlocked voucher expires.</p>
             </div>
 
+            {/* Visits Required */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-ink/70">
-                Staff Terminal PIN (4-Digits)
+                Visits to Unlock
               </label>
-              <input
-                type="text"
-                maxLength={6}
-                value={terminalPin}
-                onChange={(e) => setTerminalPin(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-line bg-paper px-3 py-2 font-mono text-sm font-bold text-ink outline-none focus:border-stone-800"
-                required
-              />
-              <p className="mt-1 text-[11px] text-ink/50">Used by counter staff to award stamps.</p>
+              <select
+                value={stampsRequired}
+                onChange={(e) => setStampsRequired(Number(e.target.value))}
+                className="mt-1 w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm font-medium text-ink outline-none focus:border-stone-800"
+              >
+                <option value={1}>1 Visit (Instant Offer for Every Diner / Reviewer)</option>
+                <option value={3}>3 Visits (Frequent Diner Tier)</option>
+                <option value={5}>5 Visits (Regulars Tier)</option>
+                <option value={10}>10 Visits (VIP Stamp Collector)</option>
+              </select>
+              <p className="mt-1 text-[11px] text-ink/50">Select 1 for instant voucher on scanning QR.</p>
             </div>
           </div>
 
@@ -385,59 +475,93 @@ export function LoyaltySettingsView({
             <button
               type="submit"
               disabled={saving}
-              className="rounded-xl bg-stone-900 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-stone-800 disabled:opacity-60 transition"
+              className="rounded-xl bg-stone-900 px-6 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-stone-800 disabled:opacity-60 transition"
             >
-              {saving ? "Saving Changes..." : "Save Program Settings"}
+              {saving ? "Saving Changes..." : "Save Dynamic Offer Rule"}
             </button>
           </div>
         </form>
 
-        {/* ECONOMICS & REVENUE IMPACT PANEL */}
+        {/* DYNAMIC LIVE SIMULATOR & REVENUE IMPACT PANEL */}
         <div className="panel p-5 space-y-4">
           <div className="border-b border-line pb-3">
-            <h2 className="font-display text-base font-bold text-ink">Reward Economics</h2>
-            <p className="text-xs text-ink/60">Estimated financial metrics per customer cycle.</p>
+            <div className="flex items-center gap-1.5">
+              <span className="text-base">🧮</span>
+              <h2 className="font-display text-base font-bold text-ink">Live Offer Calculator</h2>
+            </div>
+            <p className="text-xs text-ink/60">Simulate any diner bill amount in real time.</p>
           </div>
 
-          <div className="space-y-3 text-xs">
-            <div className="flex justify-between border-b border-line/60 pb-2">
-              <span className="text-ink/60">Minimum Spend to Earn Reward:</span>
-              <strong className="font-bold text-ink">₹{sampleCustomerSpend.toLocaleString("en-IN")}</strong>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-ink/60">
+                Test Sample Diner Bill (₹)
+              </label>
+              <div className="relative mt-1">
+                <span className="absolute left-3 top-2 text-sm font-bold text-ink/50">₹</span>
+                <input
+                  type="number"
+                  min={10}
+                  step={50}
+                  value={testBill}
+                  onChange={(e) => setTestBill(Number(e.target.value))}
+                  className="w-full rounded-xl border border-line bg-paper pl-7 pr-3 py-2 text-sm font-bold text-ink outline-none focus:border-stone-800"
+                />
+              </div>
             </div>
 
-            <div className="flex justify-between border-b border-line/60 pb-2">
-              <span className="text-ink/60">Customer Visits Required:</span>
-              <strong className="font-bold text-ink">{stampsRequired} visits</strong>
+            <div className="rounded-2xl border border-line bg-stone-50/70 p-3.5 space-y-2 text-xs">
+              <div className="flex justify-between border-b border-line/60 pb-1.5">
+                <span className="text-ink/60">Qualifying Minimum:</span>
+                <strong className="font-bold text-ink">₹{minBillRupees}</strong>
+              </div>
+
+              <div className="flex justify-between border-b border-line/60 pb-1.5">
+                <span className="text-ink/60">Offer Status:</span>
+                <strong className={simMeetsMin ? "font-bold text-emerald-700" : "font-bold text-amber-700"}>
+                  {simMeetsMin ? "✅ Qualified for Offer" : `❌ Under Minimum (Add ₹${minBillRupees - testBill})`}
+                </strong>
+              </div>
+
+              <div className="flex justify-between border-b border-line/60 pb-1.5">
+                <span className="text-ink/60">Customer Saves:</span>
+                <strong className="font-bold text-emerald-700">₹{simDiscount}</strong>
+              </div>
+
+              <div className="flex justify-between border-b border-line/60 pb-1.5">
+                <span className="text-ink/60">Net Customer Pays:</span>
+                <strong className="font-extrabold text-stone-900 text-sm">₹{simPayable}</strong>
+              </div>
+
+              <div className="flex justify-between pt-0.5">
+                <span className="text-ink/60">Effective Discount %:</span>
+                <strong className="font-bold text-ink">{simEffectivePercent}%</strong>
+              </div>
             </div>
 
-            <div className="flex justify-between border-b border-line/60 pb-2">
-              <span className="text-ink/60">Reward Given:</span>
-              <strong className="font-bold text-emerald-700">₹{rewardDiscountRupees} discount</strong>
+            {/* Diner Card Preview */}
+            <div className="rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50 to-orange-50/60 p-3.5 text-center space-y-1">
+              <div className="text-[10px] uppercase font-bold text-amber-800">Diner Voucher Preview</div>
+              <div className="text-sm font-extrabold text-stone-900">{rewardTitle}</div>
+              <div className="text-[11px] text-stone-600">
+                Valid on bills of <strong>₹{minBillRupees}+</strong> • Instant counter discount
+              </div>
             </div>
-
-            <div className="flex justify-between pb-1">
-              <span className="text-ink/60">Effective Discount %:</span>
-              <strong className="font-bold text-ink">{rewardCostRatio}%</strong>
-            </div>
-          </div>
-
-          <div className="rounded-xl bg-amber-50/80 border border-amber-200/80 p-3 text-[11px] text-amber-900">
-            💡 <strong>Pro Tip:</strong> An effective discount between <strong>5% and 8%</strong> encourages repeat visits while preserving your food & beverage profit margins.
           </div>
         </div>
       </div>
 
-      {/* CUSTOMER STAMP MANAGER (LOOKUP & MANUAL ADJUSTMENT) */}
+      {/* CUSTOMER STAMP & OFFER MANAGER (LOOKUP & 1-TAP REDEEM) */}
       <div className="panel p-5 space-y-4">
         <div className="border-b border-line pb-3">
           <div className="flex items-center gap-2">
             <span className="text-lg">🔍</span>
             <h2 className="font-display text-base font-bold text-ink">
-              Customer Stamp Manager
+              Customer &amp; Offer Voucher Manager
             </h2>
           </div>
           <p className="text-xs text-ink/60">
-            Look up any customer by mobile number to inspect their card, view rewards, or manually adjust stamps.
+            Look up any customer by mobile number to inspect active vouchers, redeem at counter, or adjust stamps.
           </p>
         </div>
 
@@ -482,7 +606,7 @@ export function LoyaltySettingsView({
                   )}
                 </p>
                 <p className="text-[11px] text-ink/50">
-                  Lifetime Stamps Earned: {searchedCustomer.lifetimeStamps}
+                  Lifetime Visits Tracked: {searchedCustomer.lifetimeStamps}
                 </p>
               </div>
 
@@ -495,23 +619,47 @@ export function LoyaltySettingsView({
 
             {/* Active Unlocked Rewards for this customer */}
             {searchedCustomer.rewards && searchedCustomer.rewards.length > 0 && (
-              <div className="rounded-xl bg-amber-50/70 border border-amber-200/70 p-3">
+              <div className="rounded-xl bg-amber-50/70 border border-amber-200/70 p-3 space-y-2">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800">
-                  Customer Rewards:
+                  Customer Rewards &amp; Vouchers:
                 </p>
-                <div className="mt-1 space-y-1">
+                <div className="space-y-2">
                   {searchedCustomer.rewards.map((r) => (
-                    <div key={r.code} className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-stone-800">
-                        {r.rewardTitle} ({r.code})
-                      </span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                        r.status === "UNREDEEMED"
-                          ? "bg-emerald-100 text-emerald-800"
-                          : "bg-stone-200 text-stone-600"
-                      }`}>
-                        {r.status}
-                      </span>
+                    <div
+                      key={r.code}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl bg-white p-3 border border-amber-100"
+                    >
+                      <div>
+                        <div className="text-xs font-bold text-stone-900">
+                          {r.rewardTitle}
+                        </div>
+                        <div className="font-mono text-xs text-stone-500 font-semibold">
+                          Code: {r.code}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                            r.status === "UNREDEEMED"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-stone-200 text-stone-600"
+                          }`}
+                        >
+                          {r.status}
+                        </span>
+
+                        {r.status === "UNREDEEMED" && (
+                          <button
+                            type="button"
+                            disabled={redeemingCode === r.code}
+                            onClick={() => handleDirectRedeem(r.code)}
+                            className="rounded-lg bg-emerald-700 px-3 py-1 text-xs font-bold text-white shadow-xs hover:bg-emerald-800 transition disabled:opacity-50"
+                          >
+                            {redeemingCode === r.code ? "Redeeming..." : "Redeem Now"}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -525,7 +673,7 @@ export function LoyaltySettingsView({
               </label>
               <input
                 type="text"
-                placeholder="e.g. Compensating customer, offline bill, dispute resolution"
+                placeholder="e.g. Special goodwill adjustment, offline bill compensation"
                 value={adjustReason}
                 onChange={(e) => setAdjustReason(e.target.value)}
                 className="w-full rounded-xl border border-line bg-paper px-3 py-1.5 text-xs font-medium text-ink outline-none focus:border-stone-800 mb-3"
@@ -563,16 +711,16 @@ export function LoyaltySettingsView({
         )}
       </div>
 
-      {/* RECENT STAMP TRANSACTIONS TABLE */}
+      {/* RECENT STAMP & OFFER TRANSACTIONS TABLE */}
       <div className="panel p-5">
         <div className="border-b border-line pb-3">
-          <h2 className="font-display text-base font-bold text-ink">Recent Stamp Transactions</h2>
-          <p className="text-xs text-ink/60">Real-time ledger of stamps awarded at your counter.</p>
+          <h2 className="font-display text-base font-bold text-ink">Recent Offer &amp; Visit Activity</h2>
+          <p className="text-xs text-ink/60">Live ledger of dining visits and rewards recorded.</p>
         </div>
 
         {recentActivity.length === 0 ? (
           <p className="py-8 text-center text-xs text-ink/50">
-            No stamp transactions yet. Open the Staff Terminal to award your first stamp!
+            No transactions recorded yet. When diners scan your QR and avail offers, activity will appear here.
           </p>
         ) : (
           <div className="overflow-x-auto mt-3">
@@ -580,9 +728,9 @@ export function LoyaltySettingsView({
               <thead>
                 <tr className="border-b border-line text-ink/50 font-bold uppercase text-[10px]">
                   <th className="py-2">Customer</th>
-                  <th className="py-2">Stamps</th>
+                  <th className="py-2">Activity</th>
                   <th className="py-2">Bill Amount</th>
-                  <th className="py-2">Invoice / Ref</th>
+                  <th className="py-2">Reference</th>
                   <th className="py-2 text-right">Time</th>
                 </tr>
               </thead>
@@ -597,7 +745,7 @@ export function LoyaltySettingsView({
                     </td>
                     <td className="py-2.5">
                       <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 font-bold text-emerald-700 border border-emerald-200/60">
-                        ☕ +{tx.stampsCount}
+                        ☕ +{tx.stampsCount} Visit
                       </span>
                     </td>
                     <td className="py-2.5 font-semibold text-ink">

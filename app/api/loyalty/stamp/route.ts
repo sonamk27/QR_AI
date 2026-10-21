@@ -15,7 +15,6 @@ export async function POST(req: NextRequest) {
       customerName,
       billAmountRupees,
       billReference,
-      terminalPin,
     } = body;
 
     const phone = normalizePhone(rawPhone || "");
@@ -47,22 +46,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Loyalty program is currently paused" }, { status: 400 });
     }
 
-    // Validate PIN or Owner session
     const isOwner = ownerCtx?.restaurant.id === restaurantId;
-    if (!isOwner) {
-      const { verifyTerminalPinWithRateLimit } = await import("@/lib/loyalty-security");
-      const ip =
-        req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-        req.headers.get("x-real-ip") ||
-        "unknown-ip";
-      const pinResult = await verifyTerminalPinWithRateLimit(restaurantId, terminalPin, ip);
-      if (!pinResult.valid) {
-        return NextResponse.json(
-          { error: pinResult.error || "Invalid staff terminal PIN" },
-          { status: pinResult.isLocked ? 429 : 403 }
-        );
-      }
-    }
 
     const billAmount = Number(billAmountRupees);
     if (isNaN(billAmount) || billAmount <= 0) {
@@ -180,8 +164,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       message: result.targetReached
-        ? `🎉 1 Stamp awarded! Customer reached ${program.stampsRequired} stamps and unlocked a reward: ${result.newReward?.rewardTitle}!`
-        : `✅ 1 Stamp awarded! Customer now has ${result.customer.currentStamps}/${program.stampsRequired} stamps.`,
+        ? `1 Stamp awarded! Customer reached ${program.stampsRequired} stamps and unlocked a reward: ${result.newReward?.rewardTitle}!`
+        : `1 Stamp awarded! Customer now has ${result.customer.currentStamps}/${program.stampsRequired} stamps.`,
       customer: result.customer,
       newReward: result.newReward,
       targetReached: result.targetReached,

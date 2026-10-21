@@ -57,12 +57,12 @@ export default async function LoyaltyDashboardPage() {
         id: program.id,
         title: program.title,
         isActive: program.isActive,
+        discountType: program.discountType || "FLAT",
         stampsRequired: program.stampsRequired,
         minBillAmount: program.minBillAmount,
         rewardTitle: program.rewardTitle,
         rewardDiscount: program.rewardDiscount,
         rewardExpiryDays: program.rewardExpiryDays,
-        terminalPin: program.terminalPin,
       }}
       stats={{
         totalCustomers,

@@ -233,7 +233,8 @@ model LoyaltyProgram {
   rewardTitle      String               @default("₹100 Off Your Bill")
   rewardDiscount   Int                  @default(10000) // in paise (e.g. ₹100)
   rewardExpiryDays Int                  @default(30)
-  terminalPin      String               @default("1234") // 4-digit PIN for staff counter terminal
+  discountType     String               @default("FLAT") // "FLAT" (in paise) or "PERCENT" (%)
+  terminalPin      String?              @default("1234") // legacy, staff terminal removed
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
   customers        LoyaltyCustomer[]

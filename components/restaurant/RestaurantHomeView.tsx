@@ -20,10 +20,11 @@ export type RestaurantHomeProps = {
     id: string;
     title: string;
     isActive: boolean;
+    discountType?: string;
     stampsRequired: number;
     minBillAmount: number; // in paise
     rewardTitle: string;
-    rewardDiscount: number; // in paise
+    rewardDiscount: number; // in paise or percentage
     rewardExpiryDays: number;
   };
 };
@@ -34,7 +35,10 @@ export function RestaurantHomeView({ slug, restaurant, program }: { slug: string
   const fbHandle = extractSocialHandle(restaurant.facebookUrl, "facebook");
 
   const minBillRupees = Math.round(program.minBillAmount / 100);
-  const rewardDiscountRupees = Math.round(program.rewardDiscount / 100);
+  const isPercent = program.discountType === "PERCENT";
+  const discountDisplay = isPercent
+    ? `${program.rewardDiscount}%`
+    : `₹${Math.round(program.rewardDiscount / 100)}`;
 
   function trackSocial(platform: "instagram" | "facebook") {
     try {
@@ -135,7 +139,7 @@ export function RestaurantHomeView({ slug, restaurant, program }: { slug: string
                 <span>{program.title}</span>
               </span>
               <span className="text-[11px] font-bold text-amber-800">
-                Save ₹{rewardDiscountRupees}
+                Save {discountDisplay}
               </span>
             </div>
 
@@ -144,22 +148,22 @@ export function RestaurantHomeView({ slug, restaurant, program }: { slug: string
                 {program.rewardTitle}
               </h2>
               <p className="mt-1.5 text-xs text-stone-600 leading-relaxed">
-                Collect <strong>{program.stampsRequired} digital stamps</strong> to earn this reward. Earn 1 stamp for each qualifying visit of ₹{minBillRupees} or more!
+                Enjoy <strong>{discountDisplay} OFF</strong> on qualifying bills of ₹{minBillRupees} or more!
               </p>
             </div>
 
             {/* Dynamic Rule Highlights */}
             <div className="mt-4 grid grid-cols-3 gap-2 border-t border-amber-200/60 pt-4 text-center">
               <div className="rounded-2xl bg-white/80 p-2.5 border border-amber-100 shadow-2xs">
-                <div className="text-[10px] uppercase font-bold text-stone-400">Target</div>
-                <div className="text-sm font-extrabold text-stone-900">{program.stampsRequired} Stamps</div>
+                <div className="text-[10px] uppercase font-bold text-stone-400">Offer Value</div>
+                <div className="text-sm font-extrabold text-stone-900">{discountDisplay} OFF</div>
               </div>
               <div className="rounded-2xl bg-white/80 p-2.5 border border-amber-100 shadow-2xs">
                 <div className="text-[10px] uppercase font-bold text-stone-400">Min. Bill</div>
                 <div className="text-sm font-extrabold text-stone-900">₹{minBillRupees}</div>
               </div>
               <div className="rounded-2xl bg-white/80 p-2.5 border border-amber-100 shadow-2xs">
-                <div className="text-[10px] uppercase font-bold text-stone-400">Expiry</div>
+                <div className="text-[10px] uppercase font-bold text-stone-400">Validity</div>
                 <div className="text-sm font-extrabold text-stone-900">{program.rewardExpiryDays} Days</div>
               </div>
             </div>
@@ -170,13 +174,13 @@ export function RestaurantHomeView({ slug, restaurant, program }: { slug: string
                 href={`/r/${slug}/loyalty`}
                 className="flex-1 rounded-2xl bg-stone-900 py-3 text-center text-xs font-bold text-white shadow-sm hover:bg-stone-800 transition active:scale-[0.99]"
               >
-                ☕ View My Stamp Card
+                🎁 View My Offers &amp; Card
               </Link>
               <Link
                 href={`/r/${slug}`}
                 className="flex-1 rounded-2xl border border-amber-300 bg-amber-100/70 py-3 text-center text-xs font-bold text-amber-950 hover:bg-amber-200 transition active:scale-[0.99]"
               >
-                ✍️ Rate &amp; Claim Today&apos;s Stamp
+                ✍️ Rate &amp; Claim Offer
               </Link>
             </div>
           </div>
@@ -284,17 +288,9 @@ export function RestaurantHomeView({ slug, restaurant, program }: { slug: string
           )}
         </div>
 
-        {/* Footer info & staff link */}
-        <div className="mt-12 text-center text-xs text-stone-400 space-y-2">
+        {/* Footer info */}
+        <div className="mt-12 text-center text-xs text-stone-400">
           <div>Powered by ReviewFlow • Customer &amp; Rewards Hub</div>
-          <div>
-            <Link
-              href={`/terminal/${slug}`}
-              className="text-[11px] font-semibold text-stone-400 hover:text-stone-700 underline"
-            >
-              Staff Counter Terminal →
-            </Link>
-          </div>
         </div>
       </div>
     </main>

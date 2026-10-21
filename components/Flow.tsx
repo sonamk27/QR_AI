@@ -675,10 +675,10 @@ export function Flow({
               <div className="rounded-2xl border-2 border-emerald-500 bg-emerald-50/90 p-4 text-center space-y-2 shadow-sm">
                 <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 border border-emerald-200 px-3 py-1 text-xs font-bold text-emerald-800">
                   <span>🎉</span>
-                  <span>Review Verified! Today&apos;s Stamp Unlocked</span>
+                  <span>Review Verified! Dining Offer Unlocked</span>
                 </div>
                 <p className="text-xs text-stone-600">
-                  Show staff your card or phone number at the counter to claim your stamp:
+                  Avail your dining discount at checkout:
                 </p>
                 <a
                   href={`/r/${slug}/loyalty${sessionId ? `?session=${sessionId}` : ""}`}
@@ -686,17 +686,17 @@ export function Flow({
                 >
                   <div className="flex items-center gap-2.5 text-left">
                     <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-700 text-base">
-                      ☕
+                      🎁
                     </span>
                     <div>
-                      <div className="text-xs font-bold text-white">Open Stamp Card</div>
+                      <div className="text-xs font-bold text-white">View Dining Offer &amp; Vouchers</div>
                       <div className="text-[10px] font-normal text-amber-200">
-                        Show staff at the billing counter
+                        Tap to calculate bill discount &amp; avail at counter
                       </div>
                     </div>
                   </div>
                   <span className="rounded-lg bg-amber-700 px-2.5 py-1 text-[11px] font-bold text-white">
-                    View Card →
+                    View Offer →
                   </span>
                 </a>
               </div>
