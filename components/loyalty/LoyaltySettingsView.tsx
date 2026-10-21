@@ -60,6 +60,73 @@ export function LoyaltySettingsView({
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Customer Stamp Manager state
+  const [searchPhone, setSearchPhone] = useState("");
+  const [searchedCustomer, setSearchedCustomer] = useState<{
+    id: string;
+    phone: string;
+    name: string | null;
+    currentStamps: number;
+    lifetimeStamps: number;
+    rewards?: Array<{ code: string; rewardTitle: string; status: string }>;
+  } | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchMsg, setSearchMsg] = useState<string | null>(null);
+  const [adjustReason, setAdjustReason] = useState("");
+  const [adjustLoading, setAdjustLoading] = useState(false);
+
+  async function handleSearchCustomer(e: React.FormEvent) {
+    e.preventDefault();
+    setSearchLoading(true);
+    setSearchMsg(null);
+    try {
+      const res = await fetch("/api/loyalty/customer/adjust", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: searchPhone, action: "lookup" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Lookup failed");
+      if (!data.found) {
+        setSearchedCustomer(null);
+        setSearchMsg("No customer record found for this number yet.");
+      } else {
+        setSearchedCustomer(data.customer);
+      }
+    } catch (err: any) {
+      setSearchMsg(err.message || "Lookup failed");
+    } finally {
+      setSearchLoading(false);
+    }
+  }
+
+  async function handleAdjustCustomer(diff: number) {
+    if (!searchedCustomer) return;
+    setAdjustLoading(true);
+    setSearchMsg(null);
+    try {
+      const res = await fetch("/api/loyalty/customer/adjust", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: searchedCustomer.phone,
+          action: "adjust",
+          amount: diff,
+          reason: adjustReason || "Owner Manual Adjustment",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Adjustment failed");
+      setSearchedCustomer(data.customer);
+      setSearchMsg(`✅ ${data.message}`);
+      setAdjustReason("");
+    } catch (err: any) {
+      setSearchMsg(`❌ ${err.message || "Failed to adjust"}`);
+    } finally {
+      setAdjustLoading(false);
+    }
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -358,6 +425,142 @@ export function LoyaltySettingsView({
             💡 <strong>Pro Tip:</strong> An effective discount between <strong>5% and 8%</strong> encourages repeat visits while preserving your food & beverage profit margins.
           </div>
         </div>
+      </div>
+
+      {/* CUSTOMER STAMP MANAGER (LOOKUP & MANUAL ADJUSTMENT) */}
+      <div className="panel p-5 space-y-4">
+        <div className="border-b border-line pb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🔍</span>
+            <h2 className="font-display text-base font-bold text-ink">
+              Customer Stamp Manager
+            </h2>
+          </div>
+          <p className="text-xs text-ink/60">
+            Look up any customer by mobile number to inspect their card, view rewards, or manually adjust stamps.
+          </p>
+        </div>
+
+        <form onSubmit={handleSearchCustomer} className="flex gap-2">
+          <div className="relative flex-1">
+            <input
+              type="tel"
+              inputMode="numeric"
+              maxLength={10}
+              placeholder="Search 10-digit mobile (e.g. 9876543210)"
+              value={searchPhone}
+              onChange={(e) => setSearchPhone(e.target.value)}
+              className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-xs font-medium text-ink outline-none focus:border-stone-800"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={searchLoading}
+            className="rounded-xl bg-stone-900 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-stone-800 disabled:opacity-60 transition"
+          >
+            {searchLoading ? "Searching..." : "Find Customer"}
+          </button>
+        </form>
+
+        {searchMsg && (
+          <div className="rounded-xl border border-line bg-stone-50 p-3 text-xs font-medium text-stone-700">
+            {searchMsg}
+          </div>
+        )}
+
+        {searchedCustomer && (
+          <div className="rounded-2xl border border-line bg-white p-4 space-y-4 shadow-2xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-line pb-3">
+              <div>
+                <p className="text-sm font-bold text-ink">
+                  +91 {searchedCustomer.phone}
+                  {searchedCustomer.name && (
+                    <span className="ml-2 font-normal text-xs text-ink/60">
+                      ({searchedCustomer.name})
+                    </span>
+                  )}
+                </p>
+                <p className="text-[11px] text-ink/50">
+                  Lifetime Stamps Earned: {searchedCustomer.lifetimeStamps}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="rounded-lg bg-emerald-50 px-3 py-1 font-mono text-sm font-bold text-emerald-800 border border-emerald-200">
+                  ☕ {searchedCustomer.currentStamps} / {stampsRequired} Stamps
+                </span>
+              </div>
+            </div>
+
+            {/* Active Unlocked Rewards for this customer */}
+            {searchedCustomer.rewards && searchedCustomer.rewards.length > 0 && (
+              <div className="rounded-xl bg-amber-50/70 border border-amber-200/70 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800">
+                  Customer Rewards:
+                </p>
+                <div className="mt-1 space-y-1">
+                  {searchedCustomer.rewards.map((r) => (
+                    <div key={r.code} className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-stone-800">
+                        {r.rewardTitle} ({r.code})
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                        r.status === "UNREDEEMED"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-stone-200 text-stone-600"
+                      }`}>
+                        {r.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Manual Adjustment Controls */}
+            <div className="pt-1">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-ink/60 mb-1">
+                Reason / Note for Adjustment (optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Compensating customer, offline bill, dispute resolution"
+                value={adjustReason}
+                onChange={(e) => setAdjustReason(e.target.value)}
+                className="w-full rounded-xl border border-line bg-paper px-3 py-1.5 text-xs font-medium text-ink outline-none focus:border-stone-800 mb-3"
+              />
+
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold text-ink/60 mr-1">Quick Action:</span>
+                <button
+                  type="button"
+                  disabled={adjustLoading}
+                  onClick={() => handleAdjustCustomer(1)}
+                  className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-800 transition disabled:opacity-60"
+                >
+                  +1 Stamp
+                </button>
+                <button
+                  type="button"
+                  disabled={adjustLoading}
+                  onClick={() => handleAdjustCustomer(2)}
+                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 transition disabled:opacity-60"
+                >
+                  +2 Stamps
+                </button>
+                <button
+                  type="button"
+                  disabled={adjustLoading || searchedCustomer.currentStamps <= 0}
+                  onClick={() => handleAdjustCustomer(-1)}
+                  className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100 transition disabled:opacity-50"
+                >
+                  -1 Stamp
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* RECENT STAMP TRANSACTIONS TABLE */}

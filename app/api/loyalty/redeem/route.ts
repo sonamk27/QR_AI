@@ -42,10 +42,19 @@ export async function POST(req: NextRequest) {
 
     // Validate PIN or Owner session
     const isOwner = ownerCtx?.restaurant.id === restaurantId;
-    const isPinValid = terminalPin && terminalPin.trim() === program.terminalPin;
-
-    if (!isOwner && !isPinValid) {
-      return NextResponse.json({ error: "Invalid staff terminal PIN" }, { status: 403 });
+    if (!isOwner) {
+      const { verifyTerminalPinWithRateLimit } = await import("@/lib/loyalty-security");
+      const ip =
+        req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        req.headers.get("x-real-ip") ||
+        "unknown-ip";
+      const pinResult = await verifyTerminalPinWithRateLimit(restaurantId, terminalPin, ip);
+      if (!pinResult.valid) {
+        return NextResponse.json(
+          { error: pinResult.error || "Invalid staff terminal PIN" },
+          { status: pinResult.isLocked ? 429 : 403 }
+        );
+      }
     }
 
     const reward = await db.loyaltyReward.findUnique({

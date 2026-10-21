@@ -42,6 +42,7 @@ export function Flow({
   const [busy, setBusy] = useState(false);
   const [copyingPlatform, setCopyingPlatform] = useState<string | null>(null);
   const [lastPlatform, setLastPlatform] = useState<"google" | "instagram" | "facebook" | null>(null);
+  const [googlePosted, setGooglePosted] = useState(false);
   const [copiedOnly, setCopiedOnly] = useState(false);
   const [copiedTagged, setCopiedTagged] = useState(false);
   const [error, setError] = useState("");
@@ -161,6 +162,7 @@ export function Flow({
 
     if (platform === "google") {
       trackClick();
+      setGooglePosted(true);
     } else {
       trackSocialClick(platform);
     }
@@ -261,15 +263,6 @@ export function Flow({
               First, rate your overall experience.
             </p>
             <Stars value={overall} onChange={rate(setOverall)} label="Overall experience rating" />
-            <div className="pt-2 text-center">
-              <a
-                href={`/r/${slug}/loyalty`}
-                className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50/90 px-3.5 py-1.5 text-xs font-semibold text-amber-900 shadow-xs hover:bg-amber-100 transition"
-              >
-                <span>☕ Collect Stamps & Rewards</span>
-                <span className="text-amber-700">→</span>
-              </a>
-            </div>
           </>
         )}
 
@@ -590,7 +583,10 @@ export function Flow({
                     href={googleUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={trackClick}
+                    onClick={() => {
+                      trackClick();
+                      setGooglePosted(true);
+                    }}
                     className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-3 text-xs font-medium text-ink shadow-sm hover:bg-paper transition"
                   >
                     <div className="flex items-center gap-2">
@@ -608,23 +604,64 @@ export function Flow({
               </div>
             </div>
 
-            <a
-              href={`/r/${slug}/loyalty`}
-              className="flex items-center justify-between rounded-2xl border border-amber-200 bg-amber-50/80 p-3.5 text-xs text-amber-950 shadow-xs hover:bg-amber-100 transition"
-            >
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-200/60 text-lg">
-                  ☕
-                </span>
-                <div>
-                  <div className="font-bold">Earn Rewards on Today&apos;s Order</div>
-                  <div className="text-[11px] text-amber-800">
-                    Open your digital loyalty stamp card
-                  </div>
+            {/* STAMP CARD: Gated behind Google Review */}
+            {Boolean(googleUrl && !googlePosted && lastPlatform !== "google") ? (
+              <div className="rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/70 p-4 text-center space-y-2.5 shadow-xs">
+                <div className="flex items-center justify-center gap-2">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-200 text-sm">🔒</span>
+                  <h3 className="text-xs font-bold text-amber-950">
+                    Post on Google Maps to Unlock Today&apos;s Stamp!
+                  </h3>
                 </div>
+                <p className="text-[11px] text-amber-900/80 leading-relaxed">
+                  Post your review on Google Maps to unlock your stamp card &amp; claim today&apos;s reward at the counter.
+                </p>
+                <a
+                  href={googleUrl || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => {
+                    trackClick();
+                    setGooglePosted(true);
+                  }}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-800 transition w-full"
+                >
+                  <svg className="h-4 w-4 shrink-0 fill-current" viewBox="0 0 24 24">
+                    <path d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z" />
+                  </svg>
+                  <span>Post Review to Unlock Stamp ↗</span>
+                </a>
               </div>
-              <span className="font-bold text-amber-900">View Card →</span>
-            </a>
+            ) : (
+              <div className="rounded-2xl border-2 border-emerald-500 bg-emerald-50/90 p-4 text-center space-y-2 shadow-sm">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 border border-emerald-200 px-3 py-1 text-xs font-bold text-emerald-800">
+                  <span>🎉</span>
+                  <span>Review Verified! Today&apos;s Stamp Unlocked</span>
+                </div>
+                <p className="text-xs text-stone-600">
+                  Show staff your card or phone number at the counter to claim your stamp:
+                </p>
+                <a
+                  href={`/r/${slug}/loyalty${sessionId ? `?session=${sessionId}` : ""}`}
+                  className="flex items-center justify-between rounded-xl bg-amber-800 p-3.5 text-xs font-bold text-white shadow-md hover:bg-amber-900 transition"
+                >
+                  <div className="flex items-center gap-2.5 text-left">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-700 text-base">
+                      ☕
+                    </span>
+                    <div>
+                      <div className="text-xs font-bold text-white">Open Stamp Card</div>
+                      <div className="text-[10px] font-normal text-amber-200">
+                        Show staff at the billing counter
+                      </div>
+                    </div>
+                  </div>
+                  <span className="rounded-lg bg-amber-700 px-2.5 py-1 text-[11px] font-bold text-white">
+                    View Card →
+                  </span>
+                </a>
+              </div>
+            )}
 
             <p className="text-center text-xs text-ink/50">
               Thank you for visiting {name}. We hope to see you again soon!

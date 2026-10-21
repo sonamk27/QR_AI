@@ -19,9 +19,13 @@ export function StaffTerminalView({
   const [pin, setPin] = useState(initialPin || "");
   const [pinVerified, setPinVerified] = useState(Boolean(initialPin));
   const [pinInput, setPinInput] = useState("");
+  const [pinLoading, setPinLoading] = useState(false);
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [isDefaultPin, setIsDefaultPin] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
   const [tab, setTab] = useState<"award" | "redeem">("award");
 
-  // Restore PIN from sessionStorage on mount
+  // Restore PIN from sessionStorage on mount and verify it
   useState(() => {
     if (typeof window !== "undefined") {
       const saved = sessionStorage.getItem(`staff_terminal_pin_${restaurant.id}`);
@@ -47,14 +51,46 @@ export function StaffTerminalView({
   const [redeemSuccess, setRedeemSuccess] = useState<string | null>(null);
   const [redeemError, setRedeemError] = useState<string | null>(null);
 
-  function handlePinSubmit(e: React.FormEvent) {
+  async function handlePinSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setPinError(null);
     if (!pinInput.trim()) return;
+
     const cleanPin = pinInput.trim();
-    setPin(cleanPin);
-    setPinVerified(true);
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem(`staff_terminal_pin_${restaurant.id}`, cleanPin);
+    setPinLoading(true);
+
+    try {
+      const res = await fetch("/api/loyalty/terminal/verify-pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          restaurantId: restaurant.id,
+          slug,
+          pin: cleanPin,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 429) {
+          setIsLocked(true);
+        }
+        throw new Error(data.error || "Invalid PIN");
+      }
+
+      setPin(cleanPin);
+      setPinVerified(true);
+      setIsDefaultPin(Boolean(data.isDefaultPin));
+      setIsLocked(false);
+      setPinError(null);
+
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(`staff_terminal_pin_${restaurant.id}`, cleanPin);
+      }
+    } catch (err: any) {
+      setPinError(err.message || "Failed to verify PIN");
+    } finally {
+      setPinLoading(false);
     }
   }
 
@@ -62,6 +98,7 @@ export function StaffTerminalView({
     setPinVerified(false);
     setPinInput("");
     setPin("");
+    setPinError(null);
     if (typeof window !== "undefined") {
       sessionStorage.removeItem(`staff_terminal_pin_${restaurant.id}`);
     }
@@ -172,7 +209,7 @@ export function StaffTerminalView({
         {!pinVerified ? (
           <form onSubmit={handlePinSubmit} className="space-y-4 py-4 text-center">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 text-2xl">
-              🔐
+              {isLocked ? "⛔" : "🔐"}
             </div>
             <div>
               <h2 className="font-display text-lg font-bold text-stone-900">
@@ -183,15 +220,22 @@ export function StaffTerminalView({
               </p>
             </div>
 
+            {pinError && (
+              <div className="mx-auto max-w-xs rounded-xl bg-red-50 border border-red-200 p-2.5 text-xs text-red-700 font-medium">
+                {pinError}
+              </div>
+            )}
+
             <div className="mx-auto max-w-xs">
               <input
                 type="password"
                 inputMode="numeric"
                 maxLength={8}
+                disabled={isLocked || pinLoading}
                 placeholder="Enter 4-digit PIN (default 1234)"
                 value={pinInput}
                 onChange={(e) => setPinInput(e.target.value)}
-                className="w-full rounded-xl border border-stone-300 py-3 text-center font-mono text-xl tracking-widest outline-none focus:border-stone-800 focus:ring-1 focus:ring-stone-800"
+                className="w-full rounded-xl border border-stone-300 py-3 text-center font-mono text-xl tracking-widest outline-none focus:border-stone-800 focus:ring-1 focus:ring-stone-800 disabled:opacity-50 disabled:bg-stone-100"
                 required
                 autoFocus
               />
@@ -199,13 +243,23 @@ export function StaffTerminalView({
 
             <button
               type="submit"
-              className="w-full max-w-xs rounded-xl bg-stone-900 py-3 text-xs font-bold text-white shadow-sm hover:bg-stone-800 transition"
+              disabled={isLocked || pinLoading}
+              className="w-full max-w-xs rounded-xl bg-stone-900 py-3 text-xs font-bold text-white shadow-sm hover:bg-stone-800 transition disabled:opacity-50"
             >
-              Unlock Terminal →
+              {pinLoading ? "Verifying PIN..." : isLocked ? "Locked (Wait 15m)" : "Unlock Terminal →"}
             </button>
           </form>
         ) : (
           <div>
+            {isDefaultPin && (
+              <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 flex items-start gap-2">
+                <span className="text-base">⚠️</span>
+                <div>
+                  <span className="font-bold">Security Notice: </span>
+                  This terminal is using the default PIN (<strong>1234</strong>). To protect stamps from unauthorized access, change your staff PIN in <strong>Dashboard → Loyalty Settings</strong>.
+                </div>
+              </div>
+            )}
             {/* TABS */}
             <div className="flex rounded-xl bg-stone-100 p-1 text-xs font-bold text-stone-600 mb-5">
               <button
