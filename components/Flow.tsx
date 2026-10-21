@@ -457,6 +457,45 @@ export function Flow({
                     {copiedOnly ? "✓ Review copied to clipboard!" : "Just copy text to clipboard"}
                   </button>
                 </div>
+
+                {/* Direct social profile quick-access (no review needed) */}
+                {(instagramUrl || facebookUrl) && (
+                  <div className="rounded-xl border border-line bg-paper p-3 space-y-2">
+                    <p className="text-center text-[10px] font-bold uppercase tracking-wider text-ink/40">
+                      Or follow us directly
+                    </p>
+                    <div className="flex gap-2">
+                      {instagramUrl && (
+                        <a
+                          href={instagramUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => trackSocialClick("instagram")}
+                          className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-pink-600 py-2.5 text-xs font-bold text-white hover:bg-pink-700 transition active:scale-[0.99]"
+                        >
+                          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current shrink-0">
+                            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.334 3.608 1.31.975.975 1.247 2.242 1.31 3.608.058 1.265.069 1.645.069 4.849s-.012 3.584-.07 4.85c-.062 1.366-.334 2.633-1.31 3.608-.975.975-2.242 1.247-3.608 1.31-1.265.058-1.645.069-4.849.069s-3.584-.012-4.85-.07c-1.366-.062-2.633-.334-3.608-1.31-.975-.975-1.247-2.242-1.31-3.608C2.175 15.585 2.163 15.205 2.163 12s.012-3.584.07-4.85c.062-1.366.334-2.633 1.31-3.608.975-.975 2.242-1.247 3.608-1.31C8.416 2.175 8.796 2.163 12 2.163zm0-2.163C8.741 0 8.332.013 7.052.072 5.197.163 3.475.705 2.14 2.14.705 3.475.163 5.197.072 7.052.013 8.332 0 8.741 0 12c0 3.259.013 3.668.072 4.948.091 1.854.633 3.576 2.068 5.012C3.475 23.295 5.197 23.837 7.052 23.928 8.332 23.987 8.741 24 12 24s3.668-.013 4.948-.072c1.854-.091 3.576-.633 5.012-2.068 1.435-1.435 1.977-3.158 2.068-5.012.059-1.28.072-1.689.072-4.948 0-3.259-.013-3.668-.072-4.948-.091-1.854-.633-3.576-2.068-5.012C20.525.705 18.803.163 16.948.072 15.668.013 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zm0 10.162a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z" />
+                          </svg>
+                          <span>{igHandle || "Instagram"} ↗</span>
+                        </a>
+                      )}
+                      {facebookUrl && (
+                        <a
+                          href={facebookUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => trackSocialClick("facebook")}
+                          className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white hover:bg-blue-700 transition active:scale-[0.99]"
+                        >
+                          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current shrink-0">
+                            <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.874v2.25h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" />
+                          </svg>
+                          <span>{fbHandle || "Facebook"} ↗</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-3 pt-2 text-center">

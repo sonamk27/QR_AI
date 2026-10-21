@@ -20,6 +20,16 @@ export default async function TerminalPage() {
           brandColor: ctx.restaurant.brandColor,
         }}
         initialPin={program.terminalPin}
+        initialProgram={{
+          id: program.id,
+          title: program.title,
+          isActive: program.isActive,
+          stampsRequired: program.stampsRequired,
+          minBillAmount: program.minBillAmount,
+          rewardTitle: program.rewardTitle,
+          rewardDiscount: program.rewardDiscount,
+          rewardExpiryDays: program.rewardExpiryDays,
+        }}
       />
     </div>
   );

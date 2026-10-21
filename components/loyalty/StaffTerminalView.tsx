@@ -1,12 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+
+export type TerminalProgramInfo = {
+  id: string;
+  title: string;
+  stampsRequired: number;
+  minBillAmount: number; // in paise
+  rewardTitle: string;
+  rewardDiscount: number; // in paise
+  rewardExpiryDays: number;
+  isActive: boolean;
+};
 
 export function StaffTerminalView({
   restaurant,
   initialPin,
   slug,
+  initialProgram,
 }: {
   restaurant: {
     id: string;
@@ -15,6 +27,7 @@ export function StaffTerminalView({
   };
   initialPin?: string;
   slug?: string;
+  initialProgram?: TerminalProgramInfo;
 }) {
   const [pin, setPin] = useState(initialPin || "");
   const [pinVerified, setPinVerified] = useState(Boolean(initialPin));
@@ -24,6 +37,7 @@ export function StaffTerminalView({
   const [isDefaultPin, setIsDefaultPin] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [tab, setTab] = useState<"award" | "redeem">("award");
+  const [program] = useState<TerminalProgramInfo | undefined>(initialProgram);
 
   // Restore PIN from sessionStorage on mount and verify it
   useState(() => {
@@ -45,11 +59,47 @@ export function StaffTerminalView({
   const [awardSuccess, setAwardSuccess] = useState<string | null>(null);
   const [awardError, setAwardError] = useState<string | null>(null);
 
+  // Live customer lookup state
+  const [customerLookup, setCustomerLookup] = useState<{
+    phone: string;
+    name: string | null;
+    currentStamps: number;
+    lifetimeStamps: number;
+    rewards?: Array<{ code: string; rewardTitle: string; status: string }>;
+  } | null>(null);
+
   // Redeem form state
   const [rewardCode, setRewardCode] = useState("");
   const [redeemLoading, setRedeemLoading] = useState(false);
   const [redeemSuccess, setRedeemSuccess] = useState<string | null>(null);
   const [redeemError, setRedeemError] = useState<string | null>(null);
+
+  // Live customer lookup when 10-digit phone is entered
+  useEffect(() => {
+    const cleanPhone = phone.replace(/\D/g, "");
+    if (cleanPhone.length >= 10) {
+      const formatted = cleanPhone.length > 10 && cleanPhone.startsWith("91") ? cleanPhone.slice(2) : cleanPhone;
+      fetch("/api/loyalty/customer/adjust", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: formatted, action: "lookup" }),
+      })
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.found && res.customer) {
+            setCustomerLookup(res.customer);
+            if (!customerName && res.customer.name) {
+              setCustomerName(res.customer.name);
+            }
+          } else {
+            setCustomerLookup(null);
+          }
+        })
+        .catch(() => {});
+    } else {
+      setCustomerLookup(null);
+    }
+  }, [phone]);
 
   async function handlePinSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -285,6 +335,23 @@ export function StaffTerminalView({
             {/* TAB 1: AWARD STAMP */}
             {tab === "award" && (
               <form onSubmit={handleAwardStamp} className="space-y-4">
+                {/* Dynamic Program Offer Banner */}
+                {program && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 flex items-center justify-between gap-2">
+                    <div className="text-xs">
+                      <div className="font-bold text-amber-900">☕ {program.title}</div>
+                      <div className="text-amber-800/80 mt-0.5">
+                        <span className="font-semibold">{program.stampsRequired} stamps</span> to earn{" "}
+                        <span className="font-semibold">{program.rewardTitle}</span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-[10px] text-amber-700 font-semibold">Min. Bill</div>
+                      <div className="text-sm font-extrabold text-amber-900">₹{Math.round(program.minBillAmount / 100)}</div>
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-stone-600">
                     Customer Mobile Number *
@@ -305,6 +372,58 @@ export function StaffTerminalView({
                     />
                   </div>
                 </div>
+
+                {/* Live Customer Stamp Preview */}
+                {customerLookup && program && (
+                  <div className="rounded-xl border border-stone-200 bg-stone-50 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                        Customer Found
+                      </span>
+                      {customerLookup.lifetimeStamps >= 20 && (
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100 rounded-full px-2 py-0.5">
+                          VIP 👑
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-bold text-stone-900">
+                          {customerLookup.name || `+91 ${customerLookup.phone}`}
+                        </div>
+                        <div className="text-xs text-stone-500">
+                          Lifetime stamps: {customerLookup.lifetimeStamps}
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-extrabold text-stone-900">
+                          {customerLookup.currentStamps}
+                          <span className="text-sm font-semibold text-stone-400">
+                            /{program.stampsRequired}
+                          </span>
+                        </div>
+                        {/* Mini stamp track */}
+                        <div className="flex gap-0.5 mt-1">
+                          {Array.from({ length: program.stampsRequired }).map((_, i) => (
+                            <div
+                              key={i}
+                              className={`h-2 w-2 rounded-full transition ${
+                                i < customerLookup.currentStamps
+                                  ? "bg-amber-600"
+                                  : "bg-stone-200"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    {customerLookup.rewards?.some(r => r.status === "UNREDEEMED") && (
+                      <div className="mt-2 rounded-lg bg-emerald-50 border border-emerald-200 p-2 text-[11px] text-emerald-800 font-semibold">
+                        🎁 This customer has an unredeemed reward! Use &quot;Redeem Voucher&quot; tab.
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>

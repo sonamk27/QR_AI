@@ -36,6 +36,16 @@ export default async function TerminalPublicPage({ params }: { params: { slug: s
           brandColor: qr.restaurant.brandColor,
         }}
         slug={params.slug}
+        initialProgram={{
+          id: program.id,
+          title: program.title,
+          isActive: program.isActive,
+          stampsRequired: program.stampsRequired,
+          minBillAmount: program.minBillAmount,
+          rewardTitle: program.rewardTitle,
+          rewardDiscount: program.rewardDiscount,
+          rewardExpiryDays: program.rewardExpiryDays,
+        }}
       />
     </div>
   );
