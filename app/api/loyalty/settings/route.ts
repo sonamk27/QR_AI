@@ -73,21 +73,58 @@ export async function PATCH(req: NextRequest) {
 
     const program = await getOrCreateLoyaltyProgram(restaurantId);
 
+    // Determine the effective discount type (use sent value or fall back to existing)
+    const effectiveDiscountType: string | undefined =
+      body.discountType !== undefined
+        ? body.discountType === "PERCENT"
+          ? "PERCENT"
+          : "FLAT"
+        : undefined;
+
+    // Determine discount value — interpretation depends on the type that will be saved
+    const resolvedType = effectiveDiscountType ?? program.discountType ?? "FLAT";
+    let rewardDiscountData: number | undefined = undefined;
+    if (body.rewardDiscountRupees !== undefined) {
+      const rawVal = Number(body.rewardDiscountRupees);
+      if (isNaN(rawVal) || rawVal <= 0) {
+        return NextResponse.json({ error: "Discount value must be a positive number" }, { status: 400 });
+      }
+      if (resolvedType === "PERCENT") {
+        // Percentage: store the raw % value (1–90)
+        rewardDiscountData = Math.max(1, Math.min(90, Math.round(rawVal)));
+      } else {
+        // Flat: convert rupees to paise
+        rewardDiscountData = Math.round(rawVal * 100);
+      }
+    }
+
+    // Validate minBillAmount
+    let minBillData: number | undefined = undefined;
+    if (body.minBillAmountRupees !== undefined) {
+      const minVal = Number(body.minBillAmountRupees);
+      if (isNaN(minVal) || minVal < 0) {
+        return NextResponse.json({ error: "Minimum bill amount must be a non-negative number" }, { status: 400 });
+      }
+      minBillData = Math.round(minVal * 100);
+    }
+
     const updated = await db.loyaltyProgram.update({
       where: { id: program.id },
       data: {
         title: body.title !== undefined ? String(body.title).trim() : undefined,
         isActive: body.isActive !== undefined ? Boolean(body.isActive) : undefined,
-        discountType: body.discountType === "PERCENT" ? "PERCENT" : "FLAT",
-        stampsRequired: body.stampsRequired !== undefined ? Math.max(1, Math.min(20, Number(body.stampsRequired))) : undefined,
-        minBillAmount: body.minBillAmountRupees !== undefined ? Math.round(Number(body.minBillAmountRupees) * 100) : undefined,
+        discountType: effectiveDiscountType,
+        stampsRequired:
+          body.stampsRequired !== undefined
+            ? Math.max(1, Math.min(20, Number(body.stampsRequired)))
+            : undefined,
+        minBillAmount: minBillData,
         rewardTitle: body.rewardTitle !== undefined ? String(body.rewardTitle).trim() : undefined,
-        rewardDiscount: body.rewardDiscountRupees !== undefined 
-          ? (body.discountType === "PERCENT" 
-              ? Math.max(1, Math.min(100, Math.round(Number(body.rewardDiscountRupees)))) 
-              : Math.round(Number(body.rewardDiscountRupees) * 100))
-          : undefined,
-        rewardExpiryDays: body.rewardExpiryDays !== undefined ? Math.max(1, Number(body.rewardExpiryDays)) : undefined,
+        rewardDiscount: rewardDiscountData,
+        rewardExpiryDays:
+          body.rewardExpiryDays !== undefined
+            ? Math.max(1, Math.min(365, Number(body.rewardExpiryDays)))
+            : undefined,
       },
     });
 

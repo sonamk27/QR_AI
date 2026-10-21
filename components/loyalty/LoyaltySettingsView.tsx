@@ -146,6 +146,38 @@ export function LoyaltySettingsView({
     }
   }
 
+  async function handleGrantOffer() {
+    if (!searchedCustomer) return;
+    setAdjustLoading(true);
+    setSearchMsg(null);
+    try {
+      const res = await fetch("/api/loyalty/customer/adjust", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: searchedCustomer.phone,
+          action: "grant_offer",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to grant offer");
+      setSearchMsg(`🎁 ${data.message}`);
+      
+      // Refresh customer profile
+      const ref = await fetch("/api/loyalty/customer/adjust", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: searchedCustomer.phone, action: "lookup" }),
+      });
+      const refData = await ref.json();
+      if (refData.found) setSearchedCustomer(refData.customer);
+    } catch (err: any) {
+      setSearchMsg(`❌ ${err.message || "Failed to grant offer"}`);
+    } finally {
+      setAdjustLoading(false);
+    }
+  }
+
   async function handleDirectRedeem(rewardCode: string) {
     setRedeemingCode(rewardCode);
     setSearchMsg(null);
@@ -696,6 +728,14 @@ export function LoyaltySettingsView({
                   className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 transition disabled:opacity-60"
                 >
                   +2 Stamps
+                </button>
+                <button
+                  type="button"
+                  disabled={adjustLoading}
+                  onClick={handleGrantOffer}
+                  className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700 transition disabled:opacity-60"
+                >
+                  🎁 Issue Offer Voucher
                 </button>
                 <button
                   type="button"

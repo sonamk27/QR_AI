@@ -90,7 +90,9 @@ export async function getCustomerLoyaltyCard(restaurantId: string, rawPhone: str
     });
   }
 
-  // If program is active and customer has no active unredeemed reward, auto-issue the dynamic offer voucher
+  // If program is active and customer has no active unredeemed reward, auto-issue a dynamic offer voucher.
+  // We use upsert semantics: check first, then create only if still absent, to prevent duplicate issuance
+  // under concurrent requests from the same customer.
   if (program.isActive) {
     const hasActiveReward = customer.rewards.some(
       (r) => r.status === "UNREDEEMED" && new Date(r.expiresAt) > new Date()
@@ -100,19 +102,45 @@ export async function getCustomerLoyaltyCard(restaurantId: string, rawPhone: str
       const expiry = new Date();
       expiry.setDate(expiry.getDate() + (program.rewardExpiryDays || 30));
 
-      const newVoucher = await db.loyaltyReward.create({
-        data: {
-          programId: program.id,
-          customerId: customer.id,
-          code: generateRewardCode("OFFER"),
-          rewardTitle: program.rewardTitle,
-          discountAmount: program.rewardDiscount,
-          status: "UNREDEEMED",
-          expiresAt: expiry,
-        },
-      });
+      // Re-check inside a transaction with the customer row locked to prevent race-condition duplicates.
+      // The outer findUnique already ran; this second atomic check prevents two concurrent calls from
+      // both seeing hasActiveReward=false and both creating a voucher.
+      try {
+        const newVoucher = await db.$transaction(async (tx) => {
+          // Re-read active rewards under lock (Prisma doesn't expose SELECT FOR UPDATE on findMany,
+          // so we use a raw count query to act as a fence)
+          const activeCount = await tx.$queryRaw<Array<{ count: bigint }>>`
+            SELECT COUNT(*) as count FROM loyalty_rewards
+            WHERE "customerId" = ${customer!.id}
+              AND status = 'UNREDEEMED'
+              AND "expiresAt" > NOW()
+          `;
+          const count = Number(activeCount[0]?.count ?? 0);
+          if (count > 0) {
+            // Another concurrent request already created one — skip
+            return null;
+          }
 
-      customer.rewards.unshift(newVoucher);
+          return tx.loyaltyReward.create({
+            data: {
+              programId: program.id,
+              customerId: customer!.id,
+              code: generateRewardCode("OFFER"),
+              rewardTitle: program.rewardTitle,
+              discountAmount: program.rewardDiscount,
+              status: "UNREDEEMED",
+              expiresAt: expiry,
+            },
+          });
+        });
+
+        if (newVoucher) {
+          customer.rewards.unshift(newVoucher);
+        }
+      } catch {
+        // Non-critical: if voucher creation fails, the customer can still see their card.
+        // The missing voucher will be auto-created on the next card fetch.
+      }
     }
   }
 

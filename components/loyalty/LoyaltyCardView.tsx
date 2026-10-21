@@ -64,9 +64,6 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
   const [selectedRewardCode, setSelectedRewardCode] = useState<string | null>(null);
   const [selectedRewardTitle, setSelectedRewardTitle] = useState<string | null>(null);
   const [selectedRewardDiscount, setSelectedRewardDiscount] = useState<number>(0);
-  const [redeeming, setRedeeming] = useState(false);
-  const [redeemSuccess, setRedeemSuccess] = useState<string | null>(null);
-  const [redeemError, setRedeemError] = useState<string | null>(null);
 
   // Dynamic Diner Bill Calculator
   const [dinerBillInput, setDinerBillInput] = useState<string>("");
@@ -120,8 +117,6 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
   async function showRewardQr(code: string, title?: string, discountPaise?: number) {
     setSelectedRewardTitle(title || "Reward Voucher");
     setSelectedRewardDiscount(discountPaise ? discountPaise / 100 : 0);
-    setRedeemSuccess(null);
-    setRedeemError(null);
 
     try {
       const qrDataUrl = await QRCode.toDataURL(code, {
@@ -133,43 +128,6 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
       setSelectedRewardCode(code);
     } catch {
       setSelectedRewardCode(code);
-    }
-  }
-
-  async function handleAvailOffer(rewardCode: string) {
-    setRedeeming(true);
-    setRedeemError(null);
-    try {
-      const res = await fetch("/api/loyalty/redeem", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, rewardCode }),
-      });
-      const resData = await res.json();
-      if (!res.ok) {
-        throw new Error(resData.error || "Failed to avail offer");
-      }
-      setRedeemSuccess(resData.message || "Offer successfully availed at counter!");
-
-      // Update local state
-      setData((prev) => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          customer: {
-            ...prev.customer,
-            rewards: prev.customer.rewards.map((r) =>
-              r.code === rewardCode
-                ? { ...r, status: "REDEEMED", redeemedAt: new Date().toISOString() }
-                : r
-            ),
-          },
-        };
-      });
-    } catch (err: any) {
-      setRedeemError(err.message || "Failed to avail offer");
-    } finally {
-      setRedeeming(false);
     }
   }
 
@@ -587,21 +545,16 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
                         </p>
                       </div>
 
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => showRewardQr(reward.code, reward.rewardTitle, reward.discountAmount)}
-                          className="flex-1 rounded-xl border border-stone-300 bg-white py-2.5 text-xs font-bold text-stone-800 shadow-xs hover:bg-stone-50 transition"
-                        >
-                          Show Voucher QR 📱
-                        </button>
-                        <button
-                          onClick={() => handleAvailOffer(reward.code)}
-                          disabled={redeeming}
-                          className="flex-1 rounded-xl py-2.5 text-xs font-bold text-white shadow-xs transition hover:brightness-105 active:scale-[0.99] disabled:opacity-50"
-                          style={{ backgroundColor: brandColor }}
-                        >
-                          Avail at Counter ⚡
-                        </button>
+                      {/* Show QR button only — redemption is done by cashier/owner from dashboard */}
+                      <button
+                        onClick={() => showRewardQr(reward.code, reward.rewardTitle, reward.discountAmount)}
+                        className="w-full rounded-xl border border-stone-300 bg-white py-2.5 text-xs font-bold text-stone-800 shadow-xs hover:bg-stone-50 transition"
+                      >
+                        Show Voucher QR to Cashier 📱
+                      </button>
+
+                      <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-800 font-medium text-center">
+                        💡 Show this code or QR to the cashier when billing. The cashier will apply your discount.
                       </div>
                     </div>
                   ))
@@ -710,7 +663,7 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
               {selectedRewardTitle || "Dining Offer Voucher"}
             </h3>
             <p className="text-xs text-stone-500">
-              Show this code to the cashier or tap avail below
+              Show this voucher QR or code to the cashier at billing counter
             </p>
 
             <div className="flex flex-col items-center justify-center rounded-2xl bg-stone-50 p-4 border border-stone-200/80">
@@ -731,36 +684,15 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
               </p>
             </div>
 
-            {redeemSuccess && (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-bold text-emerald-800">
-                ✅ {redeemSuccess}
-              </div>
-            )}
-
-            {redeemError && (
-              <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800">
-                ❌ {redeemError}
-              </div>
-            )}
+            <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-800 font-medium">
+              💡 The cashier will scan or type this code to apply your discount at the counter.
+            </div>
 
             <div className="space-y-2 pt-1">
-              {!redeemSuccess && (
-                <button
-                  disabled={redeeming}
-                  onClick={() => selectedRewardCode && handleAvailOffer(selectedRewardCode)}
-                  className="w-full rounded-xl py-2.5 text-xs font-bold text-white shadow-sm transition hover:brightness-105 disabled:opacity-50"
-                  style={{ backgroundColor: brandColor }}
-                >
-                  {redeeming ? "Availing..." : "Mark as Availed at Counter ⚡"}
-                </button>
-              )}
-
               <button
                 onClick={() => {
                   setSelectedRewardCode(null);
                   setSelectedRewardQr(null);
-                  setRedeemSuccess(null);
-                  setRedeemError(null);
                 }}
                 className="w-full rounded-xl bg-stone-100 py-2.5 text-xs font-bold text-stone-700 hover:bg-stone-200 transition"
               >

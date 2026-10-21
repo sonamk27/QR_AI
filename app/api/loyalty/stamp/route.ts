@@ -62,7 +62,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check anti-fraud duplicate within 5 minutes for the exact same customer & bill amount
+    const normalizedRef = billReference?.trim() || null;
+
+    // Anti-fraud duplicate check within 5 minutes.
+    // A stamp for the same phone+billAmount in the last 5 min is blocked UNLESS a unique
+    // billReference is provided that doesn't match any existing transaction for this customer.
     const recentTx = await db.loyaltyTransaction.findFirst({
       where: {
         programId: program.id,
@@ -72,11 +76,28 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    if (recentTx && !billReference) {
-      return NextResponse.json(
-        { error: "A stamp was already awarded for this bill amount in the last 5 minutes. Enter an invoice/bill reference to override." },
-        { status: 409 }
-      );
+    if (recentTx) {
+      // If no reference provided, always block
+      if (!normalizedRef) {
+        return NextResponse.json(
+          { error: "A stamp was already awarded for this bill amount in the last 5 minutes. Provide a unique invoice/bill reference number to confirm this is a different transaction." },
+          { status: 409 }
+        );
+      }
+      // If a reference is provided, verify it hasn't been used before for this customer
+      const refExists = await db.loyaltyTransaction.findFirst({
+        where: {
+          programId: program.id,
+          customer: { phone },
+          billReference: normalizedRef,
+        },
+      });
+      if (refExists) {
+        return NextResponse.json(
+          { error: `Bill reference "${normalizedRef}" has already been used. Please use the actual invoice number from the receipt.` },
+          { status: 409 }
+        );
+      }
     }
 
     // Execute atomic stamp update & reward creation
@@ -124,7 +145,7 @@ export async function POST(req: NextRequest) {
           data: {
             programId: program.id,
             customerId: customer.id,
-            code: generateRewardCode(),
+            code: generateRewardCode("OFFER"),
             rewardTitle: program.rewardTitle,
             discountAmount: program.rewardDiscount,
             status: "UNREDEEMED",
@@ -148,8 +169,8 @@ export async function POST(req: NextRequest) {
           customerId: customer.id,
           stampsCount: 1,
           billAmount: billAmountPaise,
-          billReference: billReference?.trim() || null,
-          staffNote: isOwner ? "Owner Award" : "Staff Terminal",
+          billReference: normalizedRef,
+          staffNote: isOwner ? "Owner Award" : "Direct Visit Award",
         },
       });
 

@@ -63,6 +63,30 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    if (action === "grant_offer") {
+      const { generateRewardCode } = await import("@/lib/loyalty");
+      const expiry = new Date();
+      expiry.setDate(expiry.getDate() + (program.rewardExpiryDays || 30));
+
+      const newReward = await db.loyaltyReward.create({
+        data: {
+          programId: program.id,
+          customerId: customer.id,
+          code: generateRewardCode("OFFER"),
+          rewardTitle: program.rewardTitle,
+          discountAmount: program.rewardDiscount,
+          status: "UNREDEEMED",
+          expiresAt: expiry,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Issued dynamic offer voucher ${newReward.code} to ${phone}`,
+        reward: newReward,
+      });
+    }
+
     // Action: adjust
     const stampDiff = Number(amount) || 0;
     const newCurrentStamps = Math.max(0, customer.currentStamps + stampDiff);
