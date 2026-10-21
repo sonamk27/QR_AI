@@ -70,7 +70,7 @@ export async function getCustomerLoyaltyCard(restaurantId: string, rawPhone: str
       },
       transactions: {
         orderBy: { createdAt: "desc" },
-        take: 10,
+        take: 20,
       },
     },
   });
@@ -90,59 +90,12 @@ export async function getCustomerLoyaltyCard(restaurantId: string, rawPhone: str
     });
   }
 
-  // If program is active and customer has no active unredeemed reward, auto-issue a dynamic offer voucher.
-  // We use upsert semantics: check first, then create only if still absent, to prevent duplicate issuance
-  // under concurrent requests from the same customer.
-  if (program.isActive) {
-    const hasActiveReward = customer.rewards.some(
-      (r) => r.status === "UNREDEEMED" && new Date(r.expiresAt) > new Date()
-    );
+  // Vouchers are only issued by the stamp API when stamps reach the required count.
+  // No auto-issuance here — customers must earn stamps to unlock rewards.
 
-    if (!hasActiveReward) {
-      const expiry = new Date();
-      expiry.setDate(expiry.getDate() + (program.rewardExpiryDays || 30));
-
-      // Re-check inside a transaction with the customer row locked to prevent race-condition duplicates.
-      // The outer findUnique already ran; this second atomic check prevents two concurrent calls from
-      // both seeing hasActiveReward=false and both creating a voucher.
-      try {
-        const newVoucher = await db.$transaction(async (tx) => {
-          // Re-read active rewards under lock (Prisma doesn't expose SELECT FOR UPDATE on findMany,
-          // so we use a raw count query to act as a fence)
-          const activeCount = await tx.$queryRaw<Array<{ count: bigint }>>`
-            SELECT COUNT(*) as count FROM loyalty_rewards
-            WHERE "customerId" = ${customer!.id}
-              AND status = 'UNREDEEMED'
-              AND "expiresAt" > NOW()
-          `;
-          const count = Number(activeCount[0]?.count ?? 0);
-          if (count > 0) {
-            // Another concurrent request already created one — skip
-            return null;
-          }
-
-          return tx.loyaltyReward.create({
-            data: {
-              programId: program.id,
-              customerId: customer!.id,
-              code: generateRewardCode("OFFER"),
-              rewardTitle: program.rewardTitle,
-              discountAmount: program.rewardDiscount,
-              status: "UNREDEEMED",
-              expiresAt: expiry,
-            },
-          });
-        });
-
-        if (newVoucher) {
-          customer.rewards.unshift(newVoucher);
-        }
-      } catch {
-        // Non-critical: if voucher creation fails, the customer can still see their card.
-        // The missing voucher will be auto-created on the next card fetch.
-      }
-    }
-  }
+  // Calculate the completed stamp cycles (how many times they've earned a reward)
+  const redeemedCount = customer.rewards.filter((r) => r.status === "REDEEMED").length;
+  const cycleNumber = redeemedCount + 1; // current cycle they are in
 
   return {
     program: {
@@ -162,6 +115,7 @@ export async function getCustomerLoyaltyCard(restaurantId: string, rawPhone: str
       name: customer.name,
       currentStamps: customer.currentStamps,
       lifetimeStamps: customer.lifetimeStamps,
+      cycleNumber,
       lastVisitAt: customer.lastVisitAt,
       rewards: customer.rewards,
       transactions: customer.transactions,

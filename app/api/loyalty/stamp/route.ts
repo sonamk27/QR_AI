@@ -64,9 +64,9 @@ export async function POST(req: NextRequest) {
 
     const normalizedRef = billReference?.trim() || null;
 
-    // Anti-fraud duplicate check within 5 minutes.
-    // A stamp for the same phone+billAmount in the last 5 min is blocked UNLESS a unique
-    // billReference is provided that doesn't match any existing transaction for this customer.
+    // ── APP-LEVEL PRE-CHECK (fast path before acquiring DB lock) ──
+    // 5-minute duplicate check. This is a non-authoritative fast path;
+    // the DB-level unique index on billReference is the authoritative constraint.
     const recentTx = await db.loyaltyTransaction.findFirst({
       where: {
         programId: program.id,
@@ -77,110 +77,130 @@ export async function POST(req: NextRequest) {
     });
 
     if (recentTx) {
-      // If no reference provided, always block
+      // No reference provided → always block
       if (!normalizedRef) {
         return NextResponse.json(
-          { error: "A stamp was already awarded for this bill amount in the last 5 minutes. Provide a unique invoice/bill reference number to confirm this is a different transaction." },
-          { status: 409 }
-        );
-      }
-      // If a reference is provided, verify it hasn't been used before for this customer
-      const refExists = await db.loyaltyTransaction.findFirst({
-        where: {
-          programId: program.id,
-          customer: { phone },
-          billReference: normalizedRef,
-        },
-      });
-      if (refExists) {
-        return NextResponse.json(
-          { error: `Bill reference "${normalizedRef}" has already been used. Please use the actual invoice number from the receipt.` },
+          {
+            error:
+              "A stamp was already awarded for this bill amount in the last 5 minutes. Provide a unique invoice/bill reference number to confirm this is a different transaction.",
+          },
           { status: 409 }
         );
       }
     }
 
-    // Execute atomic stamp update & reward creation
-    const result = await db.$transaction(async (tx) => {
-      // Find or create customer
-      let customer = await tx.loyaltyCustomer.findUnique({
-        where: {
-          programId_phone: {
-            programId: program.id,
-            phone,
-          },
-        },
-      });
-
-      if (!customer) {
-        customer = await tx.loyaltyCustomer.create({
-          data: {
-            programId: program.id,
-            phone,
-            name: customerName?.trim() || null,
-            currentStamps: 0,
-            lifetimeStamps: 0,
+    // ── ATOMIC STAMP UPDATE with row-level customer lock ──
+    // We lock the LoyaltyCustomer row with SELECT FOR UPDATE so that concurrent
+    // stamp requests for the same customer serialize — the second request reads
+    // the already-incremented stamp count written by the first, eliminating
+    // the double-increment race condition.
+    const result = await db.$transaction(
+      async (tx) => {
+        // ── 1. Find or create customer, then LOCK the row ──
+        let customer = await tx.loyaltyCustomer.findUnique({
+          where: {
+            programId_phone: {
+              programId: program.id,
+              phone,
+            },
           },
         });
-      } else if (customerName && !customer.name) {
-        customer = await tx.loyaltyCustomer.update({
+
+        if (!customer) {
+          customer = await tx.loyaltyCustomer.create({
+            data: {
+              programId: program.id,
+              phone,
+              name: customerName?.trim() || null,
+              currentStamps: 0,
+              lifetimeStamps: 0,
+            },
+          });
+        } else if (customerName && !customer.name) {
+          customer = await tx.loyaltyCustomer.update({
+            where: { id: customer.id },
+            data: { name: customerName.trim() },
+          });
+        }
+
+        // Lock the customer row so concurrent requests for the same customer serialize.
+        // If two requests arrive simultaneously, the second waits here until the first
+        // commits, then reads the already-updated stamp count.
+        await tx.$queryRaw`
+          SELECT id FROM loyalty_customers WHERE id = ${customer.id} FOR UPDATE
+        `;
+
+        // Re-read fresh stamp count after acquiring the lock (may have changed if another
+        // concurrent request ran first)
+        const freshCustomer = await tx.loyaltyCustomer.findUniqueOrThrow({
           where: { id: customer.id },
-          data: { name: customerName.trim() },
         });
-      }
 
-      const nextLifetime = customer.lifetimeStamps + 1;
-      
-      // If customer previously completed a full card (>= stampsRequired), start new card cycle with 1 stamp
-      let finalStamps = customer.currentStamps >= program.stampsRequired ? 1 : customer.currentStamps + 1;
-      const targetReached = finalStamps === program.stampsRequired;
+        const nextLifetime = freshCustomer.lifetimeStamps + 1;
 
-      let newReward = null;
+        // If customer previously completed a full card (>= stampsRequired), start new card cycle
+        let finalStamps =
+          freshCustomer.currentStamps >= program.stampsRequired
+            ? 1
+            : freshCustomer.currentStamps + 1;
+        const targetReached = finalStamps === program.stampsRequired;
 
-      if (targetReached) {
-        const expiryDate = new Date();
-        expiryDate.setDate(expiryDate.getDate() + (program.rewardExpiryDays || 30));
+        let newReward = null;
 
-        newReward = await tx.loyaltyReward.create({
+        if (targetReached) {
+          const expiryDate = new Date();
+          expiryDate.setDate(expiryDate.getDate() + (program.rewardExpiryDays || 30));
+
+          newReward = await tx.loyaltyReward.create({
+            data: {
+              programId: program.id,
+              customerId: freshCustomer.id,
+              code: generateRewardCode("OFFER"),
+              rewardTitle: program.rewardTitle,
+              discountAmount: program.rewardDiscount,
+              status: "UNREDEEMED",
+              expiresAt: expiryDate,
+            },
+          });
+        }
+
+        const updatedCustomer = await tx.loyaltyCustomer.update({
+          where: { id: freshCustomer.id },
           data: {
-            programId: program.id,
-            customerId: customer.id,
-            code: generateRewardCode("OFFER"),
-            rewardTitle: program.rewardTitle,
-            discountAmount: program.rewardDiscount,
-            status: "UNREDEEMED",
-            expiresAt: expiryDate,
+            currentStamps: finalStamps,
+            lifetimeStamps: nextLifetime,
+            lastVisitAt: new Date(),
           },
         });
+
+        // ── 2. Insert transaction — DB unique index enforces billReference uniqueness ──
+        // If normalizedRef is not null and was already used, Postgres throws a unique
+        // constraint violation (P2002), which we handle in the outer catch.
+        const transaction = await tx.loyaltyTransaction.create({
+          data: {
+            programId: program.id,
+            customerId: freshCustomer.id,
+            stampsCount: 1,
+            billAmount: billAmountPaise,
+            billReference: normalizedRef,
+            staffNote: isOwner ? "Owner Award" : "Direct Visit Award",
+          },
+        });
+
+        return {
+          customer: updatedCustomer,
+          transaction,
+          newReward,
+          targetReached,
+        };
+      },
+      {
+        // Use REPEATABLE READ isolation so that both the stamp read and the write see
+        // a consistent snapshot within the transaction. Combined with the FOR UPDATE
+        // lock this eliminates phantom read issues on the stamp count.
+        isolationLevel: "RepeatableRead",
       }
-
-      const updatedCustomer = await tx.loyaltyCustomer.update({
-        where: { id: customer.id },
-        data: {
-          currentStamps: finalStamps,
-          lifetimeStamps: nextLifetime,
-          lastVisitAt: new Date(),
-        },
-      });
-
-      const transaction = await tx.loyaltyTransaction.create({
-        data: {
-          programId: program.id,
-          customerId: customer.id,
-          stampsCount: 1,
-          billAmount: billAmountPaise,
-          billReference: normalizedRef,
-          staffNote: isOwner ? "Owner Award" : "Direct Visit Award",
-        },
-      });
-
-      return {
-        customer: updatedCustomer,
-        transaction,
-        newReward,
-        targetReached,
-      };
-    });
+    );
 
     return NextResponse.json({
       success: true,
@@ -192,6 +212,17 @@ export async function POST(req: NextRequest) {
       targetReached: result.targetReached,
     });
   } catch (error: any) {
+    // Prisma unique constraint violation — P2002 — means the billReference was already used.
+    // The DB-level unique index (loyalty_tx_unique_bill_ref) caught it even if the
+    // app-level check was bypassed by a concurrent request.
+    if (error?.code === "P2002" && error?.meta?.target?.includes("loyalty_tx_unique_bill_ref")) {
+      return NextResponse.json(
+        {
+          error: `Bill reference "${(error.meta as any)?.billReference || "provided"}" has already been recorded. Each invoice reference must be unique per customer.`,
+        },
+        { status: 409 }
+      );
+    }
     return NextResponse.json(
       { error: error?.message || "Failed to award stamp" },
       { status: 500 }

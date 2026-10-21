@@ -79,11 +79,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── ATOMIC REDEMPTION with row-level lock ──
-    // We use an interactive transaction with raw SQL SELECT FOR UPDATE to prevent
-    // concurrent double-redemptions. Only one concurrent request will hold the
-    // write lock; the other will see status = "REDEEMED" and fail cleanly.
-    const result = await db.$transaction(async (tx) => {
+    // ── ATOMIC REDEMPTION with row-level lock + REPEATABLE READ isolation ──
+    // REPEATABLE READ ensures the status check and update see the same snapshot.
+    // SELECT FOR UPDATE acquires a write lock on the row so concurrent requests queue;
+    // the second request will read status = "REDEEMED" set by the first and fail cleanly.
+    const result = await db.$transaction(
+      async (tx) => {
       // Lock the specific reward row to prevent race conditions
       const locked = await tx.$queryRaw<
         Array<{
@@ -156,9 +157,11 @@ export async function POST(req: NextRequest) {
         },
       });
 
+      // Reset stamp count to 0 so the customer portal shows a fresh initial stamp card
+      // for the next earning cycle after this reward is redeemed.
       await tx.loyaltyCustomer.update({
         where: { id: customer.id },
-        data: { lastVisitAt: new Date() },
+        data: { lastVisitAt: new Date(), currentStamps: 0 },
       });
 
       return {

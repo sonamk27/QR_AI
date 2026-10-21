@@ -46,6 +46,7 @@ type LoyaltyCardData = {
     name: string | null;
     currentStamps: number;
     lifetimeStamps: number;
+    cycleNumber: number;
     rewards: LoyaltyReward[];
     transactions: LoyaltyTransaction[];
   };
@@ -382,6 +383,7 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
             {/* TAB 1: THE STAMP CARD */}
             {activeTab === "card" && (
               <div className="relative overflow-hidden rounded-3xl border border-stone-200/80 bg-white p-5 shadow-md">
+                {/* STAMP CYCLE BADGE */}
                 <div className="flex items-center justify-between border-b border-stone-100 pb-3">
                   <div>
                     <span className="inline-block rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-stone-600">
@@ -393,10 +395,18 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
                   </div>
 
                   <div className="text-right">
-                    <span className="font-display text-2xl font-extrabold text-stone-900">
-                      {currentStamps}
+                    <span
+                      className="inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white mb-1"
+                      style={{ backgroundColor: brandColor }}
+                    >
+                      Card #{data.customer.cycleNumber}
                     </span>
-                    <span className="text-xs font-semibold text-stone-400"> / {stampsRequired}</span>
+                    <div>
+                      <span className="font-display text-2xl font-extrabold text-stone-900">
+                        {currentStamps}
+                      </span>
+                      <span className="text-xs font-semibold text-stone-400"> / {stampsRequired}</span>
+                    </div>
                     <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">
                       {progressPercent}% Complete
                     </p>
@@ -463,6 +473,19 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
                     );
                   })}
                 </div>
+
+                {/* Fresh Cycle Banner — shown when stamps just reset after redemption */}
+                {currentStamps === 0 && data.customer.cycleNumber > 1 && (
+                  <div className="mt-4 rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-4 text-center">
+                    <p className="text-2xl">🎉</p>
+                    <p className="mt-1 text-sm font-bold text-emerald-900">
+                      Offer Redeemed — Fresh Card #{data.customer.cycleNumber} Started!
+                    </p>
+                    <p className="mt-0.5 text-xs text-emerald-700">
+                      Visit & dine to earn your next {stampsRequired} stamps and unlock a new offer voucher.
+                    </p>
+                  </div>
+                )}
 
                 {/* Active Reward Alert */}
                 {activeRewards.length > 0 && (
@@ -594,30 +617,43 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
             {/* TAB 3: TRANSACTION HISTORY */}
             {activeTab === "history" && (
               <div className="rounded-3xl border border-stone-200/80 bg-white p-5 shadow-xs">
-                <h3 className="font-display text-sm font-bold text-stone-900 border-b border-stone-100 pb-2">
-                  Visit &amp; Reward Activity Log
-                </h3>
+                <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+                  <h3 className="font-display text-sm font-bold text-stone-900">
+                    Visit &amp; Reward Activity Log
+                  </h3>
+                  <span className="text-[10px] font-bold text-stone-400">
+                    +91 {data.customer.phone}
+                  </span>
+                </div>
 
                 {data.customer.transactions.length === 0 ? (
                   <p className="py-6 text-center text-xs text-stone-400">
-                    No transactions recorded yet. Scan QR when visiting to record your visits!
+                    No transactions recorded yet. Earn stamps by visiting and spending ₹{Math.round(data.program.minBillAmount / 100)} or more!
                   </p>
                 ) : (
                   <div className="divide-y divide-stone-100 mt-2">
                     {data.customer.transactions.map((tx) => (
-                      <div key={tx.id} className="flex items-center justify-between py-2.5">
-                        <div className="flex items-center gap-2.5">
-                          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 text-sm">
-                            ☕
+                      <div key={tx.id} className="flex items-start justify-between py-2.5 gap-2">
+                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 text-sm">
+                            {tx.stampsCount > 0 ? "☕" : "🎁"}
                           </span>
-                          <div>
+                          <div className="min-w-0">
                             <p className="text-xs font-bold text-stone-900">
-                              +{tx.stampsCount} Visit Recorded
+                              {tx.stampsCount > 0
+                                ? `+${tx.stampsCount} Stamp Earned`
+                                : "Offer Voucher Redeemed"}
                             </p>
+                            {tx.billReference && (
+                              <p className="text-[10px] text-stone-500 font-mono truncate">
+                                Ref: {tx.billReference}
+                              </p>
+                            )}
                             <p className="text-[10px] text-stone-400">
                               {new Date(tx.createdAt).toLocaleDateString("en-IN", {
                                 day: "numeric",
                                 month: "short",
+                                year: "numeric",
                                 hour: "2-digit",
                                 minute: "2-digit",
                               })}
@@ -625,14 +661,14 @@ export function LoyaltyCardView({ slug }: { slug: string }) {
                           </div>
                         </div>
 
-                        <div className="text-right">
+                        <div className="text-right shrink-0">
                           {tx.billAmount && (
-                            <span className="text-xs font-semibold text-stone-600">
-                              ₹{(tx.billAmount / 100).toFixed(0)} bill
+                            <span className="text-xs font-semibold text-stone-700">
+                              ₹{(tx.billAmount / 100).toFixed(0)}
                             </span>
                           )}
-                          {tx.billReference && (
-                            <p className="text-[10px] text-stone-400">Ref: {tx.billReference}</p>
+                          {tx.stampsCount === 0 && (
+                            <p className="text-[10px] font-bold text-emerald-700">REDEEMED</p>
                           )}
                         </div>
                       </div>
