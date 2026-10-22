@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getOrCreateLoyaltyProgram, normalizePhone, generateRewardCode } from "@/lib/loyalty";
+import { verifyTerminalPinWithRateLimit } from "@/lib/loyalty-security";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { slug, phone: rawPhone, name: rawName } = body;
+    const { slug, phone: rawPhone, name: rawName, pin, billReference } = body;
 
     const phone = normalizePhone(rawPhone || "");
     if (!phone || phone.length < 10) {
@@ -33,6 +34,40 @@ export async function POST(req: NextRequest) {
     const program = await getOrCreateLoyaltyProgram(qr.restaurantId);
     if (!program.isActive) {
       return NextResponse.json({ error: "Loyalty program is currently paused" }, { status: 400 });
+    }
+
+    // Check if owner verification is required
+    const requireOwnerPin = Boolean(program.terminalPin && program.terminalPin.trim() !== "");
+    if (requireOwnerPin) {
+      const cleanPin = String(pin || "").trim();
+      if (!cleanPin) {
+        return NextResponse.json(
+          {
+            error: "Owner / Staff verification PIN is required to collect this stamp.",
+            requirePin: true,
+          },
+          { status: 400 }
+        );
+      }
+
+      const ip =
+        req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        req.headers.get("x-real-ip") ||
+        "unknown-ip";
+
+      const pinResult = await verifyTerminalPinWithRateLimit(qr.restaurantId, cleanPin, ip);
+      if (!pinResult.valid) {
+        return NextResponse.json(
+          {
+            error: pinResult.error || "Incorrect owner verification PIN.",
+            isLocked: pinResult.isLocked,
+            minsRemaining: pinResult.minsRemaining,
+            attemptsRemaining: pinResult.attemptsRemaining,
+            requirePin: true,
+          },
+          { status: pinResult.isLocked ? 429 : 401 }
+        );
+      }
     }
 
     // Check if customer already collected a stamp in the last 2 minutes (rapid double-tap guard)
@@ -123,7 +158,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      const uniqueRef = `VISIT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const uniqueRef = (billReference || "").trim() || `VISIT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       const transaction = await tx.loyaltyTransaction.create({
         data: {
           programId: program.id,
@@ -131,7 +166,7 @@ export async function POST(req: NextRequest) {
           stampsCount: 1,
           billAmount: program.minBillAmount,
           billReference: uniqueRef,
-          staffNote: "Diner QR Visit Stamp",
+          staffNote: requireOwnerPin ? "Owner Verified (PIN)" : "Diner QR Visit Stamp",
         },
       });
 
@@ -163,10 +198,13 @@ export async function POST(req: NextRequest) {
     const response = NextResponse.json({
       success: true,
       stampAwarded: true,
+      verifiedByOwner: requireOwnerPin,
       targetReached: result.targetReached,
       newReward: result.newReward,
       message: result.targetReached
-        ? `🎉 Congratulations! You reached ${program.stampsRequired} stamps and unlocked a reward: ${result.newReward?.rewardTitle}!`
+        ? `🎉 Congratulations! Stamp verified by owner! You reached ${program.stampsRequired} stamps and unlocked a reward: ${result.newReward?.rewardTitle}!`
+        : requireOwnerPin
+        ? `🎉 1 Stamp verified by owner! You now have ${result.customer.currentStamps} of ${program.stampsRequired} stamps.`
         : `🎉 1 Stamp added! You now have ${result.customer.currentStamps} of ${program.stampsRequired} stamps.`,
       customer: {
         id: result.customer.id,
@@ -179,7 +217,10 @@ export async function POST(req: NextRequest) {
         rewards: result.customer.rewards,
         transactions: result.customer.transactions,
       },
-      program,
+      program: {
+        ...program,
+        requireOwnerVerification: requireOwnerPin,
+      },
     });
 
     response.cookies.set(`loyalty_phone_${slug}`, phone, {

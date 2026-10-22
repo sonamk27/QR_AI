@@ -108,6 +108,7 @@ export async function getCustomerLoyaltyCard(restaurantId: string, rawPhone: str
       rewardDiscount: program.rewardDiscount,
       rewardExpiryDays: program.rewardExpiryDays,
       isActive: program.isActive,
+      requireOwnerVerification: Boolean(program.terminalPin && program.terminalPin.trim() !== ""),
     },
     customer: {
       id: customer.id,

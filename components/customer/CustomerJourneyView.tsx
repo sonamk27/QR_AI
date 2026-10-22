@@ -27,6 +27,7 @@ export type CustomerJourneyProps = {
     rewardDiscount: number;
     rewardExpiryDays: number;
     isActive: boolean;
+    requireOwnerVerification?: boolean;
   };
   initialPhone?: string | null;
   initialName?: string | null;
@@ -74,7 +75,7 @@ export function CustomerJourneyView({
 }: CustomerJourneyProps) {
   // Navigation View State
   const [currentView, setCurrentView] = useState<
-    "welcome" | "register" | "card" | "stamp_added" | "review" | "reward_details" | "reward_redeemed"
+    "welcome" | "register" | "request_pending" | "card" | "stamp_added" | "review" | "reward_details" | "reward_redeemed"
   >(initialView);
 
   // Customer & Card Data
@@ -84,6 +85,11 @@ export function CustomerJourneyView({
   const [cardError, setCardError] = useState<string | null>(null);
   const [collectingStamp, setCollectingStamp] = useState(false);
   const [stampFeedbackMessage, setStampFeedbackMessage] = useState<string | null>(null);
+
+  // Stamp Request to Owner State
+  const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
+  const [pendingTableNo, setPendingTableNo] = useState<string | null>(null);
+  const [requestError, setRequestError] = useState<string | null>(null);
 
   // Registration Form State (Step 3: Enter Details - No OTP)
   const [fullName, setFullName] = useState(initialName || "");
@@ -136,6 +142,18 @@ export function CustomerJourneyView({
     if (savedPhone) {
       setPhoneNumber(savedPhone);
       fetchLoyaltyCard(savedPhone);
+
+      // Check if there is an active pending stamp request for this phone
+      fetch(`/api/loyalty/request-stamp/status?slug=${encodeURIComponent(slug)}&phone=${encodeURIComponent(savedPhone)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.status === "PENDING") {
+            setPendingRequestId(data.requestId);
+            setPendingTableNo(data.tableNo || null);
+            setCurrentView("request_pending");
+          }
+        })
+        .catch(() => {});
     } else if (initialView === "card") {
       // No phone saved — redirect to register so customer can identify themselves
       setCurrentView("register");
@@ -206,7 +224,60 @@ export function CustomerJourneyView({
     }
   }
 
-  // Collect Stamp Handler (Welcome Screen & Card Button)
+  // Poll status when a stamp request is pending with owner
+  useEffect(() => {
+    if (!pendingRequestId && currentView !== "request_pending") return;
+
+    let isCancelled = false;
+
+    async function checkStatus() {
+      const phoneToUse = customer?.phone || phoneNumber;
+      const url = pendingRequestId
+        ? `/api/loyalty/request-stamp/status?requestId=${encodeURIComponent(pendingRequestId)}`
+        : `/api/loyalty/request-stamp/status?slug=${encodeURIComponent(slug)}&phone=${encodeURIComponent(phoneToUse)}`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        if (isCancelled) return;
+
+        if (data.status === "APPROVED") {
+          setPendingRequestId(null);
+          if (data.customer) {
+            setCustomer({
+              ...data.customer,
+              cycleNumber: data.customer.cycleNumber ?? 1,
+              lastVisitAt: data.customer.lastVisitAt ?? null,
+            });
+          }
+          if (data.program) setProgram(data.program);
+          setStampFeedbackMessage(data.message || "🎉 1 Stamp approved by owner! Added to your card!");
+          setCurrentView("stamp_added");
+        } else if (data.status === "REJECTED") {
+          setPendingRequestId(null);
+          setRequestError(data.message || "Your stamp request was declined by the restaurant staff.");
+        } else if (data.status === "PENDING") {
+          if (!pendingRequestId && data.requestId) {
+            setPendingRequestId(data.requestId);
+          }
+          if (data.tableNo && !pendingTableNo) {
+            setPendingTableNo(data.tableNo);
+          }
+        }
+      } catch (err) {
+        console.error("Status check failed:", err);
+      }
+    }
+
+    checkStatus();
+    const interval = setInterval(checkStatus, 2500);
+    return () => {
+      isCancelled = true;
+      clearInterval(interval);
+    };
+  }, [pendingRequestId, currentView, customer?.phone, phoneNumber, slug, pendingTableNo]);
+
+  // Collect Stamp Handler (Customer sends request to owner)
   async function handleCollectStampClick() {
     const phoneToUse = customer?.phone || phoneNumber;
     if (!phoneToUse) {
@@ -216,8 +287,9 @@ export function CustomerJourneyView({
 
     setCollectingStamp(true);
     setCardError(null);
+    setRequestError(null);
     try {
-      const res = await fetch("/api/loyalty/customer/collect-stamp", {
+      const res = await fetch("/api/loyalty/request-stamp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -228,20 +300,20 @@ export function CustomerJourneyView({
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to collect stamp");
+      if (!res.ok) throw new Error(data.error || "Failed to submit stamp request");
 
-      if (data.customer) {
-        setCustomer(data.customer);
-      }
-      if (data.program) {
-        setProgram(data.program);
+      if (data.alreadyCollected) {
+        setStampFeedbackMessage(data.message || "You already collected your stamp for this visit!");
+        await fetchLoyaltyCard(phoneToUse);
+        setCurrentView("card");
+        return;
       }
 
-      setStampFeedbackMessage(data.message || "1 Stamp awarded for your visit!");
-      setCurrentView("stamp_added");
+      setPendingRequestId(data.requestId);
+      setPendingTableNo(data.tableNo || null);
+      setCurrentView("request_pending");
     } catch (err: any) {
-      await fetchLoyaltyCard(phoneToUse);
-      setCurrentView("card");
+      setCardError(err.message || "Failed to submit stamp request");
     } finally {
       setCollectingStamp(false);
     }
@@ -266,33 +338,32 @@ export function CustomerJourneyView({
     setRegistering(true);
     setRegisterError("");
     try {
-      const res = await fetch("/api/loyalty/customer/register", {
+      localStorage.setItem(`loyalty_phone_${slug}`, finalPhone);
+      localStorage.setItem(`loyalty_name_${slug}`, fullName.trim());
+
+      const res = await fetch("/api/loyalty/request-stamp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           slug,
           name: fullName.trim(),
           phone: finalPhone,
-          collectStamp: true,
         }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to register");
+      if (!res.ok) throw new Error(data.error || "Failed to register request");
 
-      setCustomer(data.customer);
-      if (data.program) setProgram(data.program);
-
-      localStorage.setItem(`loyalty_phone_${slug}`, finalPhone);
-      localStorage.setItem(`loyalty_name_${slug}`, fullName.trim());
-
-      setStampFeedbackMessage(data.message || "1 Stamp awarded for your visit!");
-
-      if (data.stampAwarded || (data.customer?.currentStamps && data.customer.currentStamps > 0)) {
-        setCurrentView("stamp_added");
-      } else {
+      if (data.alreadyCollected) {
+        setStampFeedbackMessage(data.message || "You already received a stamp for this visit!");
+        await fetchLoyaltyCard(finalPhone);
         setCurrentView("card");
+        return;
       }
+
+      setPendingRequestId(data.requestId);
+      setPendingTableNo(data.tableNo || null);
+      setCurrentView("request_pending");
     } catch (err: any) {
       setRegisterError(err.message || "Registration failed. Please try again.");
     } finally {
@@ -598,6 +669,92 @@ export function CustomerJourneyView({
       )}
 
       {/* ─────────────────────────────────────────────────────────────
+          STEP 4: WAITING FOR OWNER APPROVAL (Stamp Request Sent)
+      ───────────────────────────────────────────────────────────── */}
+      {currentView === "request_pending" && (
+        <main className="mx-auto flex min-h-screen max-w-md flex-col justify-between px-6 py-8 text-center">
+          <div className="pt-4">
+            {/* Top Brand Header */}
+            <div className="text-center pb-4">
+              <span className="text-xs font-bold uppercase tracking-wider text-stone-400">
+                {restaurant.name}
+              </span>
+            </div>
+
+            {/* Pulsing Animated Stamp Cup */}
+            <div className="relative mx-auto my-6 flex h-32 w-32 items-center justify-center">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400/40" />
+              <div
+                className="relative flex h-28 w-28 items-center justify-center rounded-3xl text-5xl shadow-md border-4 border-white"
+                style={{ backgroundColor: `${brandColor}18` }}
+              >
+                ☕
+              </div>
+            </div>
+
+            <span className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3.5 py-1 text-xs font-bold text-amber-900 border border-amber-200">
+              <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+              Stamp Request Sent to Owner
+            </span>
+
+            <h1 className="mt-4 font-serif text-2xl font-extrabold text-stone-900">
+              Waiting for Approval
+            </h1>
+            <p className="mx-auto mt-2 max-w-xs text-xs text-stone-600 leading-relaxed">
+              We notified the counter at <strong>{restaurant.name}</strong>. Once the owner approves your visit, your stamp will appear automatically on your card!
+            </p>
+
+            {requestError && (
+              <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">
+                {requestError}
+              </div>
+            )}
+
+            {/* Visit Details Box */}
+            <div className="mx-auto my-6 w-full max-w-xs rounded-2xl border border-stone-200/90 bg-white p-4 text-left shadow-2xs space-y-2.5">
+              <div className="flex justify-between text-xs">
+                <span className="text-stone-400">Diner:</span>
+                <span className="font-bold text-stone-800">
+                  {fullName || customer?.name || "Guest"}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-stone-400">Mobile:</span>
+                <span className="font-mono font-medium text-stone-700">
+                  +91 {phoneNumber}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-stone-400">Location:</span>
+                <span className="font-semibold text-amber-900">
+                  {pendingTableNo || "Table Visit"}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs border-t border-stone-100 pt-2.5">
+                <span className="text-stone-400">Status:</span>
+                <span className="font-bold text-amber-600 flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping" />
+                  Awaiting Owner Confirmation
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="w-full max-w-xs space-y-3 mx-auto pb-4">
+            <button
+              onClick={() => setCurrentView("card")}
+              className="w-full rounded-2xl border border-stone-300 bg-white py-3 text-xs font-bold text-stone-700 shadow-2xs hover:bg-stone-50 transition"
+            >
+              View My Loyalty Card Meanwhile →
+            </button>
+            <p className="text-[11px] text-stone-400">
+              ⚡ Checking for owner approval automatically every 2.5 seconds.
+            </p>
+          </div>
+        </main>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
           STEP 5: MY LOYALTY CARD (Visual Coffee Cup Stamp Dots)
       ───────────────────────────────────────────────────────────── */}
       {currentView === "card" && (
@@ -632,6 +789,22 @@ export function CustomerJourneyView({
               </button>
             </div>
           </div>
+
+          {/* Pending Stamp Request Banner on Card */}
+          {pendingRequestId && (
+            <div className="mt-4 flex items-center justify-between rounded-2xl border border-amber-300 bg-amber-50/90 p-3.5 text-xs text-amber-900 shadow-2xs">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping shrink-0" />
+                <span>Stamp request sent to owner! Waiting for approval...</span>
+              </div>
+              <button
+                onClick={() => setCurrentView("request_pending")}
+                className="ml-2 font-bold underline text-amber-950 shrink-0"
+              >
+                View
+              </button>
+            </div>
+          )}
 
           {loadingCard && !customer ? (
             <div className="py-20 text-center text-xs font-medium text-stone-400">
@@ -720,13 +893,19 @@ export function CustomerJourneyView({
                 {/* Collect Today's Stamp CTA on Card */}
                 <div className="mt-4 pt-3 border-t border-stone-100">
                   <button
-                    onClick={handleCollectStampClick}
+                    onClick={pendingRequestId ? () => setCurrentView("request_pending") : handleCollectStampClick}
                     disabled={collectingStamp}
                     className="w-full rounded-2xl py-3 text-xs font-bold text-white shadow-xs transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
                     style={{ backgroundColor: brandColor }}
                   >
                     <span>☕</span>
-                    <span>{collectingStamp ? "Recording Stamp..." : "Collect Visit Stamp"}</span>
+                    <span>
+                      {pendingRequestId
+                        ? "Approval Pending with Owner →"
+                        : collectingStamp
+                        ? "Sending Request to Owner..."
+                        : "Collect Visit Stamp"}
+                    </span>
                   </button>
                 </div>
               </div>

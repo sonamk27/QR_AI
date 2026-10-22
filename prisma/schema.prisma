@@ -76,6 +76,7 @@ model Restaurant {
   auditLogs          AuditLog[]
   socialClicks       SocialClick[]
   loyaltyProgram     LoyaltyProgram?
+  stampRequests      StampRequest[]
   anonymousCustomers AnonymousCustomer[]
   anonymousVisits    AnonymousVisit[]
 
@@ -243,6 +244,7 @@ model LoyaltyProgram {
   transactions     LoyaltyTransaction[]
   rewards          LoyaltyReward[]
   anonymousRewards AnonymousReward[]
+  stampRequests    StampRequest[]
 
   @@map("loyalty_programs")
 }
@@ -259,6 +261,7 @@ model LoyaltyCustomer {
   createdAt      DateTime             @default(now())
   transactions   LoyaltyTransaction[]
   rewards        LoyaltyReward[]
+  stampRequests  StampRequest[]
 
   @@unique([programId, phone])
   @@index([phone])
@@ -407,4 +410,35 @@ model AnonymousRedemption {
 
   @@index([rewardId])
   @@map("anonymous_redemptions")
+}
+
+enum StampRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model StampRequest {
+  id            String             @id @default(cuid())
+  restaurantId  String             @map("restaurant_id")
+  restaurant    Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  programId     String             @map("program_id")
+  program       LoyaltyProgram     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  customerId    String?            @map("customer_id")
+  customer      LoyaltyCustomer?   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerName  String?            @map("customer_name")
+  customerPhone String             @map("customer_phone")
+  qrSlug        String?            @map("qr_slug")
+  tableNo       String?            @map("table_no")
+  status        StampRequestStatus @default(PENDING)
+  stampsAwarded Int                @default(1) @map("stamps_awarded")
+  staffNote     String?            @map("staff_note")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  reviewedAt    DateTime?          @map("reviewed_at")
+  reviewedById  String?            @map("reviewed_by_id")
+
+  @@index([restaurantId, status])
+  @@index([customerPhone, status])
+  @@index([createdAt])
+  @@map("stamp_requests")
 }

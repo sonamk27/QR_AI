@@ -129,6 +129,10 @@ export async function PATCH(req: NextRequest) {
           body.rewardExpiryDays !== undefined
             ? Math.max(1, Math.min(365, Number(body.rewardExpiryDays)))
             : undefined,
+        terminalPin:
+          body.terminalPin !== undefined
+            ? String(body.terminalPin).trim() || null
+            : undefined,
       },
     });
 

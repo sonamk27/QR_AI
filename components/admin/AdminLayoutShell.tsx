@@ -4,6 +4,7 @@ export function AdminLayoutShell({
   restaurant,
   user,
   pendingRequestsCount,
+  pendingStampRequestsCount,
   children,
 }: {
   restaurant: {
@@ -18,6 +19,7 @@ export function AdminLayoutShell({
     email: string;
   };
   pendingRequestsCount?: number;
+  pendingStampRequestsCount?: number;
   children: React.ReactNode;
 }) {
   return (
@@ -26,6 +28,7 @@ export function AdminLayoutShell({
         restaurant={restaurant}
         user={user}
         pendingRequestsCount={pendingRequestsCount}
+        pendingStampRequestsCount={pendingStampRequestsCount}
       />
       <main className="mx-auto w-full max-w-5xl p-5 md:p-8">
         {restaurant.status !== "ACTIVE" && (

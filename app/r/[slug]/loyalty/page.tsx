@@ -51,6 +51,7 @@ export default async function LoyaltyPage({ params }: { params: { slug: string }
         rewardTitle: program.rewardTitle,
         rewardDiscount: program.rewardDiscount,
         rewardExpiryDays: program.rewardExpiryDays,
+        requireOwnerVerification: Boolean(program.terminalPin && program.terminalPin.trim() !== ""),
       }}
       initialView="card"
     />

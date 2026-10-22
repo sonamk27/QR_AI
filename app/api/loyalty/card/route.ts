@@ -62,6 +62,7 @@ export async function GET(req: NextRequest) {
           rewardDiscount: program.rewardDiscount,
           rewardExpiryDays: program.rewardExpiryDays,
           isActive: program.isActive,
+          requireOwnerVerification: Boolean(program.terminalPin && program.terminalPin.trim() !== ""),
         },
         customer: null,
       });

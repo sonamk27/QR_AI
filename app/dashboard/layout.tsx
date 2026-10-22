@@ -9,18 +9,27 @@ export default async function Layout({ children }: { children: React.ReactNode }
   const ctx = await getOwnerContext();
   if (!ctx) redirect("/login");
 
-  const pendingRequestsCount = await db.qrRequest.count({
-    where: {
-      restaurant: { ownerId: ctx.user.id },
-      status: { in: ["PENDING_APPROVAL", "APPROVED_PAYMENT_DUE"] },
-    },
-  });
+  const [pendingRequestsCount, pendingStampRequestsCount] = await Promise.all([
+    db.qrRequest.count({
+      where: {
+        restaurant: { ownerId: ctx.user.id },
+        status: { in: ["PENDING_APPROVAL", "APPROVED_PAYMENT_DUE"] },
+      },
+    }),
+    db.stampRequest.count({
+      where: {
+        restaurant: { ownerId: ctx.user.id },
+        status: "PENDING",
+      },
+    }),
+  ]);
 
   return (
     <AdminLayoutShell
       restaurant={ctx.restaurant}
       user={ctx.user}
       pendingRequestsCount={pendingRequestsCount}
+      pendingStampRequestsCount={pendingStampRequestsCount}
     >
       {children}
     </AdminLayoutShell>

@@ -64,6 +64,7 @@ export default async function CustomerPage({
         rewardTitle: program.rewardTitle,
         rewardDiscount: program.rewardDiscount,
         rewardExpiryDays: program.rewardExpiryDays,
+        requireOwnerVerification: Boolean(program.terminalPin && program.terminalPin.trim() !== ""),
       }}
       initialView={initialView}
     />

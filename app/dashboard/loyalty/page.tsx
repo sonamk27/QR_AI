@@ -140,6 +140,7 @@ export default async function LoyaltyDashboardPage() {
         rewardTitle: program.rewardTitle,
         rewardDiscount: program.rewardDiscount,
         rewardExpiryDays: program.rewardExpiryDays,
+        terminalPin: program.terminalPin || "1234",
       }}
       stats={{
         totalCustomers: phoneCustomers + anonCustomers,

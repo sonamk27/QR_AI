@@ -14,6 +14,7 @@ export function AdminSidebar({
   restaurant,
   user,
   pendingRequestsCount,
+  pendingStampRequestsCount,
 }: {
   restaurant: {
     id: string;
@@ -26,6 +27,7 @@ export function AdminSidebar({
     email: string;
   };
   pendingRequestsCount?: number;
+  pendingStampRequestsCount?: number;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -39,7 +41,12 @@ export function AdminSidebar({
       badge: pendingRequestsCount && pendingRequestsCount > 0 ? pendingRequestsCount : undefined,
     },
     { href: "/dashboard/qr", label: "QR Codes", icon: "📱" },
-    { href: "/dashboard/loyalty", label: "Stamp & Loyalty", icon: "☕" },
+    {
+      href: "/dashboard/loyalty",
+      label: "Stamp & Loyalty",
+      icon: "☕",
+      badge: pendingStampRequestsCount && pendingStampRequestsCount > 0 ? pendingStampRequestsCount : undefined,
+    },
     { href: "/dashboard/feedback", label: "Guest Feedback", icon: "💬" },
     { href: "/dashboard/drafts", label: "Past Drafts", icon: "✨" },
     { href: "/dashboard/insights", label: "AI Insights", icon: "💡" },

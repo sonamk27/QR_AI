@@ -5,6 +5,7 @@ import { restaurantStats, buildInsights } from "@/lib/analytics";
 import { getQrPricePaise } from "@/lib/plans";
 import { Empty, Stat } from "@/components/Shell";
 import { QrRequestList } from "@/components/QrRequestComponents";
+import { OwnerStampRequestsPanel } from "@/components/loyalty/OwnerStampRequestsPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,9 @@ export default async function Overview() {
         <h1 className="text-3xl font-semibold">{greeting}, {user.name.split(" ")[0]}</h1>
         <p className="text-ink/70">Last 30 days at {restaurant.name}.</p>
       </div>
+
+      {/* Real-time Customer Visit Stamp Requests Panel */}
+      <OwnerStampRequestsPanel restaurantBrandColor={restaurant.brandColor || "#1F6F5C"} />
 
       {serializedApprovedRequests.length > 0 && (
         <section className="space-y-3 rounded-xl border border-blue-200 bg-blue-50/70 p-4 sm:p-5">

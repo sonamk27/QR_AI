@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { OwnerStampRequestsPanel } from "./OwnerStampRequestsPanel";
 
 type Program = {
   id: string;
@@ -302,6 +303,9 @@ export function LoyaltySettingsView({
           </div>
         )}
       </div>
+
+      {/* Real-time Customer Visit Stamp Requests Panel */}
+      <OwnerStampRequestsPanel restaurantBrandColor="#1F6F5C" />
 
       {/* ─────────────────────────────────────────────────────────────
           SECTION 3: 4 TOP KPI METRIC CARDS (Exact match to mockup)
