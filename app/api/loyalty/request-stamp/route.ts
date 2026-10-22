@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getOrCreateLoyaltyProgram, normalizePhone } from "@/lib/loyalty";
 
+// Prisma client regenerated with StampRequest model
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
