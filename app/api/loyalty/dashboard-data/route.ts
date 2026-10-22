@@ -11,7 +11,7 @@ export type LiveActivityItem = {
   title: string;
   description: string;
   customerName: string;
-  customerPhone: string;
+  customerPhone: string | null;
   icon: string;
   badge?: string;
   badgeColor?: "amber" | "emerald" | "rose" | "blue" | "purple";
@@ -128,7 +128,7 @@ export async function GET(req: NextRequest) {
           title: "Stamp Request Received",
           description: `Customer requested a visit stamp from ${req.tableNo || "table QR"}`,
           customerName: req.customerName || "Diner",
-          customerPhone: req.customerPhone,
+          customerPhone: req.customerPhone || "Anonymous",
           icon: "🔔",
           badge: "Awaiting Approval",
           badgeColor: "amber",
@@ -140,9 +140,9 @@ export async function GET(req: NextRequest) {
           id: `req-appr-${req.id}`,
           type: "STAMP_APPROVED",
           title: "Visit Stamp Approved",
-          description: `Owner approved 1 stamp for ${req.customerName || req.customerPhone} (${req.tableNo || "visit"})`,
+          description: `Owner approved 1 stamp for ${req.customerName || req.customerPhone || "customer"} (${req.tableNo || "visit"})`,
           customerName: req.customerName || "Diner",
-          customerPhone: req.customerPhone,
+          customerPhone: req.customerPhone || "Anonymous",
           icon: "✅",
           badge: "+1 Stamp",
           badgeColor: "emerald",
@@ -154,9 +154,9 @@ export async function GET(req: NextRequest) {
           id: `req-rej-${req.id}`,
           type: "STAMP_REJECTED",
           title: "Stamp Request Declined",
-          description: `Owner declined request from ${req.customerName || req.customerPhone}`,
+          description: `Owner declined request from ${req.customerName || req.customerPhone || "customer"}`,
           customerName: req.customerName || "Diner",
-          customerPhone: req.customerPhone,
+          customerPhone: req.customerPhone || "Anonymous",
           icon: "✕",
           badge: "Declined",
           badgeColor: "rose",
@@ -175,7 +175,7 @@ export async function GET(req: NextRequest) {
           title: "Stamp Awarded",
           description: tx.staffNote || "Visit stamp awarded to diner",
           customerName: tx.customer.name || "Diner",
-          customerPhone: tx.customer.phone,
+          customerPhone: tx.customer.phone || null,
           icon: "☕",
           badge: "+1 Stamp",
           badgeColor: "emerald",
@@ -193,7 +193,7 @@ export async function GET(req: NextRequest) {
           title: "Voucher Redeemed",
           description: `Voucher ${r.code} redeemed (${r.rewardTitle})`,
           customerName: r.customer.name || "Diner",
-          customerPhone: r.customer.phone,
+          customerPhone: r.customer.phone || null,
           icon: "🎟️",
           badge: "Redeemed",
           badgeColor: "purple",
@@ -207,7 +207,7 @@ export async function GET(req: NextRequest) {
           title: "Reward Unlocked 🎉",
           description: `Customer reached target stamps and unlocked ${r.rewardTitle}`,
           customerName: r.customer.name || "Diner",
-          customerPhone: r.customer.phone,
+          customerPhone: r.customer.phone || null,
           icon: "🎁",
           badge: "Unlocked",
           badgeColor: "amber",
@@ -225,7 +225,7 @@ export async function GET(req: NextRequest) {
         title: `${fb.overallRating}★ Rating & Feedback`,
         description: fb.freeText || (fb.chips && fb.chips.length > 0 ? fb.chips.join(", ") : "Guest shared dining feedback"),
         customerName: "Diner",
-        customerPhone: fb.qr?.name || "Table QR",
+        customerPhone: fb.qr?.name || null,
         icon: "⭐",
         badge: `${fb.overallRating} Stars`,
         badgeColor: fb.overallRating >= 4 ? "emerald" : "amber",

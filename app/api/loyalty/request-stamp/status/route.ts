@@ -43,6 +43,18 @@ export async function GET(req: NextRequest) {
     }
 
     if (stampRequest.status === "APPROVED") {
+      // For anonymous customers, we don't fetch phone-based card data
+      if (!stampRequest.customerPhone) {
+        return NextResponse.json({
+          status: "APPROVED",
+          requestId: stampRequest.id,
+          stampsAwarded: stampRequest.stampsAwarded,
+          message: "🎉 Your stamp has been approved by the restaurant owner!",
+          isAnonymous: true,
+          reviewedAt: stampRequest.reviewedAt,
+        });
+      }
+
       const cardData = await getCustomerLoyaltyCard(
         stampRequest.restaurantId,
         stampRequest.customerPhone
