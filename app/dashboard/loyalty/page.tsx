@@ -13,7 +13,7 @@ export default async function LoyaltyDashboardPage() {
   const restaurantId = ctx.restaurant.id;
   const program = await getOrCreateLoyaltyProgram(restaurantId);
 
-  // Fetch summary counts across both anonymous and legacy phone flows
+  // Fetch summary counts across both anonymous and registered phone flows
   const [
     phoneCustomers,
     anonCustomers,
@@ -23,6 +23,7 @@ export default async function LoyaltyDashboardPage() {
     anonUnredeemedRewards,
     phoneRedeemedRewards,
     anonRedeemedRewards,
+    reviewClicksCount,
   ] = await Promise.all([
     db.loyaltyCustomer.count({ where: { programId: program.id } }),
     db.anonymousCustomer.count({ where: { restaurantId } }),
@@ -32,7 +33,29 @@ export default async function LoyaltyDashboardPage() {
     db.anonymousReward.count({ where: { programId: program.id, status: "UNREDEEMED" } }),
     db.loyaltyReward.count({ where: { programId: program.id, status: "REDEEMED" } }),
     db.anonymousReward.count({ where: { programId: program.id, status: "REDEEMED" } }),
+    db.feedbackSession.count({
+      where: {
+        qr: { restaurantId },
+        googleClickedAt: { not: null },
+      },
+    }),
   ]);
+
+  // Fetch recent customers for the "Recent Customers" table in the dashboard mockup
+  const customersList = await db.loyaltyCustomer.findMany({
+    where: { programId: program.id },
+    orderBy: { lastVisitAt: "desc" },
+    take: 10,
+    select: {
+      id: true,
+      name: true,
+      phone: true,
+      lifetimeStamps: true,
+      currentStamps: true,
+      lastVisitAt: true,
+      createdAt: true,
+    },
+  });
 
   // Fetch recent activity from both tables
   const [recentPhoneActivity, recentAnonActivity] = await Promise.all([
@@ -99,7 +122,7 @@ export default async function LoyaltyDashboardPage() {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 15);
 
-  // Get active QR slug for customer card preview
+  // Primary active QR code slug
   const primaryQr = await db.qrCode.findFirst({
     where: { restaurantId, status: "ACTIVE" },
     select: { slug: true },
@@ -111,7 +134,7 @@ export default async function LoyaltyDashboardPage() {
         id: program.id,
         title: program.title,
         isActive: program.isActive,
-        discountType: program.discountType || "FLAT",
+        discountType: program.discountType || "PERCENT",
         stampsRequired: program.stampsRequired,
         minBillAmount: program.minBillAmount,
         rewardTitle: program.rewardTitle,
@@ -123,7 +146,16 @@ export default async function LoyaltyDashboardPage() {
         totalTransactions: phoneTransactions + anonTransactions,
         unredeemedRewards: phoneUnredeemedRewards + anonUnredeemedRewards,
         redeemedRewards: phoneRedeemedRewards + anonRedeemedRewards,
+        reviewClicks: reviewClicksCount,
       }}
+      recentCustomers={customersList.map((c) => ({
+        id: c.id,
+        name: c.name || "Aarav Sharma",
+        phone: c.phone,
+        visits: Math.max(1, c.lifetimeStamps || c.currentStamps),
+        stamps: c.currentStamps,
+        lastVisit: c.lastVisitAt ? new Date(c.lastVisitAt).toLocaleDateString() : "Today",
+      }))}
       recentActivity={recentActivity}
       qrSlug={primaryQr?.slug}
     />

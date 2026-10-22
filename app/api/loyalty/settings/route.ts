@@ -78,20 +78,24 @@ export async function PATCH(req: NextRequest) {
       body.discountType !== undefined
         ? body.discountType === "PERCENT"
           ? "PERCENT"
+          : body.discountType === "FREE_ITEM"
+          ? "FREE_ITEM"
           : "FLAT"
         : undefined;
 
     // Determine discount value — interpretation depends on the type that will be saved
-    const resolvedType = effectiveDiscountType ?? program.discountType ?? "FLAT";
+    const resolvedType = effectiveDiscountType ?? program.discountType ?? "PERCENT";
     let rewardDiscountData: number | undefined = undefined;
     if (body.rewardDiscountRupees !== undefined) {
       const rawVal = Number(body.rewardDiscountRupees);
-      if (isNaN(rawVal) || rawVal <= 0) {
-        return NextResponse.json({ error: "Discount value must be a positive number" }, { status: 400 });
+      if (isNaN(rawVal) || rawVal < 0) {
+        return NextResponse.json({ error: "Discount value must be a valid number" }, { status: 400 });
       }
       if (resolvedType === "PERCENT") {
-        // Percentage: store the raw % value (1–90)
-        rewardDiscountData = Math.max(1, Math.min(90, Math.round(rawVal)));
+        // Percentage: store the raw % value (1–100)
+        rewardDiscountData = Math.max(1, Math.min(100, Math.round(rawVal)));
+      } else if (resolvedType === "FREE_ITEM") {
+        rewardDiscountData = 0;
       } else {
         // Flat: convert rupees to paise
         rewardDiscountData = Math.round(rawVal * 100);

@@ -9,12 +9,11 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const slug = searchParams.get("slug");
     const restaurantIdParam = searchParams.get("restaurantId");
-    const phone = searchParams.get("phone");
+    const rawPhone =
+      searchParams.get("phone") ||
+      (slug ? req.cookies.get(`loyalty_phone_${slug}`)?.value : null) ||
+      req.cookies.get("loyalty_phone")?.value;
     const billParam = searchParams.get("billAmount");
-
-    if (!phone) {
-      return NextResponse.json({ error: "Phone number is required" }, { status: 400 });
-    }
 
     let restaurantId = restaurantIdParam;
 
@@ -46,7 +45,29 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Restaurant not found" }, { status: 404 });
     }
 
-    const cardData = await getCustomerLoyaltyCard(restaurantId, phone);
+    const { getOrCreateLoyaltyProgram } = await import("@/lib/loyalty");
+    const program = await getOrCreateLoyaltyProgram(restaurantId);
+
+    if (!rawPhone) {
+      return NextResponse.json({
+        hasCustomer: false,
+        restaurant,
+        program: {
+          id: program.id,
+          title: program.title,
+          discountType: program.discountType || "FLAT",
+          stampsRequired: program.stampsRequired,
+          minBillAmount: program.minBillAmount,
+          rewardTitle: program.rewardTitle,
+          rewardDiscount: program.rewardDiscount,
+          rewardExpiryDays: program.rewardExpiryDays,
+          isActive: program.isActive,
+        },
+        customer: null,
+      });
+    }
+
+    const cardData = await getCustomerLoyaltyCard(restaurantId, rawPhone);
 
     // Optional dynamic real-time bill calculation
     let calculation = null;

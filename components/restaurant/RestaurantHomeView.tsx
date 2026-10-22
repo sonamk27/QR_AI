@@ -177,7 +177,7 @@ export function RestaurantHomeView({ slug, restaurant, program }: { slug: string
                 🎁 View My Offers &amp; Card
               </Link>
               <Link
-                href={`/r/${slug}`}
+                href={`/r/${slug}?view=review`}
                 className="flex-1 rounded-2xl border border-amber-300 bg-amber-100/70 py-3 text-center text-xs font-bold text-amber-950 hover:bg-amber-200 transition active:scale-[0.99]"
               >
                 ✍️ Rate &amp; Claim Offer
@@ -194,7 +194,7 @@ export function RestaurantHomeView({ slug, restaurant, program }: { slug: string
 
           {/* AI Review Flow */}
           <Link
-            href={`/r/${slug}`}
+            href={`/r/${slug}?view=review`}
             className="flex items-center justify-between rounded-2xl border border-stone-200 bg-white p-4 shadow-sm hover:border-stone-400 hover:shadow-md transition active:scale-[0.99]"
           >
             <div className="flex items-center gap-3.5">
@@ -261,30 +261,43 @@ export function RestaurantHomeView({ slug, restaurant, program }: { slug: string
             </a>
           )}
 
-          {/* Google Reviews */}
+          {/* Google Feedback & Reviews */}
           {restaurant.googleReviewUrl && (
-            <a
-              href={restaurant.googleReviewUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm hover:border-zinc-400 hover:shadow-md transition active:scale-[0.99]"
-            >
-              <div className="flex items-center gap-3.5">
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-zinc-100 shadow-2xs">
-                  <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
-                    <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z" />
-                    <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z" />
-                    <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.1-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15.1c0 2.8.7 5.4 1.9 7.8l3.7-2.9z" />
-                    <path fill="#34A853" d="M12 23.2c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2-6.4-4.8L1.9 16.6C3.7 20.4 7.5 23.2 12 23.2z" />
-                  </svg>
-                </span>
-                <div className="text-left">
-                  <h3 className="text-sm font-bold text-stone-900">Google Reviews &amp; Maps</h3>
-                  <p className="text-xs text-stone-500">Read verified customer reviews</p>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm hover:border-zinc-300 transition">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3.5">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-zinc-100 shadow-2xs">
+                    <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
+                      <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z" />
+                      <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z" />
+                      <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.1-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15.1c0 2.8.7 5.4 1.9 7.8l3.7-2.9z" />
+                      <path fill="#34A853" d="M12 23.2c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2-6.4-4.8L1.9 16.6C3.7 20.4 7.5 23.2 12 23.2z" />
+                    </svg>
+                  </span>
+                  <div className="text-left">
+                    <h3 className="text-sm font-bold text-stone-900">Google Feedback &amp; Review</h3>
+                    <p className="text-xs text-stone-500">Draft AI feedback &amp; post to Google</p>
+                  </div>
                 </div>
+                <Link
+                  href={`/r/${slug}?view=review`}
+                  className="rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition"
+                >
+                  Write Review →
+                </Link>
               </div>
-              <span className="text-xs font-bold text-emerald-700">Open Maps ↗</span>
-            </a>
+              <div className="mt-3 flex items-center justify-between border-t border-stone-100 pt-2 text-[11px] text-stone-400">
+                <span>Want to view public profile?</span>
+                <a
+                  href={restaurant.googleReviewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-stone-600 underline hover:text-stone-900"
+                >
+                  Open Google Maps ↗
+                </a>
+              </div>
+            </div>
           )}
         </div>
 
