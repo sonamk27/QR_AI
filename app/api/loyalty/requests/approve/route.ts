@@ -132,11 +132,15 @@ export async function POST(req: NextRequest) {
       }
 
       // ── PHONE-BASED CUSTOMER FLOW ─────────────────────────────────────────
+      if (!stampReq.customerPhone) {
+        throw new Error("Cannot approve stamp request: customer phone is required for phone-based loyalty");
+      }
+
       let customer = await tx.loyaltyCustomer.findUnique({
         where: {
           programId_phone: {
             programId: program.id,
-            phone: stampReq.customerPhone!,
+            phone: stampReq.customerPhone,
           },
         },
       });
@@ -145,7 +149,7 @@ export async function POST(req: NextRequest) {
         customer = await tx.loyaltyCustomer.create({
           data: {
             programId: program.id,
-            phone: stampReq.customerPhone!,
+            phone: stampReq.customerPhone,
             name: stampReq.customerName || null,
             currentStamps: 0,
             lifetimeStamps: 0,
