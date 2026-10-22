@@ -54,6 +54,10 @@ export default async function LoyaltyDashboardPage() {
       currentStamps: true,
       lastVisitAt: true,
       createdAt: true,
+      rewards: {
+        where: { status: "UNREDEEMED" },
+        select: { id: true, code: true, rewardTitle: true, expiresAt: true },
+      },
     },
   });
 
@@ -151,11 +155,12 @@ export default async function LoyaltyDashboardPage() {
       }}
       recentCustomers={customersList.map((c) => ({
         id: c.id,
-        name: c.name || "Aarav Sharma",
+        name: c.name || "Valued Diner",
         phone: c.phone,
         visits: Math.max(1, c.lifetimeStamps || c.currentStamps),
         stamps: c.currentStamps,
         lastVisit: c.lastVisitAt ? new Date(c.lastVisitAt).toLocaleDateString() : "Today",
+        activeRewards: c.rewards,
       }))}
       recentActivity={recentActivity}
       qrSlug={primaryQr?.slug}

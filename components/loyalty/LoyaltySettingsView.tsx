@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { OwnerStampRequestsPanel } from "./OwnerStampRequestsPanel";
 
@@ -22,7 +22,15 @@ type Stats = {
   totalTransactions: number;
   unredeemedRewards: number;
   redeemedRewards: number;
+  pendingStampRequests?: number;
   reviewClicks?: number;
+};
+
+type ActiveRewardSummary = {
+  id: string;
+  code: string;
+  rewardTitle: string;
+  expiresAt: string | Date;
 };
 
 type RecentCustomer = {
@@ -32,19 +40,30 @@ type RecentCustomer = {
   visits: number;
   stamps: number;
   lastVisit: string;
+  activeRewards?: ActiveRewardSummary[];
 };
 
-type RecentActivity = {
+type LiveActivityItem = {
   id: string;
-  stampsCount: number;
-  billAmount: number | null;
-  billReference: string | null;
+  type?: string;
+  title?: string;
+  description?: string;
+  stampsCount?: number;
+  billAmount?: number | null;
+  billReference?: string | null;
   createdAt: string;
-  customer: {
+  customer?: {
     phone: string;
     name: string | null;
-    currentStamps: number;
+    currentStamps?: number;
   };
+  customerName?: string;
+  customerPhone?: string;
+  icon?: string;
+  badge?: string;
+  badgeColor?: "amber" | "emerald" | "rose" | "blue" | "purple";
+  tableNo?: string | null;
+  code?: string | null;
 };
 
 export function LoyaltySettingsView({
@@ -57,7 +76,7 @@ export function LoyaltySettingsView({
   initialProgram: Program;
   stats: Stats;
   recentCustomers?: RecentCustomer[];
-  recentActivity?: RecentActivity[];
+  recentActivity?: LiveActivityItem[] | any[];
   qrSlug?: string;
 }) {
   const [program, setProgram] = useState(initialProgram);
@@ -95,6 +114,73 @@ export function LoyaltySettingsView({
   const [redeemVoucherCode, setRedeemVoucherCode] = useState("");
   const [redeemLoading, setRedeemLoading] = useState(false);
   const [redeemFeedback, setRedeemFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  // Real-time Live State synchronized directly with backend
+  const [liveStats, setLiveStats] = useState<Stats>(stats);
+  const [liveCustomers, setLiveCustomers] = useState<RecentCustomer[]>(recentCustomers);
+  const [liveActivity, setLiveActivity] = useState<LiveActivityItem[]>(recentActivity as any);
+  const [monthlyGrowth, setMonthlyGrowth] = useState<{ month: string; count: number }[]>([]);
+  const [quickStampLoadingPhone, setQuickStampLoadingPhone] = useState<string | null>(null);
+  const [quickStampFeedback, setQuickStampFeedback] = useState<{ phone: string; message: string; type: "success" | "error" } | null>(null);
+
+  async function refreshDashboardData() {
+    try {
+      const res = await fetch("/api/loyalty/dashboard-data");
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (data.stats) setLiveStats(data.stats);
+        if (data.customers) setLiveCustomers(data.customers);
+        if (data.recentActivity) setLiveActivity(data.recentActivity);
+        if (data.monthlyGrowth) setMonthlyGrowth(data.monthlyGrowth);
+        if (data.program) setProgram((prev) => ({ ...prev, ...data.program }));
+      }
+    } catch (err) {
+      console.error("Dashboard refresh failed:", err);
+    }
+  }
+
+  // Live auto-refresh polling every 4 seconds
+  useEffect(() => {
+    refreshDashboardData();
+    const interval = setInterval(refreshDashboardData, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Quick 1-Click Stamp issuance from customer row
+  async function handleQuickStamp(phone: string, customerName?: string) {
+    setQuickStampLoadingPhone(phone);
+    setQuickStampFeedback(null);
+    try {
+      const res = await fetch("/api/loyalty/stamp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone,
+          customerName,
+          billReference: `COUNTER-${Date.now().toString().slice(-4)}`,
+          billAmountRupees: Math.max(1, minBillRupees || 100),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to award stamp");
+
+      setQuickStampFeedback({
+        phone,
+        type: "success",
+        message: data.message || `+1 Stamp awarded to ${customerName || phone}!`,
+      });
+      setTimeout(() => setQuickStampFeedback(null), 4000);
+      await refreshDashboardData();
+    } catch (err: any) {
+      setQuickStampFeedback({
+        phone,
+        type: "error",
+        message: err.message || "Failed to award stamp",
+      });
+    } finally {
+      setQuickStampLoadingPhone(null);
+    }
+  }
 
   // Auto-suggest Reward Title based on settings
   function handleTypeChange(newType: "PERCENT" | "FLAT" | "FREE_ITEM") {
@@ -180,6 +266,7 @@ export function LoyaltySettingsView({
       });
       setStampVisitRef("");
       setStampNote("");
+      await refreshDashboardData();
     } catch (err: any) {
       setStampFeedback({
         type: "error",
@@ -214,6 +301,7 @@ export function LoyaltySettingsView({
         message: data.message || `Voucher ${redeemVoucherCode} redeemed successfully!`,
       });
       setRedeemVoucherCode("");
+      await refreshDashboardData();
     } catch (err: any) {
       setRedeemFeedback({
         type: "error",
@@ -224,53 +312,41 @@ export function LoyaltySettingsView({
     }
   }
 
-  // Fallback demo recent customers if database is fresh
-  const displayCustomers: RecentCustomer[] =
-    recentCustomers.length > 0
-      ? recentCustomers
-      : [
-          { id: "1", name: "Aarav Sharma", phone: "98765 43210", visits: 8, stamps: 4, lastVisit: "Today" },
-          { id: "2", name: "Riya Mehta", phone: "91234 56789", visits: 5, stamps: 5, lastVisit: "2 days ago" },
-          { id: "3", name: "Karan Patel", phone: "99887 66554", visits: 3, stamps: 3, lastVisit: "3 days ago" },
-          { id: "4", name: "Ananya Iyer", phone: "98112 33445", visits: 2, stamps: 2, lastVisit: "5 days ago" },
-        ];
+  // Dynamic live values from database
+  const displayCustomers: RecentCustomer[] = liveCustomers;
+  const displayActivity: LiveActivityItem[] = liveActivity;
 
-  // Fallback demo recent activities if list is fresh
-  const displayActivity =
-    recentActivity.length > 0
-      ? recentActivity
-      : [
-          {
-            id: "act-1",
-            stampsCount: 1,
-            billAmount: 45000,
-            billReference: "INV-1024",
-            createdAt: new Date(Date.now() - 10 * 60000).toISOString(),
-            customer: { phone: "9876543210", name: "Aarav Sharma", currentStamps: 4 },
-          },
-          {
-            id: "act-2",
-            stampsCount: 0,
-            billAmount: 62000,
-            billReference: "OFFER-30%",
-            createdAt: new Date(Date.now() - 120 * 60000).toISOString(),
-            customer: { phone: "9123456789", name: "Riya Mehta", currentStamps: 5 },
-          },
-          {
-            id: "act-3",
-            stampsCount: 1,
-            billAmount: 38000,
-            billReference: "INV-1022",
-            createdAt: new Date(Date.now() - 240 * 60000).toISOString(),
-            customer: { phone: "9988766554", name: "Karan Patel", currentStamps: 3 },
-          },
-        ];
+  const totalMembersVal = liveStats.totalCustomers.toLocaleString();
+  const stampsIssuedVal = liveStats.totalTransactions.toLocaleString();
+  const rewardsRedeemedVal = liveStats.redeemedRewards.toLocaleString();
+  const reviewClicksVal = (liveStats.reviewClicks || 0).toLocaleString();
 
-  // Dynamic values or mock stats from the diagram
-  const totalMembersVal = stats.totalCustomers > 0 ? stats.totalCustomers.toLocaleString() : "1,240";
-  const stampsIssuedVal = stats.totalTransactions > 0 ? stats.totalTransactions.toLocaleString() : "3,680";
-  const rewardsRedeemedVal = stats.redeemedRewards > 0 ? stats.redeemedRewards.toLocaleString() : "186";
-  const reviewClicksVal = stats.reviewClicks && stats.reviewClicks > 0 ? stats.reviewClicks.toLocaleString() : "324";
+  // Customer growth chart points based on real monthly backend data
+  const monthsData = monthlyGrowth.length === 6
+    ? monthlyGrowth
+    : [
+        { month: "May", count: 0 },
+        { month: "Jun", count: 0 },
+        { month: "Jul", count: 0 },
+        { month: "Aug", count: 0 },
+        { month: "Sep", count: 0 },
+        { month: "Oct", count: liveStats.totalCustomers },
+      ];
+
+  const maxGrowth = Math.max(1, ...monthsData.map((m) => m.count));
+  const chartPoints = monthsData.map((m, idx) => {
+    const x = 35 + idx * 85;
+    const y = 135 - (m.count / maxGrowth) * 95;
+    return { x, y, month: m.month, count: m.count };
+  });
+
+  const chartPathD = chartPoints.map((p, idx) => `${idx === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+  const chartAreaD = `${chartPathD} L ${chartPoints[chartPoints.length - 1].x} 150 L ${chartPoints[0].x} 150 Z`;
+
+  // Dynamic Donut Breakdown
+  const totalVouchers = liveStats.redeemedRewards + liveStats.unredeemedRewards;
+  const redeemedPct = totalVouchers > 0 ? Math.round((liveStats.redeemedRewards / totalVouchers) * 100) : 0;
+  const pendingPct = totalVouchers > 0 ? 100 - redeemedPct : 0;
 
   return (
     <div className="space-y-8 font-sans pb-16">
@@ -286,7 +362,7 @@ export function LoyaltySettingsView({
             </span>
           </div>
           <p className="text-xs text-stone-500 mt-0.5">
-            Manage your program, track growth and understand your customers.
+            Manage your program, track growth and understand your customers in real-time.
           </p>
         </div>
 
@@ -305,7 +381,10 @@ export function LoyaltySettingsView({
       </div>
 
       {/* Real-time Customer Visit Stamp Requests Panel */}
-      <OwnerStampRequestsPanel restaurantBrandColor="#1F6F5C" />
+      <OwnerStampRequestsPanel
+        restaurantBrandColor="#1F6F5C"
+        onApprovedOrRejected={refreshDashboardData}
+      />
 
       {/* ─────────────────────────────────────────────────────────────
           SECTION 3: 4 TOP KPI METRIC CARDS (Exact match to mockup)
@@ -316,7 +395,7 @@ export function LoyaltySettingsView({
           <div className="flex items-center justify-between">
             <span className="text-xl">👥</span>
             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-              +12%
+              Active
             </span>
           </div>
           <div className="mt-3">
@@ -330,7 +409,7 @@ export function LoyaltySettingsView({
           <div className="flex items-center justify-between">
             <span className="text-xl">☕</span>
             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-              +18%
+              Awarded
             </span>
           </div>
           <div className="mt-3">
@@ -344,7 +423,7 @@ export function LoyaltySettingsView({
           <div className="flex items-center justify-between">
             <span className="text-xl">🎁</span>
             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-              +22%
+              Redeemed
             </span>
           </div>
           <div className="mt-3">
@@ -358,12 +437,12 @@ export function LoyaltySettingsView({
           <div className="flex items-center justify-between">
             <span className="text-xl">📊</span>
             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-              +45%
+              Guests
             </span>
           </div>
           <div className="mt-3">
             <div className="text-2xl font-extrabold text-stone-900">{reviewClicksVal}</div>
-            <div className="text-xs font-semibold text-stone-500 mt-0.5">Review Clicks</div>
+            <div className="text-xs font-semibold text-stone-500 mt-0.5">Guest Feedback</div>
           </div>
         </div>
       </div>
@@ -398,36 +477,26 @@ export function LoyaltySettingsView({
                 <line x1="0" y1="110" x2="500" y2="110" stroke="#F3F4F6" strokeDasharray="4 4" />
 
                 {/* Area Fill */}
-                <path
-                  d="M 10 140 Q 90 120 170 95 T 330 60 T 490 25 L 490 150 L 10 150 Z"
-                  fill="url(#growthGrad)"
-                />
+                <path d={chartAreaD} fill="url(#growthGrad)" />
                 {/* Line Spline */}
-                <path
-                  d="M 10 140 Q 90 120 170 95 T 330 60 T 490 25"
-                  fill="none"
-                  stroke="#B45309"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                />
+                <path d={chartPathD} fill="none" stroke="#B45309" strokeWidth="3" strokeLinecap="round" />
                 {/* Data Points */}
-                <circle cx="10" cy="140" r="4" fill="#B45309" />
-                <circle cx="90" cy="120" r="4" fill="#B45309" />
-                <circle cx="170" cy="95" r="4" fill="#B45309" />
-                <circle cx="250" cy="78" r="4" fill="#B45309" />
-                <circle cx="330" cy="60" r="4" fill="#B45309" />
-                <circle cx="410" cy="42" r="4" fill="#B45309" />
-                <circle cx="490" cy="25" r="5" fill="#B45309" stroke="#FFFFFF" strokeWidth="2" />
+                {chartPoints.map((p, idx) => (
+                  <g key={idx}>
+                    <circle cx={p.x} cy={p.y} r={p.count > 0 ? "5" : "3"} fill="#B45309" stroke="#FFFFFF" strokeWidth="2" />
+                    {p.count > 0 && (
+                      <text x={p.x} y={p.y - 8} textAnchor="middle" fontSize="10" fontWeight="bold" fill="#B45309">
+                        {p.count}
+                      </text>
+                    )}
+                  </g>
+                ))}
               </svg>
 
-              <div className="mt-2 flex justify-between text-[10px] font-semibold text-stone-400">
-                <span>Jan</span>
-                <span>Feb</span>
-                <span>Mar</span>
-                <span>Apr</span>
-                <span>May</span>
-                <span>Jun</span>
-                <span>Jul</span>
+              <div className="mt-2 flex justify-between px-6 text-[10px] font-semibold text-stone-400">
+                {monthsData.map((m, idx) => (
+                  <span key={idx}>{m.month}</span>
+                ))}
               </div>
             </div>
           </div>
@@ -459,13 +528,13 @@ export function LoyaltySettingsView({
                   fill="none"
                   stroke="#B45309"
                   strokeWidth="3.5"
-                  strokeDasharray="72 28"
+                  strokeDasharray={`${redeemedPct} ${100 - redeemedPct}`}
                   strokeDashoffset="0"
                   strokeLinecap="round"
                 />
               </svg>
               <div className="absolute text-center">
-                <span className="text-xl font-black text-stone-900">{rewardsRedeemedVal}</span>
+                <span className="text-xl font-black text-stone-900">{liveStats.redeemedRewards}</span>
                 <span className="block text-[9px] font-bold text-stone-400 uppercase">Redeemed</span>
               </div>
             </div>
@@ -473,16 +542,30 @@ export function LoyaltySettingsView({
             <div className="mt-4 flex items-center justify-center gap-6 text-xs">
               <div className="flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full bg-amber-700" />
-                <span className="font-semibold text-stone-700">Redeemed (72%)</span>
+                <span className="font-semibold text-stone-700">Redeemed ({redeemedPct}%)</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full bg-stone-300" />
-                <span className="font-semibold text-stone-500">Pending (28%)</span>
+                <span className="font-semibold text-stone-500">Pending ({pendingPct}%)</span>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Quick Stamp Feedback Toast */}
+      {quickStampFeedback && (
+        <div
+          className={`rounded-2xl p-3.5 text-xs font-semibold shadow-xs transition ${
+            quickStampFeedback.type === "success"
+              ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border border-rose-200 bg-rose-50 text-rose-800"
+          }`}
+        >
+          {quickStampFeedback.type === "success" ? "✓ " : "⚠️ "}
+          {quickStampFeedback.message}
+        </div>
+      )}
 
       {/* ─────────────────────────────────────────────────────────────
           TABLES ROW: Recent Customers & Recent Activity Feed
@@ -501,68 +584,132 @@ export function LoyaltySettingsView({
           </div>
 
           <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-stone-200/80 text-[11px] font-bold text-stone-400 uppercase">
-                  <th className="py-2.5">Name</th>
-                  <th className="py-2.5">Phone</th>
-                  <th className="py-2.5 text-center">Visits</th>
-                  <th className="py-2.5 text-center">Stamps</th>
-                  <th className="py-2.5 text-right">Last Visit</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100">
-                {displayCustomers.map((c) => (
-                  <tr key={c.id} className="hover:bg-stone-50/60 transition">
-                    <td className="py-3 font-semibold text-stone-900 flex items-center gap-2">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-[10px] font-bold text-amber-900">
-                        {c.name.slice(0, 1).toUpperCase()}
-                      </span>
-                      <span>{c.name}</span>
-                    </td>
-                    <td className="py-3 font-mono text-stone-600">{c.phone}</td>
-                    <td className="py-3 text-center font-bold text-stone-800">{c.visits}</td>
-                    <td className="py-3 text-center">
-                      <span className="inline-block rounded-md bg-amber-50 border border-amber-200 px-2 py-0.5 font-bold text-amber-900">
-                        ☕ {c.stamps}/{stampsRequired}
-                      </span>
-                    </td>
-                    <td className="py-3 text-right font-medium text-stone-500">{c.lastVisit}</td>
+            {displayCustomers.length === 0 ? (
+              <div className="py-12 text-center text-xs text-stone-400">
+                <span className="text-3xl block mb-2">👥</span>
+                No customers registered yet. When diners scan your QR code at tables, they appear here live!
+              </div>
+            ) : (
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-stone-200/80 text-[11px] font-bold text-stone-400 uppercase">
+                    <th className="py-2.5">Name</th>
+                    <th className="py-2.5">Phone</th>
+                    <th className="py-2.5 text-center">Visits</th>
+                    <th className="py-2.5 text-center">Stamps</th>
+                    <th className="py-2.5 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {displayCustomers.map((c) => (
+                    <tr key={c.id} className="hover:bg-stone-50/60 transition">
+                      <td className="py-3 font-semibold text-stone-900">
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[10px] font-bold text-amber-900">
+                            {c.name.slice(0, 1).toUpperCase()}
+                          </span>
+                          <span className="truncate">{c.name}</span>
+                        </div>
+                        {c.activeRewards && c.activeRewards.length > 0 && (
+                          <div className="mt-1">
+                            <span
+                              onClick={() => {
+                                setRedeemVoucherCode(c.activeRewards![0].code);
+                                const el = document.getElementById("redeem-tool");
+                                el?.scrollIntoView({ behavior: "smooth" });
+                              }}
+                              className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-900 hover:bg-amber-200 cursor-pointer"
+                              title={`Click to redeem voucher: ${c.activeRewards[0].code}`}
+                            >
+                              🎁 Voucher Ready: {c.activeRewards[0].code}
+                            </span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 font-mono text-stone-600">+91 {c.phone}</td>
+                      <td className="py-3 text-center font-bold text-stone-800">{c.visits}</td>
+                      <td className="py-3 text-center">
+                        <span className="inline-block rounded-md bg-amber-50 border border-amber-200 px-2 py-0.5 font-bold text-amber-900">
+                          ☕ {c.stamps}/{stampsRequired}
+                        </span>
+                      </td>
+                      <td className="py-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-[11px] text-stone-400 hidden sm:inline">{c.lastVisit}</span>
+                          <button
+                            onClick={() => handleQuickStamp(c.phone, c.name)}
+                            disabled={quickStampLoadingPhone === c.phone}
+                            className="rounded-lg bg-stone-900 hover:bg-stone-800 text-white px-2.5 py-1 text-[11px] font-bold shadow-2xs transition active:scale-95 disabled:opacity-50"
+                            title="Directly award 1 stamp to this customer"
+                          >
+                            {quickStampLoadingPhone === c.phone ? "..." : "+1 Stamp"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 
         {/* Recent Activity Timeline Feed */}
         <div className="rounded-2xl border border-stone-200/80 bg-white p-5 shadow-xs">
-          <div className="border-b border-stone-100 pb-3">
-            <h3 className="text-sm font-bold text-stone-900">Recent Activity</h3>
-            <p className="text-[11px] text-stone-400">Live timeline of stamps &amp; offers</p>
+          <div className="border-b border-stone-100 pb-3 flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-stone-900">Recent Activity</h3>
+              <p className="text-[11px] text-stone-400">Live timeline of stamps &amp; offers</p>
+            </div>
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Live
+            </span>
           </div>
 
-          <div className="mt-4 space-y-3.5 max-h-72 overflow-y-auto pr-1">
-            {displayActivity.map((act) => (
-              <div key={act.id} className="flex items-start gap-3 text-xs">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-50 text-sm">
-                  {act.stampsCount > 0 ? "☕" : "🎁"}
-                </span>
-                <div className="flex-1 leading-tight">
-                  <p className="font-bold text-stone-800">
-                    {act.customer.name || act.customer.phone}
-                  </p>
-                  <p className="text-[11px] text-stone-500 mt-0.5">
-                    {act.stampsCount > 0
-                      ? `Earned a stamp (${act.billReference || "visit"})`
-                      : "Redeemed reward voucher"}
-                  </p>
-                  <span className="text-[10px] text-stone-400">
-                    {new Date(act.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                </div>
+          <div className="mt-4 space-y-3 max-h-80 overflow-y-auto pr-1">
+            {displayActivity.length === 0 ? (
+              <div className="py-12 text-center text-xs text-stone-400">
+                <span className="text-3xl block mb-2">📜</span>
+                No activity recorded yet. Customer visit stamps, requests, approvals, and voucher redemptions will appear here live.
               </div>
-            ))}
+            ) : (
+              displayActivity.map((act) => (
+                <div key={act.id} className="flex items-start gap-2.5 p-2 rounded-xl bg-stone-50/70 border border-stone-100 text-xs hover:bg-stone-100/70 transition">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white border border-stone-200 text-sm shadow-2xs">
+                    {act.icon || (act.stampsCount && act.stampsCount > 0 ? "☕" : "🎁")}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-bold text-stone-900 truncate">
+                        {act.title || act.customerName || act.customer?.name || act.customerPhone}
+                      </span>
+                      {act.badge && (
+                        <span className={`shrink-0 rounded-full px-1.5 py-0.2 text-[9px] font-bold ${
+                          act.badgeColor === "emerald"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : act.badgeColor === "rose"
+                            ? "bg-rose-50 text-rose-700 border border-rose-200"
+                            : act.badgeColor === "purple"
+                            ? "bg-purple-50 text-purple-700 border border-purple-200"
+                            : "bg-amber-50 text-amber-800 border border-amber-200"
+                        }`}>
+                          {act.badge}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-stone-600 truncate mt-0.5">
+                      {act.description || (act.stampsCount && act.stampsCount > 0 ? `Earned stamp (${act.billReference || "visit"})` : "Offer activity")}
+                    </p>
+                    <div className="flex items-center gap-1.5 text-[10px] text-stone-400 mt-1">
+                      <span className="truncate">{act.customerName || act.customer?.name || act.customerPhone}</span>
+                      <span>•</span>
+                      <span>{new Date(act.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -640,7 +787,7 @@ export function LoyaltySettingsView({
         </div>
 
         {/* Tool 2: Staff Voucher Redemption Tool */}
-        <div className="rounded-2xl border border-stone-200/90 bg-white p-5 shadow-xs space-y-4">
+        <div id="redeem-tool" className="rounded-2xl border border-stone-200/90 bg-white p-5 shadow-xs space-y-4">
           <div className="border-b border-stone-100 pb-3">
             <div className="flex items-center gap-2">
               <span className="text-lg">🎟️</span>
