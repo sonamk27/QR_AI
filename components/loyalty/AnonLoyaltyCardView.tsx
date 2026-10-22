@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import QRCode from "qrcode";
 
@@ -77,6 +77,21 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
   // Dynamic Diner Bill Calculator
   const [dinerBillInput, setDinerBillInput] = useState<string>("");
 
+  // ── Owner Approval Stamp Request State ──────────────────────────────────
+  type StampRequestStatus = "idle" | "submitting" | "pending" | "approved" | "rejected" | "error";
+  const [stampReqStatus, setStampReqStatus] = useState<StampRequestStatus>("idle");
+  const [stampReqId, setStampReqId] = useState<string | null>(null);
+  const [stampReqMessage, setStampReqMessage] = useState<string | null>(null);
+  const [stampReqTableNo, setStampReqTableNo] = useState<string | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Clear polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     fetchCard();
   }, [slug]);
@@ -122,6 +137,72 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
     navigator.clipboard?.writeText(text);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
+  }
+
+  // ── Owner Approval Flow ──────────────────────────────────────────────────
+  async function handleRequestStamp() {
+    if (stampReqStatus === "submitting" || stampReqStatus === "pending") return;
+
+    setStampReqStatus("submitting");
+    setStampReqMessage(null);
+
+    try {
+      const res = await fetch("/api/loyalty/anon/request-stamp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Failed to send stamp request");
+
+      if (data.alreadyCollected) {
+        setStampReqStatus("approved");
+        setStampReqMessage(data.message || "You already received a stamp for this visit!");
+        return;
+      }
+
+      setStampReqId(data.requestId);
+      setStampReqTableNo(data.tableNo || null);
+      setStampReqStatus(data.alreadyPending ? "pending" : "pending");
+      setStampReqMessage("Waiting for owner approval…");
+
+      // Start polling
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = setInterval(() => {
+        pollRequestStatus(data.requestId);
+      }, 4000);
+    } catch (err: any) {
+      setStampReqStatus("error");
+      setStampReqMessage(err.message || "Could not send request. Please try again.");
+    }
+  }
+
+  async function pollRequestStatus(reqId: string) {
+    try {
+      const res = await fetch(
+        `/api/loyalty/anon/request-stamp/status?slug=${encodeURIComponent(slug)}&requestId=${reqId}`
+      );
+      const data = await res.json();
+
+      if (!res.ok) return; // silent fail on polling
+
+      if (data.status === "APPROVED") {
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        setStampReqStatus("approved");
+        setStampReqMessage(
+          `🎉 Stamp approved! You now have ${data.currentStamps ?? "updated"} stamp${(data.currentStamps ?? 1) !== 1 ? "s" : ""} on your card.`
+        );
+        // Refresh the card data to show updated stamps
+        fetchCard();
+      } else if (data.status === "REJECTED") {
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        setStampReqStatus("rejected");
+        setStampReqMessage("Request declined by the owner. Please speak to staff if you believe this is an error.");
+      }
+    } catch {
+      // silent fail during polling
+    }
   }
 
   const brandColor = data?.restaurant.brandColor || "#1F6F5C";
@@ -478,25 +559,113 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
                   )}
                 </div>
 
-                {/* Staff Stamp Instructions */}
+                {/* ── Request Stamp from Owner ── */}
                 <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xs">
                   <h5 className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
-                    <span>🧾</span> How Staff Awards Stamps
+                    <span>📲</span> Request a Stamp from Owner
                   </h5>
                   <p className="mt-1 text-[11px] text-stone-500 leading-relaxed">
-                    Show your bill to the restaurant staff. Staff enters your invoice reference into the loyalty tool to add your stamp.
+                    Tap the button after your visit. The owner will see your request on their dashboard and approve it in real-time.
                   </p>
-                  <div className="mt-3 flex items-center justify-between rounded-xl bg-stone-50 px-3 py-2">
-                    <span className="text-[11px] font-mono text-stone-600">
-                      Customer Ref: {data.customer.id}
-                    </span>
-                    <button
-                      onClick={() => handleCopy(data.customer.id)}
-                      className="rounded-lg bg-stone-200 px-2 py-1 text-[10px] font-bold text-stone-700 hover:bg-stone-300 transition"
-                    >
-                      {copiedCode ? "Copied!" : "Copy Ref"}
-                    </button>
-                  </div>
+
+                  {/* Idle / Error state — show the button */}
+                  {(stampReqStatus === "idle" || stampReqStatus === "error") && (
+                    <div className="mt-3 space-y-2">
+                      <button
+                        onClick={handleRequestStamp}
+                        className="w-full rounded-xl py-3 text-sm font-bold text-white shadow-sm transition hover:brightness-105 active:scale-[0.98]"
+                        style={{ backgroundColor: brandColor }}
+                      >
+                        ☕ Request Visit Stamp
+                      </button>
+                      {stampReqStatus === "error" && stampReqMessage && (
+                        <p className="text-center text-[11px] font-semibold text-rose-600">
+                          ⚠️ {stampReqMessage}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Submitting state */}
+                  {stampReqStatus === "submitting" && (
+                    <div className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-stone-50 py-3">
+                      <span className="h-3.5 w-3.5 rounded-full border-2 border-stone-300 border-t-stone-700 animate-spin" />
+                      <span className="text-xs font-semibold text-stone-600">Sending request…</span>
+                    </div>
+                  )}
+
+                  {/* Pending state — waiting for owner */}
+                  {stampReqStatus === "pending" && (
+                    <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3.5">
+                      <div className="flex items-center gap-2">
+                        <span className="h-3.5 w-3.5 rounded-full border-2 border-amber-400 border-t-amber-700 animate-spin shrink-0" />
+                        <span className="text-xs font-bold text-amber-900">
+                          Awaiting owner approval…
+                        </span>
+                        <span className="ml-auto rounded-full bg-amber-400/30 px-2 py-0.5 text-[10px] font-bold text-amber-900 animate-pulse">
+                          LIVE
+                        </span>
+                      </div>
+                      {stampReqTableNo && (
+                        <p className="mt-1.5 text-[11px] text-amber-700">
+                          📍 {stampReqTableNo} — Request sent to owner dashboard
+                        </p>
+                      )}
+                      <p className="mt-1 text-[10px] text-amber-600">
+                        Keep this page open. Your stamp will appear automatically when approved.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Approved state */}
+                  {stampReqStatus === "approved" && (
+                    <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">✅</span>
+                        <span className="text-xs font-bold text-emerald-800">
+                          Stamp Approved!
+                        </span>
+                      </div>
+                      {stampReqMessage && (
+                        <p className="mt-1 text-[11px] text-emerald-700">{stampReqMessage}</p>
+                      )}
+                      <button
+                        onClick={() => {
+                          setStampReqStatus("idle");
+                          setStampReqId(null);
+                          setStampReqMessage(null);
+                        }}
+                        className="mt-2 text-[11px] font-semibold text-emerald-700 underline"
+                      >
+                        Request another stamp
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Rejected state */}
+                  {stampReqStatus === "rejected" && (
+                    <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">❌</span>
+                        <span className="text-xs font-bold text-rose-800">
+                          Request Declined
+                        </span>
+                      </div>
+                      {stampReqMessage && (
+                        <p className="mt-1 text-[11px] text-rose-700">{stampReqMessage}</p>
+                      )}
+                      <button
+                        onClick={() => {
+                          setStampReqStatus("idle");
+                          setStampReqId(null);
+                          setStampReqMessage(null);
+                        }}
+                        className="mt-2 text-[11px] font-semibold text-rose-700 underline"
+                      >
+                        Try again
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

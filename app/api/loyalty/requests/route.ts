@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
     const restaurantId = ctx.restaurant.id;
 
-    // Fetch pending requests
+    // Fetch pending requests (phone-based + anonymous)
     const pendingRequests = await db.stampRequest.findMany({
       where: {
         restaurantId,
@@ -22,6 +22,12 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" },
       include: {
         customer: {
+          select: {
+            currentStamps: true,
+            lifetimeStamps: true,
+          },
+        },
+        anonCustomer: {
           select: {
             currentStamps: true,
             lifetimeStamps: true,
@@ -41,6 +47,12 @@ export async function GET(req: NextRequest) {
       orderBy: { reviewedAt: "desc" },
       include: {
         customer: {
+          select: {
+            currentStamps: true,
+            lifetimeStamps: true,
+          },
+        },
+        anonCustomer: {
           select: {
             currentStamps: true,
             lifetimeStamps: true,

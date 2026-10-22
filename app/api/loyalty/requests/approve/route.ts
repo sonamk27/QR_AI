@@ -42,12 +42,101 @@ export async function POST(req: NextRequest) {
         throw new Error("This stamp request was already rejected");
       }
 
-      // Find or create customer
+      const stampsToAdd = stampReq.stampsAwarded || 1;
+      const noteText = staffNote || `Approved by ${ctx.user.name}`;
+
+      // ── ANONYMOUS CUSTOMER FLOW ──────────────────────────────────────────
+      if (stampReq.anonCustomerId) {
+        const anonCustomer = await tx.anonymousCustomer.findUnique({
+          where: { id: stampReq.anonCustomerId },
+        });
+
+        if (!anonCustomer) {
+          throw new Error("Anonymous customer not found");
+        }
+
+        const nextLifetime = anonCustomer.lifetimeStamps + stampsToAdd;
+        const finalStamps =
+          anonCustomer.currentStamps >= program.stampsRequired
+            ? 1
+            : anonCustomer.currentStamps + stampsToAdd;
+        const targetReached = finalStamps === program.stampsRequired;
+
+        let newReward = null;
+        if (targetReached) {
+          const expiryDate = new Date();
+          expiryDate.setDate(expiryDate.getDate() + (program.rewardExpiryDays || 30));
+
+          newReward = await tx.anonymousReward.create({
+            data: {
+              customerId: anonCustomer.id,
+              programId: program.id,
+              code: generateRewardCode("OFFER"),
+              rewardTitle: program.rewardTitle,
+              discountAmount: program.rewardDiscount,
+              status: "UNREDEEMED",
+              idempotencyKey: `reward_approval_${stampReq.id}`,
+              expiresAt: expiryDate,
+            },
+          });
+        }
+
+        // Create an anonymous visit record for traceability
+        const visit = await tx.anonymousVisit.create({
+          data: {
+            customerId: anonCustomer.id,
+            restaurantId,
+            verificationRef: `approval_${stampReq.id}`,
+            verifiedByStaffId: ctx.user.id,
+          },
+        });
+
+        // Record the stamp transaction
+        await tx.anonymousStampTransaction.create({
+          data: {
+            customerId: anonCustomer.id,
+            visitId: visit.id,
+            amount: stampsToAdd,
+            type: "ISSUE",
+            staffNote: noteText,
+          },
+        });
+
+        const updatedAnonCustomer = await tx.anonymousCustomer.update({
+          where: { id: anonCustomer.id },
+          data: {
+            currentStamps: finalStamps,
+            lifetimeStamps: nextLifetime,
+            lastVisitAt: new Date(),
+          },
+        });
+
+        const updatedReq = await tx.stampRequest.update({
+          where: { id: stampReq.id },
+          data: {
+            status: "APPROVED",
+            reviewedAt: new Date(),
+            reviewedById: ctx.user.id,
+            staffNote: noteText,
+          },
+        });
+
+        return {
+          alreadyApproved: false,
+          customer: updatedAnonCustomer,
+          stampReq: updatedReq,
+          newReward,
+          targetReached,
+          isAnon: true,
+        };
+      }
+
+      // ── PHONE-BASED CUSTOMER FLOW ─────────────────────────────────────────
       let customer = await tx.loyaltyCustomer.findUnique({
         where: {
           programId_phone: {
             programId: program.id,
-            phone: stampReq.customerPhone,
+            phone: stampReq.customerPhone!,
           },
         },
       });
@@ -56,7 +145,7 @@ export async function POST(req: NextRequest) {
         customer = await tx.loyaltyCustomer.create({
           data: {
             programId: program.id,
-            phone: stampReq.customerPhone,
+            phone: stampReq.customerPhone!,
             name: stampReq.customerName || null,
             currentStamps: 0,
             lifetimeStamps: 0,
@@ -69,9 +158,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      const stampsToAdd = stampReq.stampsAwarded || 1;
       const nextLifetime = customer.lifetimeStamps + stampsToAdd;
-
       let finalStamps =
         customer.currentStamps >= program.stampsRequired
           ? 1
@@ -98,7 +185,9 @@ export async function POST(req: NextRequest) {
       }
 
       const uniqueRef =
-        stampReq.tableNo ? `${stampReq.tableNo}` : `VISIT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        stampReq.tableNo
+          ? `${stampReq.tableNo}`
+          : `VISIT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
       await tx.loyaltyTransaction.create({
         data: {
@@ -107,7 +196,7 @@ export async function POST(req: NextRequest) {
           stampsCount: stampsToAdd,
           billAmount: program.minBillAmount,
           billReference: uniqueRef,
-          staffNote: staffNote || `Owner Approved (${ctx.user.name})`,
+          staffNote: noteText,
         },
       });
 
@@ -126,7 +215,7 @@ export async function POST(req: NextRequest) {
           status: "APPROVED",
           reviewedAt: new Date(),
           reviewedById: ctx.user.id,
-          staffNote: staffNote || `Approved by ${ctx.user.name}`,
+          staffNote: noteText,
         },
       });
 
@@ -136,6 +225,7 @@ export async function POST(req: NextRequest) {
         stampReq: updatedReq,
         newReward,
         targetReached,
+        isAnon: false,
       };
     });
 
@@ -143,10 +233,11 @@ export async function POST(req: NextRequest) {
       success: true,
       message: result.alreadyApproved
         ? "This stamp request was already approved"
-        : `1 Stamp approved for ${result.stampReq.customerName || result.stampReq.customerPhone}!`,
+        : `1 Stamp approved for ${result.stampReq.customerName || "customer"}!`,
       targetReached: result.targetReached,
       newReward: result.newReward,
       currentStamps: result.customer?.currentStamps,
+      isAnon: result.isAnon,
     });
   } catch (error: any) {
     console.error("[loyalty/requests/approve] Error:", error);

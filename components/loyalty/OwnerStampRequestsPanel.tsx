@@ -5,13 +5,18 @@ import { useEffect, useState } from "react";
 export type PendingStampRequest = {
   id: string;
   customerName: string | null;
-  customerPhone: string;
+  customerPhone: string | null;
+  anonCustomerId: string | null;
   tableNo: string | null;
   qrSlug: string | null;
   createdAt: string;
   stampsAwarded: number;
   status: "PENDING" | "APPROVED" | "REJECTED";
   customer?: {
+    currentStamps: number;
+    lifetimeStamps: number;
+  } | null;
+  anonCustomer?: {
     currentStamps: number;
     lifetimeStamps: number;
   } | null;
@@ -243,9 +248,15 @@ export function OwnerStampRequestsPanel({
                           <h4 className="text-sm font-bold text-stone-900">
                             {req.customerName || "Diner"}
                           </h4>
-                          <span className="rounded-md bg-stone-100 px-2 py-0.5 font-mono text-[11px] font-semibold text-stone-700">
-                            +91 {req.customerPhone}
-                          </span>
+                          {req.anonCustomerId ? (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 font-mono text-[11px] font-semibold text-stone-500">
+                              🔒 Anonymous
+                            </span>
+                          ) : req.customerPhone ? (
+                            <span className="rounded-md bg-stone-100 px-2 py-0.5 font-mono text-[11px] font-semibold text-stone-700">
+                              +91 {req.customerPhone}
+                            </span>
+                          ) : null}
                         </div>
 
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-stone-500">
@@ -254,11 +265,11 @@ export function OwnerStampRequestsPanel({
                           </span>
                           <span>•</span>
                           <span>{formatTimeAgo(req.createdAt)}</span>
-                          {req.customer && (
+                          {(req.anonCustomer || req.customer) && (
                             <>
                               <span>•</span>
                               <span className="font-medium text-stone-600">
-                                Current Stamps: <strong>{req.customer.currentStamps}</strong>
+                                Current Stamps: <strong>{req.anonCustomer?.currentStamps ?? req.customer?.currentStamps}</strong>
                               </span>
                             </>
                           )}

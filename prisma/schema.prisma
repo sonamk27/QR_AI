@@ -327,6 +327,7 @@ model AnonymousCustomer {
   visits         AnonymousVisit[]
   transactions   AnonymousStampTransaction[]
   rewards        AnonymousReward[]
+  stampRequests  StampRequest[]
 
   @@index([restaurantId])
   @@map("anonymous_customers")
@@ -419,26 +420,30 @@ enum StampRequestStatus {
 }
 
 model StampRequest {
-  id            String             @id @default(cuid())
-  restaurantId  String             @map("restaurant_id")
-  restaurant    Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  programId     String             @map("program_id")
-  program       LoyaltyProgram     @relation(fields: [programId], references: [id], onDelete: Cascade)
-  customerId    String?            @map("customer_id")
-  customer      LoyaltyCustomer?   @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  customerName  String?            @map("customer_name")
-  customerPhone String             @map("customer_phone")
-  qrSlug        String?            @map("qr_slug")
-  tableNo       String?            @map("table_no")
-  status        StampRequestStatus @default(PENDING)
-  stampsAwarded Int                @default(1) @map("stamps_awarded")
-  staffNote     String?            @map("staff_note")
-  createdAt     DateTime           @default(now()) @map("created_at")
-  reviewedAt    DateTime?          @map("reviewed_at")
-  reviewedById  String?            @map("reviewed_by_id")
+  id              String              @id @default(cuid())
+  restaurantId    String              @map("restaurant_id")
+  restaurant      Restaurant          @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  programId       String              @map("program_id")
+  program         LoyaltyProgram      @relation(fields: [programId], references: [id], onDelete: Cascade)
+  // Phone-based customer (optional — null for anonymous requests)
+  customerId      String?             @map("customer_id")
+  customer        LoyaltyCustomer?    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  // Anonymous cookie-based customer (optional — null for phone-based requests)
+  anonCustomerId  String?             @map("anon_customer_id")
+  anonCustomer    AnonymousCustomer?  @relation(fields: [anonCustomerId], references: [id], onDelete: Cascade)
+  customerName    String?             @map("customer_name")
+  customerPhone   String?             @map("customer_phone")
+  qrSlug          String?             @map("qr_slug")
+  tableNo         String?             @map("table_no")
+  status          StampRequestStatus  @default(PENDING)
+  stampsAwarded   Int                 @default(1) @map("stamps_awarded")
+  staffNote       String?             @map("staff_note")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  reviewedAt      DateTime?           @map("reviewed_at")
+  reviewedById    String?             @map("reviewed_by_id")
 
   @@index([restaurantId, status])
-  @@index([customerPhone, status])
+  @@index([anonCustomerId, status])
   @@index([createdAt])
   @@map("stamp_requests")
 }
