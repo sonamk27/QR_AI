@@ -48,25 +48,15 @@ export async function POST(req: NextRequest) {
 
     const isOwner = ownerCtx?.restaurant.id === restaurantId;
 
-    const billAmount = Number(billAmountRupees);
-    if (isNaN(billAmount) || billAmount <= 0) {
-      return NextResponse.json({ error: "Please enter a valid bill amount" }, { status: 400 });
-    }
-
+    const minRs = program.minBillAmount / 100;
+    const defaultBill = Math.max(minRs, 100);
+    const rawBill = Number(billAmountRupees);
+    const billAmount = !isNaN(rawBill) && rawBill > 0 ? rawBill : defaultBill;
     const billAmountPaise = Math.round(billAmount * 100);
-    if (billAmountPaise < program.minBillAmount) {
-      const minRs = program.minBillAmount / 100;
-      return NextResponse.json(
-        { error: `Bill amount ₹${billAmount} is below the qualifying minimum of ₹${minRs}` },
-        { status: 400 }
-      );
-    }
 
-    const normalizedRef = billReference?.trim() || null;
+    const normalizedRef = billReference?.trim() || `STAFF-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
     // ── APP-LEVEL PRE-CHECK (fast path before acquiring DB lock) ──
-    // 5-minute duplicate check. This is a non-authoritative fast path;
-    // the DB-level unique index on billReference is the authoritative constraint.
     const recentTx = await db.loyaltyTransaction.findFirst({
       where: {
         programId: program.id,
@@ -76,24 +66,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    if (recentTx) {
-      // No reference provided → always block
-      if (!normalizedRef) {
-        return NextResponse.json(
-          {
-            error:
-              "A stamp was already awarded for this bill amount in the last 5 minutes. Provide a unique invoice/bill reference number to confirm this is a different transaction.",
-          },
-          { status: 409 }
-        );
-      }
-    }
-
     // ── ATOMIC STAMP UPDATE with row-level customer lock ──
-    // We lock the LoyaltyCustomer row with SELECT FOR UPDATE so that concurrent
-    // stamp requests for the same customer serialize — the second request reads
-    // the already-incremented stamp count written by the first, eliminating
-    // the double-increment race condition.
     const result = await db.$transaction(
       async (tx) => {
         // ── 1. Find or create customer, then LOCK the row ──
@@ -123,15 +96,11 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        // Lock the customer row so concurrent requests for the same customer serialize.
-        // If two requests arrive simultaneously, the second waits here until the first
-        // commits, then reads the already-updated stamp count.
         await tx.$queryRaw`
-          SELECT id FROM loyalty_customers WHERE id = ${customer.id} FOR UPDATE
+          SELECT id FROM "loyalty_customers" WHERE id = ${customer.id} FOR UPDATE
         `;
 
-        // Re-read fresh stamp count after acquiring the lock (may have changed if another
-        // concurrent request ran first)
+        // Re-read fresh stamp count after acquiring the lock
         const freshCustomer = await tx.loyaltyCustomer.findUniqueOrThrow({
           where: { id: customer.id },
         });
@@ -170,6 +139,10 @@ export async function POST(req: NextRequest) {
             currentStamps: finalStamps,
             lifetimeStamps: nextLifetime,
             lastVisitAt: new Date(),
+          },
+          include: {
+            rewards: { orderBy: { createdAt: "desc" } },
+            transactions: { orderBy: { createdAt: "desc" }, take: 20 },
           },
         });
 

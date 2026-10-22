@@ -53,14 +53,21 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    let stampAwarded = false;
+    let targetReached = false;
+    let newReward = null;
+
     if (!customer) {
+      const initialStamps = 1;
+      targetReached = initialStamps === program.stampsRequired;
+
       customer = await db.loyaltyCustomer.create({
         data: {
           programId: program.id,
           phone,
           name,
-          currentStamps: 0,
-          lifetimeStamps: 0,
+          currentStamps: initialStamps,
+          lifetimeStamps: initialStamps,
           lastVisitAt: new Date(),
         },
         include: {
@@ -68,33 +75,131 @@ export async function POST(req: NextRequest) {
           transactions: true,
         },
       });
-    } else if (name && customer.name !== name) {
-      customer = await db.loyaltyCustomer.update({
-        where: { id: customer.id },
+
+      stampAwarded = true;
+
+      if (targetReached) {
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + (program.rewardExpiryDays || 30));
+        const { generateRewardCode } = await import("@/lib/loyalty");
+        newReward = await db.loyaltyReward.create({
+          data: {
+            programId: program.id,
+            customerId: customer.id,
+            code: generateRewardCode("OFFER"),
+            rewardTitle: program.rewardTitle,
+            discountAmount: program.rewardDiscount,
+            status: "UNREDEEMED",
+            expiresAt: expiryDate,
+          },
+        });
+        customer.rewards = [newReward];
+      }
+
+      const uniqueRef = `REG-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const txRecord = await db.loyaltyTransaction.create({
         data: {
-          name,
-          lastVisitAt: new Date(),
-        },
-        include: {
-          rewards: {
-            orderBy: { createdAt: "desc" },
-          },
-          transactions: {
-            orderBy: { createdAt: "desc" },
-            take: 20,
-          },
+          programId: program.id,
+          customerId: customer.id,
+          stampsCount: 1,
+          billAmount: program.minBillAmount,
+          billReference: uniqueRef,
+          staffNote: "Welcome / 1st Visit Stamp",
         },
       });
+      customer.transactions = [txRecord];
+    } else {
+      // Existing customer: check if they should receive a visit stamp (double-tap guard: 2 mins)
+      const recentTx = await db.loyaltyTransaction.findFirst({
+        where: {
+          programId: program.id,
+          customerId: customer.id,
+          createdAt: { gte: new Date(Date.now() - 2 * 60 * 1000) },
+        },
+      });
+
+      if (!recentTx) {
+        const nextLifetime = customer.lifetimeStamps + 1;
+        const finalStamps =
+          customer.currentStamps >= program.stampsRequired
+            ? 1
+            : customer.currentStamps + 1;
+        targetReached = finalStamps === program.stampsRequired;
+
+        if (targetReached) {
+          const expiryDate = new Date();
+          expiryDate.setDate(expiryDate.getDate() + (program.rewardExpiryDays || 30));
+          const { generateRewardCode } = await import("@/lib/loyalty");
+          newReward = await db.loyaltyReward.create({
+            data: {
+              programId: program.id,
+              customerId: customer.id,
+              code: generateRewardCode("OFFER"),
+              rewardTitle: program.rewardTitle,
+              discountAmount: program.rewardDiscount,
+              status: "UNREDEEMED",
+              expiresAt: expiryDate,
+            },
+          });
+        }
+
+        const uniqueRef = `VISIT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        await db.loyaltyTransaction.create({
+          data: {
+            programId: program.id,
+            customerId: customer.id,
+            stampsCount: 1,
+            billAmount: program.minBillAmount,
+            billReference: uniqueRef,
+            staffNote: "QR Visit Stamp",
+          },
+        });
+
+        customer = await db.loyaltyCustomer.update({
+          where: { id: customer.id },
+          data: {
+            name: name || customer.name,
+            currentStamps: finalStamps,
+            lifetimeStamps: nextLifetime,
+            lastVisitAt: new Date(),
+          },
+          include: {
+            rewards: { orderBy: { createdAt: "desc" } },
+            transactions: { orderBy: { createdAt: "desc" }, take: 20 },
+          },
+        });
+        stampAwarded = true;
+      } else if (name && customer.name !== name) {
+        customer = await db.loyaltyCustomer.update({
+          where: { id: customer.id },
+          data: { name, lastVisitAt: new Date() },
+          include: {
+            rewards: { orderBy: { createdAt: "desc" } },
+            transactions: { orderBy: { createdAt: "desc" }, take: 20 },
+          },
+        });
+      }
     }
+
+    const redeemedCount = customer.rewards.filter((r: { status: string }) => r.status === "REDEEMED").length;
+    const cycleNumber = redeemedCount + 1;
 
     const response = NextResponse.json({
       success: true,
+      stampAwarded,
+      targetReached,
+      newReward,
+      message: stampAwarded
+        ? `🎉 1 Stamp awarded! Customer now has ${customer.currentStamps}/${program.stampsRequired} stamps.`
+        : "Welcome back! Here is your loyalty card.",
       customer: {
         id: customer.id,
         name: customer.name,
         phone: customer.phone,
         currentStamps: customer.currentStamps,
         lifetimeStamps: customer.lifetimeStamps,
+        cycleNumber,
+        lastVisitAt: customer.lastVisitAt ?? null,
         rewards: customer.rewards,
         transactions: customer.transactions,
       },

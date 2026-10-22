@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { Stars } from "@/components/Stars";
 
@@ -82,6 +82,8 @@ export function CustomerJourneyView({
   const [program, setProgram] = useState(initialProgram);
   const [loadingCard, setLoadingCard] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
+  const [collectingStamp, setCollectingStamp] = useState(false);
+  const [stampFeedbackMessage, setStampFeedbackMessage] = useState<string | null>(null);
 
   // Registration Form State (Step 3: Enter Details - No OTP)
   const [fullName, setFullName] = useState(initialName || "");
@@ -134,18 +136,41 @@ export function CustomerJourneyView({
     if (savedPhone) {
       setPhoneNumber(savedPhone);
       fetchLoyaltyCard(savedPhone);
+    } else if (initialView === "card") {
+      // No phone saved — redirect to register so customer can identify themselves
+      setCurrentView("register");
     }
   }, [slug, initialPhone, initialName]);
 
+  // Ref to track if component has mounted (skip first-render side-effects)
+  const isMounted = useRef(false);
+
   useEffect(() => {
-    if (initialView) {
+    // After mount: sync view if initialView changes externally (e.g. parent navigation)
+    if (isMounted.current) {
       setCurrentView(initialView);
     }
+    isMounted.current = true;
   }, [initialView]);
 
-  async function fetchLoyaltyCard(phoneToFetch: string) {
-    setLoadingCard(true);
-    setCardError(null);
+  // Live polling: automatically refresh card in background while customer is looking at the card
+  useEffect(() => {
+    if (currentView !== "card") return;
+    const phoneToPoll = customer?.phone || phoneNumber;
+    if (!phoneToPoll) return;
+
+    const interval = setInterval(() => {
+      fetchLoyaltyCard(phoneToPoll, true);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [currentView, customer?.phone, phoneNumber]);
+
+  async function fetchLoyaltyCard(phoneToFetch: string, silent = false) {
+    if (!silent) {
+      setLoadingCard(true);
+      setCardError(null);
+    }
     try {
       const res = await fetch(
         `/api/loyalty/card?slug=${encodeURIComponent(slug)}&phone=${encodeURIComponent(phoneToFetch)}`
@@ -154,18 +179,71 @@ export function CustomerJourneyView({
       if (!res.ok) throw new Error(data.error || "Failed to load loyalty card");
 
       if (data.customer) {
-        setCustomer(data.customer);
+        setCustomer({
+          ...data.customer,
+          cycleNumber: data.customer.cycleNumber ?? 1,
+          lastVisitAt: data.customer.lastVisitAt ?? null,
+        });
         if (data.program) setProgram(data.program);
         localStorage.setItem(`loyalty_phone_${slug}`, phoneToFetch);
         if (data.customer.name) {
           setFullName(data.customer.name);
           localStorage.setItem(`loyalty_name_${slug}`, data.customer.name);
         }
+        // If we loaded the card, navigate to card view (only on first non-silent load)
+        if (!silent) {
+          setCurrentView((v) => (v === "register" || v === "welcome" ? "card" : v));
+        }
       }
     } catch (err: any) {
-      setCardError(err.message || "Failed to load loyalty card");
+      if (!silent) {
+        setCardError(err.message || "Failed to load loyalty card");
+      }
     } finally {
-      setLoadingCard(false);
+      if (!silent) {
+        setLoadingCard(false);
+      }
+    }
+  }
+
+  // Collect Stamp Handler (Welcome Screen & Card Button)
+  async function handleCollectStampClick() {
+    const phoneToUse = customer?.phone || phoneNumber;
+    if (!phoneToUse) {
+      setCurrentView("register");
+      return;
+    }
+
+    setCollectingStamp(true);
+    setCardError(null);
+    try {
+      const res = await fetch("/api/loyalty/customer/collect-stamp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug,
+          phone: phoneToUse,
+          name: fullName || customer?.name,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to collect stamp");
+
+      if (data.customer) {
+        setCustomer(data.customer);
+      }
+      if (data.program) {
+        setProgram(data.program);
+      }
+
+      setStampFeedbackMessage(data.message || "1 Stamp awarded for your visit!");
+      setCurrentView("stamp_added");
+    } catch (err: any) {
+      await fetchLoyaltyCard(phoneToUse);
+      setCurrentView("card");
+    } finally {
+      setCollectingStamp(false);
     }
   }
 
@@ -195,6 +273,7 @@ export function CustomerJourneyView({
           slug,
           name: fullName.trim(),
           phone: finalPhone,
+          collectStamp: true,
         }),
       });
 
@@ -207,8 +286,13 @@ export function CustomerJourneyView({
       localStorage.setItem(`loyalty_phone_${slug}`, finalPhone);
       localStorage.setItem(`loyalty_name_${slug}`, fullName.trim());
 
-      // Move directly to Step 5: My Loyalty Card (Skipping OTP)
-      setCurrentView("card");
+      setStampFeedbackMessage(data.message || "1 Stamp awarded for your visit!");
+
+      if (data.stampAwarded || (data.customer?.currentStamps && data.customer.currentStamps > 0)) {
+        setCurrentView("stamp_added");
+      } else {
+        setCurrentView("card");
+      }
     } catch (err: any) {
       setRegisterError(err.message || "Registration failed. Please try again.");
     } finally {
@@ -370,20 +454,16 @@ export function CustomerJourneyView({
               Join our loyalty program and share your experience with the world.
             </p>
 
-            {/* Two Clear Options: Collect My Stamp & Share Your Experience */}
+            {/* Two Clear Options: Collect My Stamp & Give Google Feedback & Review */}
             <div className="mt-8 space-y-3">
               <button
-                onClick={() => {
-                  if (customer) {
-                    setCurrentView("card");
-                  } else {
-                    setCurrentView("register");
-                  }
-                }}
-                className="w-full rounded-2xl py-3.5 text-sm font-bold text-white shadow-md transition hover:brightness-105 active:scale-[0.98]"
+                onClick={handleCollectStampClick}
+                disabled={collectingStamp}
+                className="w-full rounded-2xl py-3.5 text-sm font-bold text-white shadow-md transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
                 style={{ backgroundColor: brandColor }}
               >
-                Collect My Stamp
+                <span>☕</span>
+                <span>{collectingStamp ? "Collecting Stamp..." : "Collect My Stamp"}</span>
               </button>
 
               <button
@@ -536,12 +616,21 @@ export function CustomerJourneyView({
               </h2>
               <p className="text-[11px] text-stone-500">{restaurant.name}</p>
             </div>
-            <button
-              onClick={() => setCurrentView("review")}
-              className="rounded-lg bg-amber-100/70 px-2.5 py-1 text-xs font-bold text-amber-900 hover:bg-amber-200 transition"
-            >
-              ⭐ Review
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => fetchLoyaltyCard(customer?.phone || phoneNumber)}
+                className="rounded-lg border border-stone-200 bg-white px-2 py-1 text-xs text-stone-600 hover:bg-stone-50 transition"
+                title="Refresh Stamps"
+              >
+                🔄
+              </button>
+              <button
+                onClick={() => setCurrentView("review")}
+                className="rounded-lg bg-amber-100/70 px-2.5 py-1 text-xs font-bold text-amber-900 hover:bg-amber-200 transition"
+              >
+                ⭐ Review
+              </button>
+            </div>
           </div>
 
           {loadingCard && !customer ? (
@@ -626,6 +715,19 @@ export function CustomerJourneyView({
                       ? "One more visit to unlock your reward!"
                       : `${stampsRemaining} more visits to unlock your reward!`}
                   </p>
+                </div>
+
+                {/* Collect Today's Stamp CTA on Card */}
+                <div className="mt-4 pt-3 border-t border-stone-100">
+                  <button
+                    onClick={handleCollectStampClick}
+                    disabled={collectingStamp}
+                    className="w-full rounded-2xl py-3 text-xs font-bold text-white shadow-xs transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
+                    style={{ backgroundColor: brandColor }}
+                  >
+                    <span>☕</span>
+                    <span>{collectingStamp ? "Recording Stamp..." : "Collect Visit Stamp"}</span>
+                  </button>
                 </div>
               </div>
 
@@ -755,24 +857,58 @@ export function CustomerJourneyView({
       ───────────────────────────────────────────────────────────── */}
       {currentView === "stamp_added" && (
         <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6 py-8 text-center">
-          <div className="relative mb-6 flex h-28 w-28 items-center justify-center rounded-full bg-amber-100 text-5xl shadow-md border-4 border-white animate-pulse">
+          <div className="relative mb-5 flex h-28 w-28 items-center justify-center rounded-full bg-amber-100 text-5xl shadow-md border-4 border-white animate-bounce">
             ☕
           </div>
+
+          <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 mb-2">
+            ✨ Visit Verified &amp; Stamped
+          </span>
 
           <h1 className="font-serif text-3xl font-extrabold text-stone-900">
             Stamp Added!
           </h1>
           <p className="mt-2 max-w-xs text-sm text-stone-600 leading-relaxed">
-            Your visit has been recorded. You&apos;re one step closer to your reward!
+            {stampFeedbackMessage || "Your visit has been recorded. You're one step closer to your reward!"}
           </p>
 
-          <button
-            onClick={() => setCurrentView("card")}
-            className="mt-8 w-full max-w-xs rounded-2xl py-3.5 text-sm font-bold text-white shadow-md transition hover:brightness-105 active:scale-[0.98]"
-            style={{ backgroundColor: brandColor }}
-          >
-            View My Rewards
-          </button>
+          {/* Mini Stamp Dots visual preview */}
+          <div className="my-6 flex items-center justify-center gap-2 rounded-2xl bg-white p-3.5 border border-stone-200 shadow-2xs">
+            {Array.from({ length: stampsRequired }).map((_, index) => {
+              const isStamped = index < currentStamps;
+              return (
+                <div
+                  key={index}
+                  className={`flex h-8 w-8 items-center justify-center rounded-xl text-xs font-bold transition-all ${
+                    isStamped
+                      ? "text-white shadow-2xs scale-110"
+                      : "border border-stone-200 bg-stone-50 text-stone-300"
+                  }`}
+                  style={{ backgroundColor: isStamped ? brandColor : undefined }}
+                >
+                  {isStamped ? "☕" : index + 1}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="w-full max-w-xs space-y-2.5">
+            <button
+              onClick={() => setCurrentView("card")}
+              className="w-full rounded-2xl py-3.5 text-sm font-bold text-white shadow-md transition hover:brightness-105 active:scale-[0.98]"
+              style={{ backgroundColor: brandColor }}
+            >
+              View My Loyalty Card ({currentStamps}/{stampsRequired}) →
+            </button>
+
+            <button
+              onClick={() => setCurrentView("review")}
+              className="w-full rounded-2xl border border-stone-200 bg-white py-3 text-xs font-bold text-stone-700 shadow-2xs hover:bg-stone-50 transition flex items-center justify-center gap-1.5"
+            >
+              <span>⭐</span>
+              <span>Share Google Review &amp; Feedback</span>
+            </button>
+          </div>
         </main>
       )}
 
