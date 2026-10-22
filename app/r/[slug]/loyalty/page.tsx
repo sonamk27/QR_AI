@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { isActive } from "@/lib/qr-status";
-import { LoyaltyCardView } from "@/components/loyalty/LoyaltyCardView";
+import { AnonLoyaltyCardView } from "@/components/loyalty/AnonLoyaltyCardView";
 
 export const dynamic = "force-dynamic";
 
@@ -24,5 +24,5 @@ export default async function LoyaltyPage({ params }: { params: { slug: string }
     );
   }
 
-  return <LoyaltyCardView slug={params.slug} />;
+  return <AnonLoyaltyCardView slug={params.slug} />;
 }

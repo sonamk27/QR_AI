@@ -72,10 +72,12 @@ model Restaurant {
   createdAt       DateTime      @default(now())
   qrCodes         QrCode[]
   payments        Payment[]
-  qrRequests      QrRequest[]
-  auditLogs       AuditLog[]
-  socialClicks    SocialClick[]
-  loyaltyProgram  LoyaltyProgram?
+  qrRequests         QrRequest[]
+  auditLogs          AuditLog[]
+  socialClicks       SocialClick[]
+  loyaltyProgram     LoyaltyProgram?
+  anonymousCustomers AnonymousCustomer[]
+  anonymousVisits    AnonymousVisit[]
 
   @@index([ownerId])
 }
@@ -240,6 +242,7 @@ model LoyaltyProgram {
   customers        LoyaltyCustomer[]
   transactions     LoyaltyTransaction[]
   rewards          LoyaltyReward[]
+  anonymousRewards AnonymousReward[]
 
   @@map("loyalty_programs")
 }
@@ -297,4 +300,111 @@ model LoyaltyReward {
   @@index([programId, status])
   @@index([customerId, status])
   @@map("loyalty_rewards")
+}
+
+// ─────────────────────────────────────────────────────────────
+// ANONYMOUS LOYALTY (COOKIE-BASED IDENTITY)
+// ─────────────────────────────────────────────────────────────
+
+enum StampTransactionType {
+  ISSUE
+  REVERSE
+}
+
+model AnonymousCustomer {
+  id             String                      @id // nanoid or custom token (e.g. anon_...)
+  restaurantId   String                      @map("restaurant_id")
+  restaurant     Restaurant                  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  status         String                      @default("ACTIVE") // ACTIVE | SUSPENDED
+  currentStamps  Int                         @default(0)
+  lifetimeStamps Int                         @default(0)
+  lastVisitAt    DateTime?                   @map("last_visit_at")
+  createdAt      DateTime                    @default(now()) @map("created_at")
+  sessions       AnonymousSession[]
+  visits         AnonymousVisit[]
+  transactions   AnonymousStampTransaction[]
+  rewards        AnonymousReward[]
+
+  @@index([restaurantId])
+  @@map("anonymous_customers")
+}
+
+model AnonymousSession {
+  id         String            @id @default(cuid())
+  tokenHash  String            @unique @map("token_hash")
+  customerId String            @map("customer_id")
+  customer   AnonymousCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime          @map("expires_at")
+  revokedAt  DateTime?         @map("revoked_at")
+  createdAt  DateTime          @default(now()) @map("created_at")
+
+  @@index([customerId])
+  @@index([tokenHash, expiresAt])
+  @@map("anonymous_sessions")
+}
+
+model AnonymousVisit {
+  id                String                      @id @default(cuid())
+  customerId        String                      @map("customer_id")
+  customer          AnonymousCustomer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  restaurantId      String                      @map("restaurant_id")
+  restaurant        Restaurant                  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  verificationRef   String                      @unique @map("verification_ref")
+  verifiedByStaffId String?                     @map("verified_by_staff_id")
+  createdAt         DateTime                    @default(now()) @map("created_at")
+  transactions      AnonymousStampTransaction[]
+
+  @@index([customerId])
+  @@index([restaurantId])
+  @@map("anonymous_visits")
+}
+
+model AnonymousStampTransaction {
+  id         String               @id @default(cuid())
+  customerId String               @map("customer_id")
+  customer   AnonymousCustomer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  visitId    String?              @map("visit_id")
+  visit      AnonymousVisit?      @relation(fields: [visitId], references: [id], onDelete: SetNull)
+  amount     Int                  @default(1)
+  type       StampTransactionType @default(ISSUE)
+  staffNote  String?              @map("staff_note")
+  createdAt  DateTime             @default(now()) @map("created_at")
+
+  @@index([customerId, createdAt])
+  @@index([visitId])
+  @@map("anonymous_stamp_transactions")
+}
+
+model AnonymousReward {
+  id             String                @id @default(cuid())
+  customerId     String                @map("customer_id")
+  customer       AnonymousCustomer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  programId      String                @map("program_id")
+  program        LoyaltyProgram        @relation(fields: [programId], references: [id], onDelete: Cascade)
+  status         RewardStatus          @default(UNREDEEMED)
+  rewardTitle    String                @default("Reward") @map("reward_title")
+  discountAmount Int                   @default(0) @map("discount_amount") // in paise
+  code           String                @unique
+  idempotencyKey String?               @unique @map("idempotency_key")
+  expiresAt      DateTime              @map("expires_at")
+  redeemedAt     DateTime?             @map("redeemed_at")
+  createdAt      DateTime              @default(now()) @map("created_at")
+  redemptions    AnonymousRedemption[]
+
+  @@index([customerId, status])
+  @@index([programId, status])
+  @@map("anonymous_rewards")
+}
+
+model AnonymousRedemption {
+  id             String          @id @default(cuid())
+  rewardId       String          @map("reward_id")
+  reward         AnonymousReward @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  staffId        String?         @map("staff_id")
+  status         String          @default("COMPLETED")
+  idempotencyKey String          @unique @map("idempotency_key")
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  @@index([rewardId])
+  @@map("anonymous_redemptions")
 }

@@ -106,7 +106,36 @@ export async function POST(req: NextRequest) {
         FOR UPDATE
       `;
 
-      const reward = locked[0];
+      let isAnonymous = false;
+      let reward = locked[0];
+
+      if (!reward) {
+        const lockedAnon = await tx.$queryRaw<
+          Array<{
+            id: string;
+            programId: string;
+            customerId: string;
+            status: string;
+            expiresAt: Date;
+            redeemedAt: Date | null;
+            discountAmount: number;
+            rewardTitle: string;
+            code: string;
+          }>
+        >`
+          SELECT id, program_id as "programId", customer_id as "customerId", status, expires_at as "expiresAt",
+                 redeemed_at as "redeemedAt", discount_amount as "discountAmount", reward_title as "rewardTitle", code
+          FROM anonymous_rewards
+          WHERE code = ${rewardCode}
+          FOR UPDATE
+        `;
+
+        if (lockedAnon[0]) {
+          reward = lockedAnon[0];
+          isAnonymous = true;
+        }
+      }
+
       if (!reward || reward.programId !== program.id) {
         throw new Error("REWARD_NOT_FOUND");
       }
@@ -130,7 +159,60 @@ export async function POST(req: NextRequest) {
 
       const payablePaise = billPaise !== null ? Math.max(0, billPaise - discountPaise) : null;
 
-      // Fetch customer for activity update
+      if (isAnonymous) {
+        const updatedReward = await tx.anonymousReward.update({
+          where: { id: reward.id },
+          data: {
+            status: "REDEEMED",
+            redeemedAt: new Date(),
+          },
+        });
+
+        const redemption = await tx.anonymousRedemption.create({
+          data: {
+            rewardId: reward.id,
+            staffId: ownerCtx.user.id,
+            status: "COMPLETED",
+            idempotencyKey: `redeem_${reward.id}_${Date.now()}`,
+          },
+        });
+
+        await tx.anonymousCustomer.update({
+          where: { id: reward.customerId },
+          data: { lastVisitAt: new Date(), currentStamps: 0 },
+        });
+
+        await tx.anonymousStampTransaction.create({
+          data: {
+            customerId: reward.customerId,
+            amount: 0,
+            type: "ISSUE",
+            staffNote: `Offer Redeemed: ${rewardCode}${discountPaise ? ` (Discount: ₹${(discountPaise / 100).toFixed(0)})` : ""}`,
+          },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            restaurantId,
+            actorId: ownerCtx.user.id,
+            action: "ANON_LOYALTY_REWARD_REDEEM",
+            target: reward.customerId,
+            meta: { rewardId: reward.id, code: reward.code, discountPaise },
+          },
+        });
+
+        return {
+          reward: updatedReward,
+          customer: {
+            phone: `Anonymous (${reward.customerId.slice(0, 10)}…)`,
+            name: "Anonymous Diner",
+          },
+          discountPaise,
+          payablePaise,
+        };
+      }
+
+      // Fetch phone-based customer for activity update
       const customer = await tx.loyaltyCustomer.findUnique({
         where: { id: reward.customerId },
         select: { id: true, phone: true, name: true, lifetimeStamps: true },

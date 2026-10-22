@@ -13,37 +13,91 @@ export default async function LoyaltyDashboardPage() {
   const restaurantId = ctx.restaurant.id;
   const program = await getOrCreateLoyaltyProgram(restaurantId);
 
-  // Fetch summary counts
-  const [totalCustomers, totalTransactions, unredeemedRewards, redeemedRewards] = await Promise.all([
-    db.loyaltyCustomer.count({
+  // Fetch summary counts across both anonymous and legacy phone flows
+  const [
+    phoneCustomers,
+    anonCustomers,
+    phoneTransactions,
+    anonTransactions,
+    phoneUnredeemedRewards,
+    anonUnredeemedRewards,
+    phoneRedeemedRewards,
+    anonRedeemedRewards,
+  ] = await Promise.all([
+    db.loyaltyCustomer.count({ where: { programId: program.id } }),
+    db.anonymousCustomer.count({ where: { restaurantId } }),
+    db.loyaltyTransaction.count({ where: { programId: program.id } }),
+    db.anonymousStampTransaction.count({ where: { customer: { restaurantId } } }),
+    db.loyaltyReward.count({ where: { programId: program.id, status: "UNREDEEMED" } }),
+    db.anonymousReward.count({ where: { programId: program.id, status: "UNREDEEMED" } }),
+    db.loyaltyReward.count({ where: { programId: program.id, status: "REDEEMED" } }),
+    db.anonymousReward.count({ where: { programId: program.id, status: "REDEEMED" } }),
+  ]);
+
+  // Fetch recent activity from both tables
+  const [recentPhoneActivity, recentAnonActivity] = await Promise.all([
+    db.loyaltyTransaction.findMany({
       where: { programId: program.id },
+      include: {
+        customer: {
+          select: {
+            phone: true,
+            name: true,
+            currentStamps: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 10,
     }),
-    db.loyaltyTransaction.count({
-      where: { programId: program.id },
-    }),
-    db.loyaltyReward.count({
-      where: { programId: program.id, status: "UNREDEEMED" },
-    }),
-    db.loyaltyReward.count({
-      where: { programId: program.id, status: "REDEEMED" },
+    db.anonymousStampTransaction.findMany({
+      where: { customer: { restaurantId } },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            currentStamps: true,
+          },
+        },
+        visit: {
+          select: {
+            verificationRef: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 10,
     }),
   ]);
 
-  // Fetch recent activity
-  const recentActivity = await db.loyaltyTransaction.findMany({
-    where: { programId: program.id },
-    include: {
+  const recentActivity = [
+    ...recentPhoneActivity.map((tx) => ({
+      id: tx.id,
+      stampsCount: tx.stampsCount,
+      billAmount: tx.billAmount,
+      billReference: tx.billReference,
+      createdAt: tx.createdAt.toISOString(),
       customer: {
-        select: {
-          phone: true,
-          name: true,
-          currentStamps: true,
-        },
+        phone: tx.customer.phone,
+        name: tx.customer.name,
+        currentStamps: tx.customer.currentStamps,
       },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 15,
-  });
+    })),
+    ...recentAnonActivity.map((tx) => ({
+      id: tx.id,
+      stampsCount: tx.amount,
+      billAmount: null,
+      billReference: tx.visit?.verificationRef || null,
+      createdAt: tx.createdAt.toISOString(),
+      customer: {
+        phone: tx.customer.id,
+        name: `Anonymous (${tx.customer.id.slice(0, 8)}…)`,
+        currentStamps: tx.customer.currentStamps,
+      },
+    })),
+  ]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 15);
 
   // Get active QR slug for customer card preview
   const primaryQr = await db.qrCode.findFirst({
@@ -65,23 +119,12 @@ export default async function LoyaltyDashboardPage() {
         rewardExpiryDays: program.rewardExpiryDays,
       }}
       stats={{
-        totalCustomers,
-        totalTransactions,
-        unredeemedRewards,
-        redeemedRewards,
+        totalCustomers: phoneCustomers + anonCustomers,
+        totalTransactions: phoneTransactions + anonTransactions,
+        unredeemedRewards: phoneUnredeemedRewards + anonUnredeemedRewards,
+        redeemedRewards: phoneRedeemedRewards + anonRedeemedRewards,
       }}
-      recentActivity={recentActivity.map((tx) => ({
-        id: tx.id,
-        stampsCount: tx.stampsCount,
-        billAmount: tx.billAmount,
-        billReference: tx.billReference,
-        createdAt: tx.createdAt.toISOString(),
-        customer: {
-          phone: tx.customer.phone,
-          name: tx.customer.name,
-          currentStamps: tx.customer.currentStamps,
-        },
-      }))}
+      recentActivity={recentActivity}
       qrSlug={primaryQr?.slug}
     />
   );

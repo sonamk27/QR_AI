@@ -74,7 +74,7 @@ export function LoyaltySettingsView({
   const [searchPhone, setSearchPhone] = useState("");
   const [searchedCustomer, setSearchedCustomer] = useState<{
     id: string;
-    phone: string;
+    phone: string | null;
     name: string | null;
     currentStamps: number;
     lifetimeStamps: number;
@@ -86,12 +86,68 @@ export function LoyaltySettingsView({
   const [adjustLoading, setAdjustLoading] = useState(false);
   const [redeemingCode, setRedeemingCode] = useState<string | null>(null);
 
+  // Staff Stamp Tool State (Direct Visit & Anonymous Customer Stamping)
+  const [stampCustId, setStampCustId] = useState("");
+  const [stampVisitRef, setStampVisitRef] = useState("");
+  const [stampStaffNote, setStampStaffNote] = useState("");
+  const [stampLoading, setStampLoading] = useState(false);
+  const [stampFeedback, setStampFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   // Auto-generate suggested title when numbers change
   function handleAutoSuggestTitle(type: "FLAT" | "PERCENT", disc: number, minBill: number) {
     if (type === "PERCENT") {
       return `${disc}% Off on bills above ₹${minBill}`;
     }
     return `Flat ₹${disc} Off on bills above ₹${minBill}`;
+  }
+
+  async function handleAwardAnonStamp(e: React.FormEvent) {
+    e.preventDefault();
+    if (!stampCustId.trim() || !stampVisitRef.trim()) return;
+
+    setStampLoading(true);
+    setStampFeedback(null);
+    try {
+      const res = await fetch("/api/loyalty/anon/stamp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId: stampCustId.trim(),
+          visitRef: stampVisitRef.trim(),
+          staffNote: stampStaffNote.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to award stamp");
+
+      setStampFeedback({
+        type: "success",
+        text: data.message || "1 Stamp awarded successfully!",
+      });
+      setStampVisitRef("");
+      setStampStaffNote("");
+
+      // If customer is currently looked up, sync their state
+      if (searchedCustomer && searchedCustomer.id === stampCustId.trim()) {
+        setSearchedCustomer((prev) =>
+          prev
+            ? {
+                ...prev,
+                currentStamps: data.customer.currentStamps,
+                lifetimeStamps: data.customer.lifetimeStamps,
+                rewards: data.customer.rewards,
+              }
+            : null
+        );
+      }
+    } catch (err: any) {
+      setStampFeedback({
+        type: "error",
+        text: err.message || "Failed to award stamp",
+      });
+    } finally {
+      setStampLoading(false);
+    }
   }
 
   async function handleSearchCustomer(e: React.FormEvent) {
@@ -102,13 +158,13 @@ export function LoyaltySettingsView({
       const res = await fetch("/api/loyalty/customer/adjust", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: searchPhone, action: "lookup" }),
+        body: JSON.stringify({ phone: searchPhone.trim(), action: "lookup" }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Lookup failed");
       if (!data.found) {
         setSearchedCustomer(null);
-        setSearchMsg("No customer record found for this number yet.");
+        setSearchMsg("No customer record found for this Anonymous ID or number.");
       } else {
         setSearchedCustomer(data.customer);
       }
@@ -128,7 +184,7 @@ export function LoyaltySettingsView({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone: searchedCustomer.phone,
+          phone: searchedCustomer.phone || searchedCustomer.id,
           action: "adjust",
           amount: diff,
           reason: adjustReason || "Owner Manual Adjustment",
@@ -155,19 +211,19 @@ export function LoyaltySettingsView({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone: searchedCustomer.phone,
+          phone: searchedCustomer.phone || searchedCustomer.id,
           action: "grant_offer",
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to grant offer");
       setSearchMsg(`🎁 ${data.message}`);
-      
+
       // Refresh customer profile
       const ref = await fetch("/api/loyalty/customer/adjust", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: searchedCustomer.phone, action: "lookup" }),
+        body: JSON.stringify({ phone: searchedCustomer.phone || searchedCustomer.id, action: "lookup" }),
       });
       const refData = await ref.json();
       if (refData.found) setSearchedCustomer(refData.customer);
@@ -583,6 +639,91 @@ export function LoyaltySettingsView({
         </div>
       </div>
 
+      {/* STAFF STAMP TOOL (ANONYMOUS & DINER QR FLOW) */}
+      <div className="panel p-5 space-y-4 border-2 border-stone-800/10">
+        <div className="border-b border-line pb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">⚡</span>
+            <h2 className="font-display text-base font-bold text-ink">
+              Staff Stamp Issuance Tool
+            </h2>
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+              Staff Authorized
+            </span>
+          </div>
+          <p className="text-xs text-ink/60">
+            Award loyalty stamps to diners by reading their Anonymous Customer ID (from screen or QR) and entering the invoice/visit reference.
+          </p>
+        </div>
+
+        <form onSubmit={handleAwardAnonStamp} className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-ink/70 mb-1">
+                Customer Reference ID *
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. anon_k8jF3m9PqR..."
+                value={stampCustId}
+                onChange={(e) => setStampCustId(e.target.value)}
+                className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-xs font-mono font-medium text-ink outline-none focus:border-stone-800"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-ink/70 mb-1">
+                Unique Bill / Visit Ref *
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. INV-1042 / Table-4-Visit"
+                value={stampVisitRef}
+                onChange={(e) => setStampVisitRef(e.target.value)}
+                className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-xs font-mono font-medium text-ink outline-none focus:border-stone-800"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-ink/70 mb-1">
+              Staff Note (Optional)
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Counter Order #23, Table 6"
+              value={stampStaffNote}
+              onChange={(e) => setStampStaffNote(e.target.value)}
+              className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-xs font-medium text-ink outline-none focus:border-stone-800"
+            />
+          </div>
+
+          {stampFeedback && (
+            <div
+              className={`rounded-xl border p-3 text-xs font-semibold ${
+                stampFeedback.type === "success"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : "border-rose-200 bg-rose-50 text-rose-800"
+              }`}
+            >
+              {stampFeedback.text}
+            </div>
+          )}
+
+          <div>
+            <button
+              type="submit"
+              disabled={stampLoading}
+              className="rounded-xl bg-emerald-700 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-800 disabled:opacity-60 transition"
+            >
+              {stampLoading ? "Verifying & Awarding..." : "⚡ Issue 1 Stamp to Customer"}
+            </button>
+          </div>
+        </form>
+      </div>
+
       {/* CUSTOMER STAMP & OFFER MANAGER (LOOKUP & 1-TAP REDEEM) */}
       <div className="panel p-5 space-y-4">
         <div className="border-b border-line pb-3">
@@ -593,20 +734,18 @@ export function LoyaltySettingsView({
             </h2>
           </div>
           <p className="text-xs text-ink/60">
-            Look up any customer by mobile number to inspect active vouchers, redeem at counter, or adjust stamps.
+            Look up any customer by Anonymous Customer ID or mobile number to inspect active vouchers, redeem at counter, or adjust stamps.
           </p>
         </div>
 
         <form onSubmit={handleSearchCustomer} className="flex gap-2">
           <div className="relative flex-1">
             <input
-              type="tel"
-              inputMode="numeric"
-              maxLength={10}
-              placeholder="Search 10-digit mobile (e.g. 9876543210)"
+              type="text"
+              placeholder="Search Anonymous Customer ID (anon_...) or 10-digit mobile"
               value={searchPhone}
               onChange={(e) => setSearchPhone(e.target.value)}
-              className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-xs font-medium text-ink outline-none focus:border-stone-800"
+              className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-xs font-medium text-ink outline-none focus:border-stone-800 font-mono"
               required
             />
           </div>
@@ -629,20 +768,40 @@ export function LoyaltySettingsView({
           <div className="rounded-2xl border border-line bg-white p-4 space-y-4 shadow-2xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-line pb-3">
               <div>
-                <p className="text-sm font-bold text-ink">
-                  +91 {searchedCustomer.phone}
-                  {searchedCustomer.name && (
-                    <span className="ml-2 font-normal text-xs text-ink/60">
-                      ({searchedCustomer.name})
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-bold text-ink">
+                    {searchedCustomer.phone
+                      ? `+91 ${searchedCustomer.phone}`
+                      : `Anonymous Customer (${searchedCustomer.id.slice(0, 12)}…)`}
+                    {searchedCustomer.name && (
+                      <span className="ml-2 font-normal text-xs text-ink/60">
+                        ({searchedCustomer.name})
+                      </span>
+                    )}
+                  </p>
+                  {!searchedCustomer.phone && (
+                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                      🔒 Cookie Identity
                     </span>
                   )}
-                </p>
-                <p className="text-[11px] text-ink/50">
-                  Lifetime Visits Tracked: {searchedCustomer.lifetimeStamps}
+                </div>
+                <p className="text-[11px] text-ink/50 mt-0.5">
+                  ID: <span className="font-mono">{searchedCustomer.id}</span> • Lifetime Visits Tracked: {searchedCustomer.lifetimeStamps}
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStampCustId(searchedCustomer.id);
+                    setStampFeedback(null);
+                    window.scrollTo({ top: 400, behavior: "smooth" });
+                  }}
+                  className="rounded-lg bg-stone-100 px-2.5 py-1 text-[11px] font-bold text-stone-700 hover:bg-stone-200 transition"
+                >
+                  ⚡ Award Stamp
+                </button>
                 <span className="rounded-lg bg-emerald-50 px-3 py-1 font-mono text-sm font-bold text-emerald-800 border border-emerald-200">
                   ☕ {searchedCustomer.currentStamps} / {stampsRequired} Stamps
                 </span>
