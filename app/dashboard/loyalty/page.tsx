@@ -132,6 +132,86 @@ export default async function LoyaltyDashboardPage() {
     select: { slug: true },
   });
 
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29, 0, 0, 0, 0);
+  const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1, 0, 0, 0, 0);
+
+  const [
+    recentPhoneDaily,
+    recentAnonDaily,
+    recentPhoneMonthly,
+    recentAnonMonthly,
+  ] = await Promise.all([
+    db.loyaltyCustomer.findMany({
+      where: { programId: program.id, createdAt: { gte: thirtyDaysAgo } },
+      select: { createdAt: true },
+    }),
+    db.anonymousCustomer.findMany({
+      where: { restaurantId, createdAt: { gte: thirtyDaysAgo } },
+      select: { createdAt: true },
+    }),
+    db.loyaltyCustomer.findMany({
+      where: { programId: program.id, createdAt: { gte: twelveMonthsAgo } },
+      select: { createdAt: true },
+    }),
+    db.anonymousCustomer.findMany({
+      where: { restaurantId, createdAt: { gte: twelveMonthsAgo } },
+      select: { createdAt: true },
+    }),
+  ]);
+
+  const initialDailyGrowth = [];
+  for (let i = 29; i >= 0; i--) {
+    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, 0, 0, 0, 0);
+    const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, 23, 59, 59, 999);
+
+    const phoneCount = recentPhoneDaily.filter(
+      (c) => c.createdAt >= dayStart && c.createdAt <= dayEnd
+    ).length;
+    const anonCount = recentAnonDaily.filter(
+      (c) => c.createdAt >= dayStart && c.createdAt <= dayEnd
+    ).length;
+
+    const dayName = dayStart.toLocaleDateString("en-IN", { weekday: "short" });
+    const shortDate = dayStart.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+
+    initialDailyGrowth.push({
+      date: dayStart.toISOString().split("T")[0],
+      day: dayName,
+      shortDate,
+      label: i === 0 ? "Today" : i === 1 ? "Yesterday" : dayName,
+      count: phoneCount + anonCount,
+      phoneCount,
+      anonCount,
+    });
+  }
+
+  const initialMonthlyGrowth = [];
+  for (let i = 11; i >= 0; i--) {
+    const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1, 0, 0, 0, 0);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 1, 0, 0, 0, 0);
+
+    const phoneCount = recentPhoneMonthly.filter(
+      (c) => c.createdAt >= monthStart && c.createdAt < monthEnd
+    ).length;
+    const anonCount = recentAnonMonthly.filter(
+      (c) => c.createdAt >= monthStart && c.createdAt < monthEnd
+    ).length;
+
+    const monthLabel = monthStart.toLocaleDateString("en-IN", { month: "short" });
+    const fullMonth = monthStart.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+
+    initialMonthlyGrowth.push({
+      month: monthLabel,
+      label: monthLabel,
+      fullMonth,
+      year: monthStart.getFullYear(),
+      count: phoneCount + anonCount,
+      phoneCount,
+      anonCount,
+    });
+  }
+
   return (
     <LoyaltySettingsView
       initialProgram={{
@@ -163,6 +243,8 @@ export default async function LoyaltyDashboardPage() {
         activeRewards: c.rewards,
       }))}
       recentActivity={recentActivity}
+      initialDailyGrowth={initialDailyGrowth}
+      initialMonthlyGrowth={initialMonthlyGrowth}
       qrSlug={primaryQr?.slug}
     />
   );

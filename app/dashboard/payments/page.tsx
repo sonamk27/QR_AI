@@ -96,6 +96,48 @@ export default async function DashboardPaymentsPage() {
         />
       </div>
 
+      {/* Billing Support & Inquiries Contact Card */}
+      <div className="rounded-2xl border border-line bg-paper/50 p-4 sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-leaf/10 text-leaf">
+              <span className="text-xl">💳</span>
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-ink">Payment &amp; Billing Contact Desk</h2>
+              <p className="text-xs text-ink/70">
+                Have questions regarding your invoices, GST billing, payment verification, or license renewals?
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href="mailto:billing@reviewflow.in"
+              className="btn-ghost flex items-center gap-1.5 !py-1.5 text-xs text-ink"
+            >
+              <span>✉️</span>
+              <span>billing@reviewflow.in</span>
+            </a>
+            <a
+              href="tel:+919876543210"
+              className="btn-ghost flex items-center gap-1.5 !py-1.5 text-xs text-ink"
+            >
+              <span>📞</span>
+              <span>+91 98765 43210</span>
+            </a>
+            <a
+              href="https://wa.me/919876543210?text=Hi%20ReviewFlow,%20I%20have%20an%20inquiry%20regarding%20my%20payment%20and%20invoice."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-ghost flex items-center gap-1.5 !py-1.5 text-xs text-emerald-700"
+            >
+              <span>💬</span>
+              <span>WhatsApp Desk</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
       <OwnerPaymentsClientTable
         payments={serialized}
         restaurantName={ctx.restaurant.name}

@@ -68,7 +68,21 @@ export function OwnerPaymentReceiptModal({
               <p className="font-display text-2xl font-bold tracking-tight text-leaf">
                 ReviewFlow
               </p>
-              <p className="text-xs text-ink/60">Automated Smart QR &amp; Review Management</p>
+              <p className="text-xs text-ink/70 font-medium">Automated Smart QR &amp; Review Management</p>
+              <div className="mt-1.5 text-[11px] text-ink/60 space-y-0.5">
+                <p>
+                  <span className="text-ink/40">Billing Desk: </span>
+                  <a href="mailto:billing@reviewflow.in" className="text-leaf hover:underline">
+                    billing@reviewflow.in
+                  </a>
+                </p>
+                <p>
+                  <span className="text-ink/40">Helpline: </span>
+                  <a href="tel:+919876543210" className="text-leaf hover:underline">
+                    +91 98765 43210
+                  </a>
+                </p>
+              </div>
             </div>
             <div className="text-right">
               <p className="font-mono text-sm font-semibold text-ink">
@@ -83,11 +97,23 @@ export function OwnerPaymentReceiptModal({
           {/* Billed To & Payment Details */}
           <div className="grid grid-cols-2 gap-4 rounded-xl border border-line bg-paper/40 p-4 text-xs">
             <div>
-              <p className="font-semibold uppercase tracking-wider text-ink/60 mb-1">Billed To</p>
+              <p className="font-semibold uppercase tracking-wider text-ink/60 mb-1">
+                Billed To (Client Contact)
+              </p>
               <p className="font-bold text-sm text-ink">{restaurantName}</p>
-              {restaurantCity && <p className="text-ink/70">{restaurantCity}</p>}
-              <p className="text-ink/70 mt-1">{ownerName}</p>
-              <p className="text-ink/60 font-mono">{ownerEmail}</p>
+              {restaurantCity && <p className="text-ink/70 text-xs">{restaurantCity}</p>}
+              <div className="mt-2 space-y-0.5 border-t border-line/60 pt-2 text-xs">
+                <p>
+                  <span className="text-ink/60">Contact Person: </span>
+                  <span className="font-medium text-ink">{ownerName || "Authorized Representative"}</span>
+                </p>
+                <p>
+                  <span className="text-ink/60">Contact Email: </span>
+                  <a href={`mailto:${ownerEmail}`} className="font-mono text-leaf hover:underline">
+                    {ownerEmail || "—"}
+                  </a>
+                </p>
+              </div>
             </div>
             <div className="text-right">
               <p className="font-semibold uppercase tracking-wider text-ink/60 mb-1">
@@ -152,9 +178,36 @@ export function OwnerPaymentReceiptModal({
             </tfoot>
           </table>
 
+          {/* Contact & Support Section */}
+          <div className="rounded-xl border border-line bg-paper/40 p-3 text-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div>
+                <p className="font-semibold text-ink">Billing &amp; Invoice Inquiries</p>
+                <p className="text-ink/60 text-[11px]">
+                  Need help with this invoice, GST details, or payment verification?
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-xs">
+                <a
+                  href="mailto:billing@reviewflow.in"
+                  className="inline-flex items-center gap-1 font-medium text-leaf hover:underline"
+                >
+                  <span>✉️</span> billing@reviewflow.in
+                </a>
+                <span className="text-ink/30">•</span>
+                <a
+                  href="tel:+919876543210"
+                  className="inline-flex items-center gap-1 font-medium text-leaf hover:underline"
+                >
+                  <span>📞</span> +91 98765 43210
+                </a>
+              </div>
+            </div>
+          </div>
+
           {/* Footer note */}
-          <div className="border-t border-line/60 pt-4 text-center text-[11px] text-ink/50">
-            Thank you for partnering with ReviewFlow. For billing inquiries, contact your account manager.
+          <div className="border-t border-line/60 pt-3 text-center text-[11px] text-ink/50">
+            Thank you for partnering with ReviewFlow. This is an electronically generated official receipt.
           </div>
         </div>
       </div>
@@ -237,12 +290,25 @@ export function OwnerPaymentsClientTable({
                     })}
                   </td>
                   <td className="td">
-                    <button
-                      onClick={() => setSelectedPayment(p)}
-                      className="btn-ghost !px-2.5 !py-1 text-xs"
-                    >
-                      View Receipt
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setSelectedPayment(p)}
+                        className="btn-ghost !px-2.5 !py-1 text-xs"
+                      >
+                        View Receipt
+                      </button>
+                      <a
+                        href={`mailto:billing@reviewflow.in?subject=${encodeURIComponent(
+                          `Inquiry regarding Invoice #${p.invoiceNo || p.reference}`
+                        )}&body=${encodeURIComponent(
+                          `Hi ReviewFlow Billing Support,\n\nI have an inquiry regarding this transaction:\nInvoice #: ${p.invoiceNo || "N/A"}\nAmount: ${rupees(p.amount)}\nMethod: ${p.method}\nReference / UTR: ${p.reference}\nRestaurant: ${restaurantName}\n\nMy Question:\n`
+                        )}`}
+                        className="btn-ghost !px-2 !py-1 text-xs text-ink/60 hover:text-leaf"
+                        title="Contact billing support regarding this transaction"
+                      >
+                        Contact
+                      </a>
+                    </div>
                   </td>
                 </tr>
               ))

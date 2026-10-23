@@ -239,27 +239,88 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 25);
 
-    // 4. Calculate Customer Growth (Past 6 Months) from actual database records
+    // 4. Calculate Customer Growth (Day-wise & Month-wise) from actual database records
     const now = new Date();
-    const monthlyGrowth = [];
-    for (let i = 5; i >= 0; i--) {
-      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const nextMonthDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
-      const monthLabel = monthDate.toLocaleDateString("en-IN", { month: "short" });
+    const thirtyDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29, 0, 0, 0, 0);
+    const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1, 0, 0, 0, 0);
 
-      const count = await db.loyaltyCustomer.count({
-        where: {
-          programId: program.id,
-          createdAt: {
-            gte: monthDate,
-            lt: nextMonthDate,
-          },
-        },
+    const [
+      recentPhoneCustomersDaily,
+      recentAnonCustomersDaily,
+      recentPhoneCustomersMonthly,
+      recentAnonCustomersMonthly,
+    ] = await Promise.all([
+      db.loyaltyCustomer.findMany({
+        where: { programId: program.id, createdAt: { gte: thirtyDaysAgo } },
+        select: { createdAt: true },
+      }),
+      db.anonymousCustomer.findMany({
+        where: { restaurantId, createdAt: { gte: thirtyDaysAgo } },
+        select: { createdAt: true },
+      }),
+      db.loyaltyCustomer.findMany({
+        where: { programId: program.id, createdAt: { gte: twelveMonthsAgo } },
+        select: { createdAt: true },
+      }),
+      db.anonymousCustomer.findMany({
+        where: { restaurantId, createdAt: { gte: twelveMonthsAgo } },
+        select: { createdAt: true },
+      }),
+    ]);
+
+    // Build Day-wise growth (past 30 days)
+    const dailyGrowth = [];
+    for (let i = 29; i >= 0; i--) {
+      const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, 0, 0, 0, 0);
+      const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, 23, 59, 59, 999);
+
+      const phoneCount = recentPhoneCustomersDaily.filter(
+        (c) => c.createdAt >= dayStart && c.createdAt <= dayEnd
+      ).length;
+      const anonCount = recentAnonCustomersDaily.filter(
+        (c) => c.createdAt >= dayStart && c.createdAt <= dayEnd
+      ).length;
+
+      const dayName = dayStart.toLocaleDateString("en-IN", { weekday: "short" });
+      const shortDate = dayStart.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+      const dateStr = dayStart.toISOString().split("T")[0];
+
+      dailyGrowth.push({
+        date: dateStr,
+        day: dayName,
+        shortDate,
+        label: i === 0 ? "Today" : i === 1 ? "Yesterday" : dayName,
+        count: phoneCount + anonCount,
+        phoneCount,
+        anonCount,
       });
+    }
+
+    // Build Month-wise growth (past 12 months)
+    const monthlyGrowth = [];
+    for (let i = 11; i >= 0; i--) {
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1, 0, 0, 0, 0);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 1, 0, 0, 0, 0);
+
+      const phoneCount = recentPhoneCustomersMonthly.filter(
+        (c) => c.createdAt >= monthStart && c.createdAt < monthEnd
+      ).length;
+      const anonCount = recentAnonCustomersMonthly.filter(
+        (c) => c.createdAt >= monthStart && c.createdAt < monthEnd
+      ).length;
+
+      const monthLabel = monthStart.toLocaleDateString("en-IN", { month: "short" });
+      const fullMonth = monthStart.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+      const year = monthStart.getFullYear();
 
       monthlyGrowth.push({
         month: monthLabel,
-        count: count,
+        label: monthLabel,
+        fullMonth,
+        year,
+        count: phoneCount + anonCount,
+        phoneCount,
+        anonCount,
       });
     }
 
@@ -275,6 +336,7 @@ export async function GET(req: NextRequest) {
       },
       customers,
       recentActivity: sortedActivity,
+      dailyGrowth,
       monthlyGrowth,
       program: {
         id: program.id,

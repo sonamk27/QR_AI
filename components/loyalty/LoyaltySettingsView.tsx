@@ -1,8 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { OwnerStampRequestsPanel } from "./OwnerStampRequestsPanel";
+
+export type DailyGrowthPoint = {
+  date: string;
+  day: string;
+  shortDate: string;
+  label: string;
+  count: number;
+  phoneCount: number;
+  anonCount: number;
+};
+
+export type MonthlyGrowthPoint = {
+  month: string;
+  label: string;
+  fullMonth: string;
+  year: number;
+  count: number;
+  phoneCount: number;
+  anonCount: number;
+};
 
 type Program = {
   id: string;
@@ -71,12 +91,16 @@ export function LoyaltySettingsView({
   stats,
   recentCustomers = [],
   recentActivity = [],
+  initialDailyGrowth = [],
+  initialMonthlyGrowth = [],
   qrSlug,
 }: {
   initialProgram: Program;
   stats: Stats;
   recentCustomers?: RecentCustomer[];
   recentActivity?: LiveActivityItem[] | any[];
+  initialDailyGrowth?: DailyGrowthPoint[];
+  initialMonthlyGrowth?: MonthlyGrowthPoint[];
   qrSlug?: string;
 }) {
   const [program, setProgram] = useState(initialProgram);
@@ -119,7 +143,17 @@ export function LoyaltySettingsView({
   const [liveStats, setLiveStats] = useState<Stats>(stats);
   const [liveCustomers, setLiveCustomers] = useState<RecentCustomer[]>(recentCustomers);
   const [liveActivity, setLiveActivity] = useState<LiveActivityItem[]>(recentActivity as any);
-  const [monthlyGrowth, setMonthlyGrowth] = useState<{ month: string; count: number }[]>([]);
+
+  // Customer Growth state: Day-wise and Month-wise options
+  const [growthView, setGrowthView] = useState<"DAY" | "MONTH">("DAY");
+  const [dayRange, setDayRange] = useState<7 | 14 | 30>(7);
+  const [monthRange, setMonthRange] = useState<6 | 12>(6);
+  const [channelFilter, setChannelFilter] = useState<"ALL" | "PHONE" | "ANON">("ALL");
+  const [hoveredPointIndex, setHoveredPointIndex] = useState<number | null>(null);
+
+  const [dailyGrowth, setDailyGrowth] = useState<DailyGrowthPoint[]>(initialDailyGrowth);
+  const [monthlyGrowth, setMonthlyGrowth] = useState<MonthlyGrowthPoint[]>(initialMonthlyGrowth);
+
   const [quickStampLoadingPhone, setQuickStampLoadingPhone] = useState<string | null>(null);
   const [quickStampFeedback, setQuickStampFeedback] = useState<{ phone: string; message: string; type: "success" | "error" } | null>(null);
 
@@ -131,6 +165,7 @@ export function LoyaltySettingsView({
         if (data.stats) setLiveStats(data.stats);
         if (data.customers) setLiveCustomers(data.customers);
         if (data.recentActivity) setLiveActivity(data.recentActivity);
+        if (data.dailyGrowth) setDailyGrowth(data.dailyGrowth);
         if (data.monthlyGrowth) setMonthlyGrowth(data.monthlyGrowth);
         if (data.program) setProgram((prev) => ({ ...prev, ...data.program }));
       }
@@ -321,27 +356,85 @@ export function LoyaltySettingsView({
   const rewardsRedeemedVal = liveStats.redeemedRewards.toLocaleString();
   const reviewClicksVal = (liveStats.reviewClicks || 0).toLocaleString();
 
-  // Customer growth chart points based on real monthly backend data
-  const monthsData = monthlyGrowth.length === 6
-    ? monthlyGrowth
-    : [
-        { month: "May", count: 0 },
-        { month: "Jun", count: 0 },
-        { month: "Jul", count: 0 },
-        { month: "Aug", count: 0 },
-        { month: "Sep", count: 0 },
-        { month: "Oct", count: liveStats.totalCustomers },
-      ];
+  // Customer growth chart points based on real Day-wise or Month-wise backend data
+  const rawGrowthData = useMemo(() => {
+    if (growthView === "DAY") {
+      if (dailyGrowth.length > 0) {
+        return dailyGrowth.slice(-dayRange);
+      }
+      const now = new Date();
+      return Array.from({ length: dayRange }, (_, idx) => {
+        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (dayRange - 1 - idx));
+        return {
+          date: d.toISOString().split("T")[0],
+          day: d.toLocaleDateString("en-IN", { weekday: "short" }),
+          shortDate: d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+          label: idx === dayRange - 1 ? "Today" : d.toLocaleDateString("en-IN", { weekday: "short" }),
+          count: 0,
+          phoneCount: 0,
+          anonCount: 0,
+        };
+      });
+    } else {
+      if (monthlyGrowth.length > 0) {
+        return monthlyGrowth.slice(-monthRange);
+      }
+      const now = new Date();
+      return Array.from({ length: monthRange }, (_, idx) => {
+        const d = new Date(now.getFullYear(), now.getMonth() - (monthRange - 1 - idx), 1);
+        return {
+          month: d.toLocaleDateString("en-IN", { month: "short" }),
+          label: d.toLocaleDateString("en-IN", { month: "short" }),
+          fullMonth: d.toLocaleDateString("en-IN", { month: "long", year: "numeric" }),
+          year: d.getFullYear(),
+          count: 0,
+          phoneCount: 0,
+          anonCount: 0,
+        };
+      });
+    }
+  }, [growthView, dayRange, monthRange, dailyGrowth, monthlyGrowth]);
 
-  const maxGrowth = Math.max(1, ...monthsData.map((m) => m.count));
-  const chartPoints = monthsData.map((m, idx) => {
-    const x = 35 + idx * 85;
-    const y = 135 - (m.count / maxGrowth) * 95;
-    return { x, y, month: m.month, count: m.count };
+  const activeChartPointsData = useMemo(() => {
+    return rawGrowthData.map((item) => {
+      const activeCount =
+        channelFilter === "PHONE"
+          ? item.phoneCount
+          : channelFilter === "ANON"
+          ? item.anonCount
+          : item.count;
+      const primaryLabel = "day" in item ? item.day : item.month;
+      const secondaryLabel = "shortDate" in item ? item.shortDate : "fullMonth" in item ? item.fullMonth : "";
+      return {
+        ...item,
+        displayCount: activeCount,
+        primaryLabel,
+        secondaryLabel,
+      };
+    });
+  }, [rawGrowthData, channelFilter]);
+
+  const totalPeriodAcquired = activeChartPointsData.reduce((acc, d) => acc + d.displayCount, 0);
+  const avgPeriodAcquired = (totalPeriodAcquired / Math.max(1, activeChartPointsData.length)).toFixed(1);
+  const peakPeriodPoint = activeChartPointsData.reduce(
+    (max, d) => (d.displayCount > max.displayCount ? d : max),
+    activeChartPointsData[0]
+  );
+
+  const maxGrowth = Math.max(1, ...activeChartPointsData.map((m) => m.displayCount));
+  const svgW = 500;
+  const padX = 35;
+  const plotWidth = svgW - padX * 2;
+  const chartPoints = activeChartPointsData.map((m, idx) => {
+    const x = padX + (idx / Math.max(1, activeChartPointsData.length - 1)) * plotWidth;
+    const y = 135 - (m.displayCount / maxGrowth) * 95;
+    return { ...m, x, y };
   });
 
-  const chartPathD = chartPoints.map((p, idx) => `${idx === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  const chartAreaD = `${chartPathD} L ${chartPoints[chartPoints.length - 1].x} 150 L ${chartPoints[0].x} 150 Z`;
+  const chartPathD = chartPoints
+    .map((p, idx) => `${idx === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
+    .join(" ");
+  const chartAreaD = `${chartPathD} L ${chartPoints[chartPoints.length - 1].x.toFixed(1)} 150 L ${chartPoints[0].x.toFixed(1)} 150 Z`;
 
   // Dynamic Donut Breakdown
   const totalVouchers = liveStats.redeemedRewards + liveStats.unredeemedRewards;
@@ -451,14 +544,178 @@ export function LoyaltySettingsView({
           VISUAL CHARTS ROW: Customer Growth & Reward Redemptions Donut
       ───────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        {/* Customer Growth Spline Chart */}
+        {/* Customer Growth Spline Chart with Day-wise & Month-wise modification */}
         <div className="rounded-2xl border border-stone-200/80 bg-white p-5 shadow-xs lg:col-span-2">
-          <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+          {/* Header & Controls */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-stone-100 pb-3">
             <div>
-              <h3 className="text-sm font-bold text-stone-900">Customer Growth</h3>
-              <p className="text-[11px] text-stone-400">Total new registered loyalty members over time</p>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-stone-900">Customer Growth</h3>
+                <span className="rounded-full bg-amber-50 border border-amber-200/80 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                  {growthView === "DAY" ? `${dayRange}-Day Trend` : `${monthRange}-Month Trend`}
+                </span>
+              </div>
+              <p className="text-[11px] text-stone-400 mt-0.5">
+                {growthView === "DAY"
+                  ? "Daily diner acquisition across registered members & walk-ins"
+                  : "Monthly cumulative member & walk-in diner acquisition"}
+              </p>
             </div>
-            <span className="text-xs font-semibold text-stone-500">Last 6 Months</span>
+
+            {/* Toggle Controls: Day-wise vs Month-wise and Interval Selector */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Day / Month Segmented Switch */}
+              <div className="flex items-center rounded-xl bg-stone-100 p-0.5 border border-stone-200/80 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setGrowthView("DAY")}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                    growthView === "DAY"
+                      ? "bg-white text-stone-900 shadow-2xs font-bold"
+                      : "text-stone-500 hover:text-stone-800"
+                  }`}
+                >
+                  📅 Day-wise
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGrowthView("MONTH")}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                    growthView === "MONTH"
+                      ? "bg-white text-stone-900 shadow-2xs font-bold"
+                      : "text-stone-500 hover:text-stone-800"
+                  }`}
+                >
+                  🗓️ Month-wise
+                </button>
+              </div>
+
+              {/* Range Selector */}
+              {growthView === "DAY" ? (
+                <div className="flex items-center rounded-lg bg-stone-50 p-0.5 border border-stone-200 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setDayRange(7)}
+                    className={`rounded px-2 py-0.5 transition ${
+                      dayRange === 7
+                        ? "bg-amber-100 text-amber-900 font-bold"
+                        : "text-stone-500 hover:text-stone-700"
+                    }`}
+                  >
+                    7D
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDayRange(14)}
+                    className={`rounded px-2 py-0.5 transition ${
+                      dayRange === 14
+                        ? "bg-amber-100 text-amber-900 font-bold"
+                        : "text-stone-500 hover:text-stone-700"
+                    }`}
+                  >
+                    14D
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDayRange(30)}
+                    className={`rounded px-2 py-0.5 transition ${
+                      dayRange === 30
+                        ? "bg-amber-100 text-amber-900 font-bold"
+                        : "text-stone-500 hover:text-stone-700"
+                    }`}
+                  >
+                    30D
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center rounded-lg bg-stone-50 p-0.5 border border-stone-200 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setMonthRange(6)}
+                    className={`rounded px-2 py-0.5 transition ${
+                      monthRange === 6
+                        ? "bg-amber-100 text-amber-900 font-bold"
+                        : "text-stone-500 hover:text-stone-700"
+                    }`}
+                  >
+                    6 Months
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMonthRange(12)}
+                    className={`rounded px-2 py-0.5 transition ${
+                      monthRange === 12
+                        ? "bg-amber-100 text-amber-900 font-bold"
+                        : "text-stone-500 hover:text-stone-700"
+                    }`}
+                  >
+                    12 Months
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Metrics & Channel Modification Filter */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mt-3 pt-1">
+            {/* Summary Highlights */}
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 font-bold text-emerald-800 border border-emerald-200/80">
+                <span className="text-[10px]">✨</span>
+                <span>+{totalPeriodAcquired} New Diners</span>
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 text-stone-600 font-medium">
+                <span>Avg:</span>
+                <span className="font-bold text-stone-900">
+                  {avgPeriodAcquired} / {growthView === "DAY" ? "day" : "mo"}
+                </span>
+              </span>
+              {peakPeriodPoint && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-amber-800 border border-amber-200/60 text-[11px]">
+                  <span>Peak:</span>
+                  <span className="font-bold">{peakPeriodPoint.secondaryLabel || peakPeriodPoint.primaryLabel}</span>
+                  <span>({peakPeriodPoint.displayCount})</span>
+                </span>
+              )}
+            </div>
+
+            {/* Audience Channel Filter */}
+            <div className="flex items-center gap-1 text-[11px]">
+              <span className="text-stone-400 mr-1">Filter:</span>
+              <button
+                type="button"
+                onClick={() => setChannelFilter("ALL")}
+                className={`rounded px-2 py-0.5 font-medium transition ${
+                  channelFilter === "ALL"
+                    ? "bg-stone-800 text-white font-bold"
+                    : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                }`}
+              >
+                All Diners
+              </button>
+              <button
+                type="button"
+                onClick={() => setChannelFilter("PHONE")}
+                className={`rounded px-2 py-0.5 font-medium transition ${
+                  channelFilter === "PHONE"
+                    ? "bg-amber-700 text-white font-bold"
+                    : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                }`}
+              >
+                📱 Phone
+              </button>
+              <button
+                type="button"
+                onClick={() => setChannelFilter("ANON")}
+                className={`rounded px-2 py-0.5 font-medium transition ${
+                  channelFilter === "ANON"
+                    ? "bg-emerald-700 text-white font-bold"
+                    : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                }`}
+              >
+                🚶 Walk-in
+              </button>
+            </div>
           </div>
 
           <div className="mt-4">
@@ -467,7 +724,7 @@ export function LoyaltySettingsView({
               <svg viewBox="0 0 500 160" className="h-full w-full overflow-visible">
                 <defs>
                   <linearGradient id="growthGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#D97706" stopOpacity="0.25" />
+                    <stop offset="0%" stopColor="#D97706" stopOpacity="0.28" />
                     <stop offset="100%" stopColor="#D97706" stopOpacity="0.0" />
                   </linearGradient>
                 </defs>
@@ -480,24 +737,93 @@ export function LoyaltySettingsView({
                 <path d={chartAreaD} fill="url(#growthGrad)" />
                 {/* Line Spline */}
                 <path d={chartPathD} fill="none" stroke="#B45309" strokeWidth="3" strokeLinecap="round" />
+
                 {/* Data Points */}
-                {chartPoints.map((p, idx) => (
-                  <g key={idx}>
-                    <circle cx={p.x} cy={p.y} r={p.count > 0 ? "5" : "3"} fill="#B45309" stroke="#FFFFFF" strokeWidth="2" />
-                    {p.count > 0 && (
-                      <text x={p.x} y={p.y - 8} textAnchor="middle" fontSize="10" fontWeight="bold" fill="#B45309">
-                        {p.count}
-                      </text>
-                    )}
-                  </g>
-                ))}
+                {chartPoints.map((p, idx) => {
+                  const isHovered = hoveredPointIndex === idx;
+                  const isPeak = p.displayCount === peakPeriodPoint?.displayCount && p.displayCount > 0;
+                  return (
+                    <g
+                      key={idx}
+                      className="cursor-pointer"
+                      onMouseEnter={() => setHoveredPointIndex(idx)}
+                      onMouseLeave={() => setHoveredPointIndex(null)}
+                    >
+                      {/* Invisible larger hover target */}
+                      <circle cx={p.x} cy={p.y} r="14" fill="transparent" />
+
+                      {/* Visible circle */}
+                      <circle
+                        cx={p.x}
+                        cy={p.y}
+                        r={isHovered ? "7" : isPeak ? "5.5" : p.displayCount > 0 ? "4.5" : "3"}
+                        fill={isHovered ? "#92400E" : isPeak ? "#D97706" : "#B45309"}
+                        stroke="#FFFFFF"
+                        strokeWidth={isHovered ? "3" : "2"}
+                        className="transition-all"
+                      />
+
+                      {/* Count label above point */}
+                      {(p.displayCount > 0 || isHovered) && (
+                        <text
+                          x={p.x}
+                          y={p.y - 8}
+                          textAnchor="middle"
+                          fontSize={isHovered ? "11" : "10"}
+                          fontWeight="bold"
+                          fill="#92400E"
+                        >
+                          {p.displayCount}
+                        </text>
+                      )}
+                    </g>
+                  );
+                })}
               </svg>
 
+              {/* Dynamic X-Axis Labels */}
               <div className="mt-2 flex justify-between px-6 text-[10px] font-semibold text-stone-400">
-                {monthsData.map((m, idx) => (
-                  <span key={idx}>{m.month}</span>
-                ))}
+                {chartPoints.map((p, idx) => {
+                  if (chartPoints.length > 10 && idx % 2 !== 0 && idx !== chartPoints.length - 1) {
+                    return <span key={idx} className="opacity-0">{p.primaryLabel}</span>;
+                  }
+                  return (
+                    <span
+                      key={idx}
+                      className={
+                        hoveredPointIndex === idx
+                          ? "text-amber-800 font-bold"
+                          : idx === chartPoints.length - 1
+                          ? "text-stone-700 font-bold"
+                          : ""
+                      }
+                    >
+                      {growthView === "DAY" && dayRange > 7 ? p.secondaryLabel || p.primaryLabel : p.primaryLabel}
+                    </span>
+                  );
+                })}
               </div>
+
+              {/* Hover Tooltip Card */}
+              {hoveredPointIndex !== null && chartPoints[hoveredPointIndex] && (
+                <div
+                  className="absolute pointer-events-none z-20 -top-8 rounded-lg border border-stone-200 bg-stone-900/95 px-2.5 py-1 text-white shadow-xl text-[11px] backdrop-blur-xs transition"
+                  style={{
+                    left: `${Math.min(80, Math.max(10, (chartPoints[hoveredPointIndex].x / 500) * 100))}%`,
+                    transform: "translateX(-50%)",
+                  }}
+                >
+                  <p className="font-bold text-amber-300">
+                    {chartPoints[hoveredPointIndex].secondaryLabel || chartPoints[hoveredPointIndex].primaryLabel}
+                  </p>
+                  <p className="text-stone-200 font-medium">
+                    {chartPoints[hoveredPointIndex].displayCount} New Customer{chartPoints[hoveredPointIndex].displayCount !== 1 ? "s" : ""}
+                  </p>
+                  <div className="text-[9px] text-stone-400 border-t border-stone-800 mt-0.5 pt-0.5">
+                    📱 {chartPoints[hoveredPointIndex].phoneCount} phone · 🚶 {chartPoints[hoveredPointIndex].anonCount} walk-in
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

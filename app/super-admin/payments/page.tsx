@@ -14,7 +14,14 @@ export default async function SuperAdminPaymentsPage() {
     orderBy: { createdAt: "desc" },
     include: {
       restaurant: {
-        select: { id: true, name: true, city: true },
+        select: {
+          id: true,
+          name: true,
+          city: true,
+          owner: {
+            select: { name: true, email: true },
+          },
+        },
       },
       qr: { select: { name: true } },
       qrRequest: { select: { name: true } },

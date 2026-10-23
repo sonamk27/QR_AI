@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { rupees } from "@/lib/plans";
 import { useRouter } from "next/navigation";
+import { OwnerPaymentReceiptModal } from "./OwnerPaymentsClientTable";
 
 type PaymentRow = {
   id: string;
@@ -18,6 +19,10 @@ type PaymentRow = {
     id: string;
     name: string;
     city: string | null;
+    owner?: {
+      name: string;
+      email: string;
+    } | null;
   };
   qr: {
     name: string;
@@ -75,6 +80,7 @@ export function PaymentsAdminTable({ payments }: { payments: PaymentRow[] }) {
   const [search, setSearch] = useState("");
   const [methodFilter, setMethodFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [selectedPaymentForReceipt, setSelectedPaymentForReceipt] = useState<PaymentRow | null>(null);
 
   const filtered = useMemo(() => {
     return payments.filter((p) => {
@@ -86,6 +92,9 @@ export function PaymentsAdminTable({ payments }: { payments: PaymentRow[] }) {
       return (
         (p.invoiceNo && p.invoiceNo.toLowerCase().includes(q)) ||
         p.restaurant.name.toLowerCase().includes(q) ||
+        (p.restaurant.city && p.restaurant.city.toLowerCase().includes(q)) ||
+        (p.restaurant.owner?.name && p.restaurant.owner.name.toLowerCase().includes(q)) ||
+        (p.restaurant.owner?.email && p.restaurant.owner.email.toLowerCase().includes(q)) ||
         p.reference.toLowerCase().includes(q) ||
         (p.gatewayOrderId && p.gatewayOrderId.toLowerCase().includes(q)) ||
         (p.qr && p.qr.name.toLowerCase().includes(q)) ||
@@ -105,6 +114,8 @@ export function PaymentsAdminTable({ payments }: { payments: PaymentRow[] }) {
       "Invoice #",
       "Restaurant",
       "City",
+      "Contact Person",
+      "Contact Email",
       "QR / Request",
       "Amount (INR)",
       "Method",
@@ -117,6 +128,8 @@ export function PaymentsAdminTable({ payments }: { payments: PaymentRow[] }) {
       `"${p.invoiceNo || ""}"`,
       `"${p.restaurant.name.replace(/"/g, '""')}"`,
       `"${p.restaurant.city || ""}"`,
+      `"${(p.restaurant.owner?.name || "").replace(/"/g, '""')}"`,
+      `"${p.restaurant.owner?.email || ""}"`,
       `"${(p.qr?.name || p.qrRequest?.name || "General").replace(/"/g, '""')}"`,
       (p.amount / 100).toFixed(2),
       p.method,
@@ -215,11 +228,12 @@ export function PaymentsAdminTable({ payments }: { payments: PaymentRow[] }) {
 
       {/* Table */}
       <div className="panel overflow-x-auto">
-        <table className="w-full min-w-[900px]">
+        <table className="w-full min-w-[1000px]">
           <thead>
             <tr>
               <th className="th">Invoice #</th>
               <th className="th">Restaurant</th>
+              <th className="th">Owner &amp; Contact</th>
               <th className="th">QR / Request</th>
               <th className="th">Amount</th>
               <th className="th">Method</th>
@@ -232,7 +246,7 @@ export function PaymentsAdminTable({ payments }: { payments: PaymentRow[] }) {
           <tbody className="divide-y divide-line">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={9} className="td text-center text-ink/60 py-10">
+                <td colSpan={10} className="td text-center text-ink/60 py-10">
                   {payments.length === 0
                     ? "No payment records found."
                     : "No payments match the selected filters."}
@@ -247,6 +261,24 @@ export function PaymentsAdminTable({ payments }: { payments: PaymentRow[] }) {
                   <td className="td font-medium text-ink">
                     <p>{p.restaurant.name}</p>
                     <p className="text-xs font-normal text-ink/60">{p.restaurant.city || "—"}</p>
+                  </td>
+                  <td className="td">
+                    <div className="flex flex-col">
+                      <span className="font-medium text-ink text-xs">
+                        {p.restaurant.owner?.name || "—"}
+                      </span>
+                      {p.restaurant.owner?.email ? (
+                        <a
+                          href={`mailto:${p.restaurant.owner.email}`}
+                          className="text-xs text-ink/60 hover:text-leaf underline truncate max-w-[160px]"
+                          title={p.restaurant.owner.email}
+                        >
+                          {p.restaurant.owner.email}
+                        </a>
+                      ) : (
+                        <span className="text-xs text-ink/40">No email</span>
+                      )}
+                    </div>
                   </td>
                   <td className="td text-xs text-ink/80">
                     {p.qr?.name || p.qrRequest?.name || "General"}
@@ -283,9 +315,18 @@ export function PaymentsAdminTable({ payments }: { payments: PaymentRow[] }) {
                     })}
                   </td>
                   <td className="td">
-                    {p.status === "RECORDED" && p.qrRequestId && (
-                      <VerifyPaymentButton payment={p} />
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPaymentForReceipt(p)}
+                        className="btn-ghost !px-2 !py-1 text-xs"
+                      >
+                        Receipt
+                      </button>
+                      {p.status === "RECORDED" && p.qrRequestId && (
+                        <VerifyPaymentButton payment={p} />
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
@@ -293,6 +334,21 @@ export function PaymentsAdminTable({ payments }: { payments: PaymentRow[] }) {
           </tbody>
         </table>
       </div>
+
+      {selectedPaymentForReceipt && (
+        <OwnerPaymentReceiptModal
+          payment={{
+            ...selectedPaymentForReceipt,
+            qrName: selectedPaymentForReceipt.qr?.name ?? null,
+            qrRequestName: selectedPaymentForReceipt.qrRequest?.name ?? null,
+          }}
+          restaurantName={selectedPaymentForReceipt.restaurant.name}
+          restaurantCity={selectedPaymentForReceipt.restaurant.city}
+          ownerName={selectedPaymentForReceipt.restaurant.owner?.name || "Authorized Representative"}
+          ownerEmail={selectedPaymentForReceipt.restaurant.owner?.email || ""}
+          onClose={() => setSelectedPaymentForReceipt(null)}
+        />
+      )}
     </div>
   );
 }
