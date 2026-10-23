@@ -49,6 +49,27 @@ export async function getOrCreateLoyaltyProgram(restaurantId: string) {
   return program;
 }
 
+/**
+ * Returns the number of days for a stamp cycle.
+ * Uses the program's rewardExpiryDays as the cycle period (default 30 days).
+ */
+export function getStampCycleDays(program: { rewardExpiryDays: number }): number {
+  return program.rewardExpiryDays || 30;
+}
+
+/**
+ * Checks if the customer's current stamp cycle has expired.
+ * A cycle expires when (now - stampCycleStartedAt) > cycleDays.
+ */
+export function isStampCycleExpired(
+  stampCycleStartedAt: Date | null,
+  cycleDays: number
+): boolean {
+  if (!stampCycleStartedAt) return false; // no cycle started yet
+  const cycleEndMs = stampCycleStartedAt.getTime() + cycleDays * 24 * 60 * 60 * 1000;
+  return Date.now() > cycleEndMs;
+}
+
 export async function getCustomerLoyaltyCard(restaurantId: string, rawPhone: string) {
   const phone = normalizePhone(rawPhone);
   if (!phone || phone.length < 10) {
@@ -56,6 +77,7 @@ export async function getCustomerLoyaltyCard(restaurantId: string, rawPhone: str
   }
 
   const program = await getOrCreateLoyaltyProgram(restaurantId);
+  const cycleDays = getStampCycleDays(program);
 
   let customer = await db.loyaltyCustomer.findUnique({
     where: {
@@ -82,10 +104,31 @@ export async function getCustomerLoyaltyCard(restaurantId: string, rawPhone: str
         phone,
         currentStamps: 0,
         lifetimeStamps: 0,
+        cycleNumber: 1,
+        stampCycleStartedAt: null,
       },
       include: {
         rewards: true,
         transactions: true,
+      },
+    });
+  }
+
+  // ── Stamp Cycle Expiry: reset currentStamps if the 30-day cycle has expired ──
+  if (
+    customer.currentStamps > 0 &&
+    isStampCycleExpired(customer.stampCycleStartedAt, cycleDays)
+  ) {
+    customer = await db.loyaltyCustomer.update({
+      where: { id: customer.id },
+      data: {
+        currentStamps: 0,
+        cycleNumber: { increment: 1 },
+        stampCycleStartedAt: null, // will be set fresh on next stamp
+      },
+      include: {
+        rewards: { orderBy: { createdAt: "desc" } },
+        transactions: { orderBy: { createdAt: "desc" }, take: 20 },
       },
     });
   }
@@ -95,7 +138,13 @@ export async function getCustomerLoyaltyCard(restaurantId: string, rawPhone: str
 
   // Calculate the completed stamp cycles (how many times they've earned a reward)
   const redeemedCount = customer.rewards.filter((r) => r.status === "REDEEMED").length;
-  const cycleNumber = redeemedCount + 1; // current cycle they are in
+  const cycleNumber = customer.cycleNumber ?? (redeemedCount + 1);
+
+  // Compute cycle expiry date for display on the card
+  const cycleDaysMs = cycleDays * 24 * 60 * 60 * 1000;
+  const cycleEndsAt = customer.stampCycleStartedAt
+    ? new Date(customer.stampCycleStartedAt.getTime() + cycleDaysMs)
+    : null;
 
   return {
     program: {
@@ -109,6 +158,7 @@ export async function getCustomerLoyaltyCard(restaurantId: string, rawPhone: str
       rewardExpiryDays: program.rewardExpiryDays,
       isActive: program.isActive,
       requireOwnerVerification: Boolean(program.terminalPin && program.terminalPin.trim() !== ""),
+      stampCycleDays: cycleDays,
     },
     customer: {
       id: customer.id,
@@ -117,6 +167,8 @@ export async function getCustomerLoyaltyCard(restaurantId: string, rawPhone: str
       currentStamps: customer.currentStamps,
       lifetimeStamps: customer.lifetimeStamps,
       cycleNumber,
+      stampCycleStartedAt: customer.stampCycleStartedAt,
+      cycleEndsAt,
       lastVisitAt: customer.lastVisitAt,
       rewards: customer.rewards,
       transactions: customer.transactions,

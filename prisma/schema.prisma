@@ -250,18 +250,20 @@ model LoyaltyProgram {
 }
 
 model LoyaltyCustomer {
-  id             String               @id @default(cuid())
-  programId      String               @map("program_id")
-  program        LoyaltyProgram       @relation(fields: [programId], references: [id], onDelete: Cascade)
-  phone          String
-  name           String?
-  currentStamps  Int                  @default(0)
-  lifetimeStamps Int                  @default(0)
-  lastVisitAt    DateTime?
-  createdAt      DateTime             @default(now())
-  transactions   LoyaltyTransaction[]
-  rewards        LoyaltyReward[]
-  stampRequests  StampRequest[]
+  id                   String               @id @default(cuid())
+  programId            String               @map("program_id")
+  program              LoyaltyProgram       @relation(fields: [programId], references: [id], onDelete: Cascade)
+  phone                String
+  name                 String?
+  currentStamps        Int                  @default(0)
+  lifetimeStamps       Int                  @default(0)
+  cycleNumber          Int                  @default(1) // which 30-day cycle they are in
+  stampCycleStartedAt  DateTime?            @map("stamp_cycle_started_at") // start of current stamp cycle
+  lastVisitAt          DateTime?
+  createdAt            DateTime             @default(now())
+  transactions         LoyaltyTransaction[]
+  rewards              LoyaltyReward[]
+  stampRequests        StampRequest[]
 
   @@unique([programId, phone])
   @@index([phone])

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getOwnerContext } from "@/lib/auth";
-import { getOrCreateLoyaltyProgram, normalizePhone, generateRewardCode } from "@/lib/loyalty";
+import { getOrCreateLoyaltyProgram, normalizePhone, generateRewardCode, getStampCycleDays, isStampCycleExpired } from "@/lib/loyalty";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +45,8 @@ export async function POST(req: NextRequest) {
     if (!program.isActive) {
       return NextResponse.json({ error: "Loyalty program is currently paused" }, { status: 400 });
     }
+
+    const cycleDays = getStampCycleDays(program);
 
     const isOwner = ownerCtx?.restaurant.id === restaurantId;
 
@@ -106,12 +108,28 @@ export async function POST(req: NextRequest) {
         });
 
         const nextLifetime = freshCustomer.lifetimeStamps + 1;
+        const now = new Date();
 
-        // If customer previously completed a full card (>= stampsRequired), start new card cycle
-        let finalStamps =
-          freshCustomer.currentStamps >= program.stampsRequired
-            ? 1
-            : freshCustomer.currentStamps + 1;
+        // ── Stamp Cycle Expiry Check ──
+        // If the 30-day cycle has expired OR card was previously completed, reset stamps.
+        const cycleExpired = isStampCycleExpired(freshCustomer.stampCycleStartedAt, cycleDays);
+        const cardCompleted = freshCustomer.currentStamps >= program.stampsRequired;
+
+        let stampsBase = freshCustomer.currentStamps;
+        let newCycleNumber = freshCustomer.cycleNumber ?? 1;
+        let newCycleStartedAt: Date | null = freshCustomer.stampCycleStartedAt;
+
+        if (cycleExpired || cardCompleted) {
+          // Start a fresh cycle
+          stampsBase = 0;
+          newCycleNumber = (freshCustomer.cycleNumber ?? 1) + 1;
+          newCycleStartedAt = now;
+        } else if (!freshCustomer.stampCycleStartedAt) {
+          // First stamp ever — start the cycle clock now
+          newCycleStartedAt = now;
+        }
+
+        const finalStamps = stampsBase + 1;
         const targetReached = finalStamps === program.stampsRequired;
 
         let newReward = null;
@@ -138,7 +156,9 @@ export async function POST(req: NextRequest) {
           data: {
             currentStamps: finalStamps,
             lifetimeStamps: nextLifetime,
-            lastVisitAt: new Date(),
+            cycleNumber: newCycleNumber,
+            stampCycleStartedAt: newCycleStartedAt,
+            lastVisitAt: now,
           },
           include: {
             rewards: { orderBy: { createdAt: "desc" } },

@@ -60,6 +60,8 @@ type CustomerData = {
   currentStamps: number;
   lifetimeStamps: number;
   cycleNumber: number;
+  stampCycleStartedAt: string | null;
+  cycleEndsAt: string | null;
   lastVisitAt: string | null;
   rewards: RewardItem[];
   transactions: TransactionItem[];
@@ -71,7 +73,7 @@ export function CustomerJourneyView({
   initialProgram,
   initialPhone,
   initialName,
-  initialView = "welcome",
+  initialView = "register", // Always start at register/phone prompt on every scan
 }: CustomerJourneyProps) {
   // Navigation View State
   const [currentView, setCurrentView] = useState<
@@ -126,7 +128,7 @@ export function CustomerJourneyView({
   // Primary Theme Color (Warm Bronze/Coffee or Restaurant Brand)
   const brandColor = restaurant.brandColor || "#8C5A2B";
 
-  // Check on mount for remembered phone
+  // Check on mount for remembered phone — pre-fill but always show the register prompt
   useEffect(() => {
     const savedPhone =
       initialPhone ||
@@ -138,26 +140,10 @@ export function CustomerJourneyView({
       localStorage.getItem(`loyalty_name_${slug}`);
 
     if (savedName) setFullName(savedName);
+    if (savedPhone) setPhoneNumber(savedPhone);
 
-    if (savedPhone) {
-      setPhoneNumber(savedPhone);
-      fetchLoyaltyCard(savedPhone);
-
-      // Check if there is an active pending stamp request for this phone
-      fetch(`/api/loyalty/request-stamp/status?slug=${encodeURIComponent(slug)}&phone=${encodeURIComponent(savedPhone)}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.status === "PENDING") {
-            setPendingRequestId(data.requestId);
-            setPendingTableNo(data.tableNo || null);
-            setCurrentView("request_pending");
-          }
-        })
-        .catch(() => {});
-    } else if (initialView === "card") {
-      // No phone saved — redirect to register so customer can identify themselves
-      setCurrentView("register");
-    }
+    // Always start at register (phone prompt) — user must confirm their number each scan
+    setCurrentView("register");
   }, [slug, initialPhone, initialName]);
 
   // Ref to track if component has mounted (skip first-render side-effects)
@@ -200,6 +186,8 @@ export function CustomerJourneyView({
         setCustomer({
           ...data.customer,
           cycleNumber: data.customer.cycleNumber ?? 1,
+          stampCycleStartedAt: data.customer.stampCycleStartedAt ?? null,
+          cycleEndsAt: data.customer.cycleEndsAt ?? null,
           lastVisitAt: data.customer.lastVisitAt ?? null,
         });
         if (data.program) setProgram(data.program);
@@ -566,7 +554,7 @@ export function CustomerJourneyView({
       )}
 
       {/* ─────────────────────────────────────────────────────────────
-          STEP 3: ENTER DETAILS (Name & Mobile Number — NO OTP)
+          STEP 3: ENTER DETAILS (Name & Mobile Number — always shown on scan)
       ───────────────────────────────────────────────────────────── */}
       {currentView === "register" && (
         <main className="mx-auto flex min-h-screen max-w-md flex-col justify-between px-6 py-6">
@@ -580,17 +568,28 @@ export function CustomerJourneyView({
             </button>
 
             <div className="mt-6 text-center">
-              <div
-                className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl text-2xl font-bold text-white shadow-sm"
-                style={{ backgroundColor: brandColor }}
-              >
-                ✨
-              </div>
+              {restaurant.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={restaurant.logoUrl}
+                  alt={restaurant.name}
+                  className="mx-auto h-14 w-14 rounded-2xl border border-stone-200 object-cover shadow-sm"
+                />
+              ) : (
+                <div
+                  className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl text-2xl font-bold text-white shadow-sm"
+                  style={{ backgroundColor: brandColor }}
+                >
+                  ✨
+                </div>
+              )}
               <h1 className="mt-4 font-serif text-2xl font-bold text-stone-900">
-                Join Our Rewards
+                {phoneNumber ? "Welcome Back! 👋" : "Join Our Rewards"}
               </h1>
               <p className="mt-1 text-xs text-stone-500">
-                A few details to get started
+                {phoneNumber
+                  ? "Confirm your number to load your stamp card"
+                  : "Enter your details to collect a stamp"}
               </p>
             </div>
 
@@ -657,7 +656,7 @@ export function CustomerJourneyView({
                 className="mt-4 w-full rounded-2xl py-3.5 text-sm font-bold text-white shadow-md transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
                 style={{ backgroundColor: brandColor }}
               >
-                {registering ? "Connecting Rewards..." : "Continue to Rewards →"}
+                {registering ? "Loading Your Card..." : "Continue to My Stamps →"}
               </button>
             </form>
           </div>
@@ -879,7 +878,7 @@ export function CustomerJourneyView({
                   })}
                 </div>
 
-                {/* Progress Subtitle */}
+                {/* Progress Subtitle with Cycle Expiry */}
                 <div className="rounded-2xl bg-amber-50/60 border border-amber-200/60 p-3 text-center">
                   <p className="text-xs font-semibold text-amber-900">
                     {currentStamps >= stampsRequired
@@ -888,6 +887,12 @@ export function CustomerJourneyView({
                       ? "One more visit to unlock your reward!"
                       : `${stampsRemaining} more visits to unlock your reward!`}
                   </p>
+                  {customer?.cycleEndsAt && customer.currentStamps > 0 && (
+                    <p className="mt-1 text-[10px] text-amber-700/80">
+                      ⏳ Stamps valid until{" "}
+                      <strong>{new Date(customer.cycleEndsAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</strong>
+                    </p>
+                  )}
                 </div>
 
                 {/* Collect Today's Stamp CTA on Card */}
