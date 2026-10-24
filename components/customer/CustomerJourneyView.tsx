@@ -73,7 +73,7 @@ export function CustomerJourneyView({
   initialProgram,
   initialPhone,
   initialName,
-  initialView = "register", // Always start at register/phone prompt on every scan
+  initialView = "welcome", // Always start at register/phone prompt on every scan
 }: CustomerJourneyProps) {
   // Navigation View State
   const [currentView, setCurrentView] = useState<
@@ -1373,3 +1373,4 @@ export function CustomerJourneyView({
     </div>
   );
 }
+
