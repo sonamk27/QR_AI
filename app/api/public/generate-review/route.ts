@@ -78,16 +78,19 @@ export async function POST(req: Request) {
     sessionId = s.id;
   }
 
-  const text = await generateDraft({
-    restaurantName: qr.restaurant.name,
-    overall: d.overall,
-    food: d.food,
-    service: d.service,
-    chips: d.chips,
-    text: d.text,
-    previousDraft,
-    variant: d.variant,
-  });
+  const text = await generateDraft(
+    {
+      restaurantName: qr.restaurant.name,
+      overall: d.overall,
+      food: d.food,
+      service: d.service,
+      chips: d.chips,
+      text: d.text,
+      previousDraft,
+      variant: d.variant,
+    },
+    { enabled: qr.restaurant.aiEnabled !== false },
+  );
   const draft = await db.draft.upsert({
     where: { sessionId },
     create: { sessionId, text },

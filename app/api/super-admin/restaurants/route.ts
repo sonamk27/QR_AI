@@ -20,6 +20,7 @@ const schema = z.object({
   ownerEmail: z.string().email("Valid owner email is required").max(120),
   password: z.string().min(6).max(100).optional(),
   referredByName: z.string().max(100).optional(),
+  aiEnabled: z.boolean().optional(),
 });
 
 export async function GET() {
@@ -83,6 +84,7 @@ export async function POST(req: Request) {
       shareCaption: data.shareCaption?.trim() || null,
       referredByName: data.referredByName?.trim() || null,
       status: "ACTIVE",
+      aiEnabled: data.aiEnabled ?? true,
     },
   });
 

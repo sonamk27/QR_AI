@@ -24,6 +24,10 @@ const schema = z.union([
     facebookUrl: z.string().trim().url("Enter a valid Facebook URL.").max(300).optional().or(z.literal("")),
     shareCaption: z.string().trim().max(500).optional().or(z.literal("")),
   }),
+  z.object({
+    action: z.literal("update_ai"),
+    aiEnabled: z.boolean(),
+  }),
 ]);
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
@@ -113,6 +117,24 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
           facebookUrl: d.facebookUrl || null,
           shareCaption: d.shareCaption || null,
         },
+      },
+    }).catch(() => {});
+    return NextResponse.json({ ok: true });
+  }
+
+  if ("action" in parsed.data && parsed.data.action === "update_ai") {
+    const d = parsed.data;
+    await db.restaurant.update({
+      where: { id: params.id },
+      data: { aiEnabled: d.aiEnabled },
+    });
+    await db.auditLog.create({
+      data: {
+        actorId: admin.id,
+        action: "restaurant.ai_updated",
+        target: params.id,
+        restaurantId: params.id,
+        meta: { aiEnabled: d.aiEnabled },
       },
     }).catch(() => {});
     return NextResponse.json({ ok: true });

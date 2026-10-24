@@ -12,6 +12,7 @@ type RestaurantRow = {
   city: string | null;
   brandColor: string;
   status: string;
+  aiEnabled: boolean;
   referredByName: string | null;
   googleReviewUrl: string | null;
   instagramUrl?: string | null;
@@ -508,6 +509,12 @@ export function RestaurantsAdminTable({
                   <td className="td">
                     <div className="flex items-center gap-2">
                       <EditRestaurantOwnerButton restaurantId={r.id} owner={r.owner} />
+                      <AdminButton
+                        url={`/api/super-admin/restaurants/${r.id}`}
+                        method="PATCH"
+                        body={{ action: "update_ai", aiEnabled: !r.aiEnabled }}
+                        label={r.aiEnabled ? "AI: On" : "AI: Off"}
+                      />
                       <AdminButton
                         url={`/api/super-admin/restaurants/${r.id}`}
                         method="PATCH"

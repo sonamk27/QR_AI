@@ -69,6 +69,7 @@ model Restaurant {
   shareCaption    String?       // pre-filled caption guests can copy / share
   referredByName  String?       // seller name — plain text, no account needed
   status          String        @default("ACTIVE") // ACTIVE | SUSPENDED
+  aiEnabled       Boolean       @default(true) // AI review generator on/off for this restaurant
   createdAt       DateTime      @default(now())
   qrCodes         QrCode[]
   payments        Payment[]

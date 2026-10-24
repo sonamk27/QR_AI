@@ -23,6 +23,7 @@ export default async function SuperAdminRestaurantsPage() {
     city: r.city,
     brandColor: r.brandColor,
     status: r.status,
+    aiEnabled: r.aiEnabled,
     referredByName: r.referredByName,
     googleReviewUrl: r.googleReviewUrl,
     instagramUrl: (r as unknown as { instagramUrl?: string | null }).instagramUrl ?? null,

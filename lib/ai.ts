@@ -15,6 +15,11 @@ export type FeedbackSuggestionInput = {
   food: number;
 };
 
+export type AiOptions = {
+  /** Per-restaurant switch. Defaults to whether the server has ANTHROPIC_API_KEY configured. */
+  enabled?: boolean;
+};
+
 const SYSTEM = `You help a restaurant customer put their own experience into words for a Google review.
 Rules:
 - Write in the first person, as the customer.
@@ -73,12 +78,13 @@ function ratingStatements(aspect: string, rating: number) {
   return [`${subject} was excellent`, `${subject} made my visit enjoyable`];
 }
 
-export async function suggestFeedback(input: FeedbackSuggestionInput): Promise<string[]> {
+export async function suggestFeedback(input: FeedbackSuggestionInput, options?: AiOptions): Promise<string[]> {
   const aspects: [string, number][] = [["Food", input.food]];
   const fallbackSuggestions = aspects.flatMap(([aspect, rating]) =>
     ratingStatements(aspect, rating),
   ).slice(0, 6);
 
+  if (options?.enabled === false) return fallbackSuggestions;
   if (!process.env.ANTHROPIC_API_KEY) return fallbackSuggestions;
   try {
     const client = new Anthropic();
@@ -113,7 +119,8 @@ export async function suggestFeedback(input: FeedbackSuggestionInput): Promise<s
   return fallbackSuggestions;
 }
 
-export async function generateDraft(i: DraftInput): Promise<string> {
+export async function generateDraft(i: DraftInput, options?: AiOptions): Promise<string> {
+  if (options?.enabled === false) return fallback(i);
   if (!process.env.ANTHROPIC_API_KEY) return fallback(i);
   try {
     const client = new Anthropic();

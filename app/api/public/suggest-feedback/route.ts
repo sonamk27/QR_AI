@@ -27,7 +27,9 @@ export async function POST(req: Request) {
 
   const qr = await db.qrCode.findUnique({
     where: { slug: ratings.slug },
-    include: { restaurant: { select: { status: true } } },
+    include: {
+      restaurant: { select: { status: true, aiEnabled: true } },
+    },
   });
   if (!qr || !isActive(qr) || qr.restaurant.status !== "ACTIVE") {
     return NextResponse.json(
@@ -47,6 +49,6 @@ export async function POST(req: Request) {
     );
   }
 
-  const suggestions = await suggestFeedback(ratings);
+  const suggestions = await suggestFeedback(ratings, { enabled: qr.restaurant.aiEnabled !== false });
   return NextResponse.json({ suggestions });
 }

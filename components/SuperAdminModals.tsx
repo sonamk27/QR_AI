@@ -34,6 +34,7 @@ export function CreateRestaurantModal() {
     ownerEmail: "",
     password: "",
     referredByName: "",
+    aiEnabled: true,
   });
 
   function generatePass() {
@@ -230,6 +231,22 @@ export function CreateRestaurantModal() {
 
                   <div className="sm:col-span-2 pt-2 border-t border-line">
                     <p className="text-xs font-semibold uppercase tracking-wider text-ink/60">Owner Account Details</p>
+                  </div>
+
+                  <div className="sm:col-span-2 flex items-start gap-3 rounded-xl border border-line bg-paper p-3">
+                    <input
+                      id="ai-enabled"
+                      type="checkbox"
+                      checked={form.aiEnabled}
+                      onChange={(e) => setForm({ ...form, aiEnabled: e.target.checked })}
+                      className="mt-0.5 h-4 w-4 accent-leaf"
+                    />
+                    <div>
+                      <label className="label" htmlFor="ai-enabled">AI Review Generator</label>
+                      <p className="mt-1 text-xs text-ink/60">
+                        Enable AI-generated review drafts for this restaurant&apos;s guests. Turn off to use rating-based suggestions only.
+                      </p>
+                    </div>
                   </div>
 
                   <div>
