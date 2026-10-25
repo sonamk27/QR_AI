@@ -35,23 +35,23 @@ export default async function SuperAdminUsersPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold text-ink">User Management</h1>
-          <p className="mt-1 text-sm text-ink/70">
+          <h1 className="font-serif text-3xl font-bold tracking-tight text-[#24211E]">User Management</h1>
+          <p className="mt-1 text-sm text-[#716B64]">
             Manage user accounts and passwords. Super Admin access is provisioned through the seed script.
           </p>
         </div>
         <div className="flex gap-2 text-xs">
-          <div className="rounded-lg border border-line bg-white px-3 py-1.5 text-center">
-            <span className="text-ink/60 block">Total Users</span>
-            <span className="font-semibold text-ink">{users.length}</span>
+          <div className="rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-1.5 text-center shadow-xs">
+            <span className="text-[#716B64] block">Total Users</span>
+            <span className="font-bold text-[#24211E]">{users.length}</span>
           </div>
-          <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-center">
-            <span className="text-blue-800/70 block">Restaurant Admins</span>
-            <span className="font-semibold text-blue-900">{adminCount}</span>
+          <div className="rounded-xl border border-[#E8DFD1] bg-[#FAF5ED] px-3.5 py-1.5 text-center shadow-xs">
+            <span className="text-[#B58A4B] block font-medium">Restaurant Admins</span>
+            <span className="font-bold text-[#B58A4B]">{adminCount}</span>
           </div>
-          <div className="rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5 text-center">
-            <span className="text-purple-800/70 block">Super Admins</span>
-            <span className="font-semibold text-purple-900">{superAdminCount}</span>
+          <div className="rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-1.5 text-center shadow-xs">
+            <span className="text-[#716B64] block">Super Admins</span>
+            <span className="font-bold text-[#24211E]">{superAdminCount}</span>
           </div>
         </div>
       </div>

@@ -61,28 +61,28 @@ export default async function SuperAdminQrCodesPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold text-ink">QR Codes Fleet</h1>
-          <p className="mt-1 text-sm text-ink/70">
+          <h1 className="font-serif text-3xl font-bold tracking-tight text-[#24211E]">QR Codes Fleet</h1>
+          <p className="mt-1 text-sm text-[#716B64]">
             Monitor all customer-facing QR codes, handle yearly renewals, and manage access.
           </p>
         </div>
         <div className="flex gap-2 text-xs">
-          <div className="rounded-lg border border-line bg-white px-3 py-1.5 text-center">
-            <span className="text-ink/60 block">Total QRs</span>
-            <span className="font-semibold text-ink">{qrCodes.length}</span>
+          <div className="rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-1.5 text-center shadow-xs">
+            <span className="text-[#716B64] block">Total QRs</span>
+            <span className="font-bold text-[#24211E]">{qrCodes.length}</span>
           </div>
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-center">
-            <span className="text-emerald-800/70 block">Active</span>
-            <span className="font-semibold text-emerald-900">{activeCount}</span>
+          <div className="rounded-xl border border-[#E8DFD1] bg-[#FAF5ED] px-3.5 py-1.5 text-center shadow-xs">
+            <span className="text-[#B58A4B] block font-medium">Active</span>
+            <span className="font-bold text-[#B58A4B]">{activeCount}</span>
           </div>
           {graceCount > 0 && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-center">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-1.5 text-center shadow-xs">
               <span className="text-amber-800/70 block">Grace</span>
               <span className="font-semibold text-amber-900">{graceCount}</span>
             </div>
           )}
           {expiredCount > 0 && (
-            <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-center">
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-1.5 text-center shadow-xs">
               <span className="text-rose-800/70 block">Expired</span>
               <span className="font-semibold text-rose-900">{expiredCount}</span>
             </div>
@@ -90,11 +90,7 @@ export default async function SuperAdminQrCodesPage() {
         </div>
       </div>
 
-      <QrCodesAdminTable
-        qrCodes={serialized}
-        restaurants={restaurants}
-        appUrl={appUrl}
-      />
+      <QrCodesAdminTable qrCodes={serialized} restaurants={restaurants} appUrl={appUrl} />
     </div>
   );
 }

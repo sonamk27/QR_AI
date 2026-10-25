@@ -36,14 +36,14 @@ export default async function SuperAdminAuditPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold text-ink">Platform Audit Log</h1>
-          <p className="mt-1 text-sm text-ink/70">
+          <h1 className="font-serif text-3xl font-bold tracking-tight text-[#24211E]">Platform Audit Log</h1>
+          <p className="mt-1 text-sm text-[#716B64]">
             Immutable log of administrative operations, QR changes, status modifications, and security events.
           </p>
         </div>
-        <div className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs text-center">
-          <span className="text-ink/60 block">Logged Events</span>
-          <span className="font-semibold text-ink">{logs.length}</span>
+        <div className="rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-1.5 text-xs text-center shadow-xs">
+          <span className="text-[#716B64] block">Logged Events</span>
+          <span className="font-bold text-[#24211E]">{logs.length}</span>
         </div>
       </div>
 

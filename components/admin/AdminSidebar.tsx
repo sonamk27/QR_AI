@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 
 export type AdminNavItem = {
@@ -33,25 +34,25 @@ export function AdminSidebar({
   const router = useRouter();
 
   const navItems: AdminNavItem[] = [
-    { href: "/dashboard", label: "Overview", icon: "📊" },
+    { href: "/dashboard", label: "Dashboard", icon: "📊" },
+    {
+      href: "/dashboard/loyalty",
+      label: "Loyalty Program",
+      icon: "☕",
+      badge: pendingStampRequestsCount && pendingStampRequestsCount > 0 ? pendingStampRequestsCount : undefined,
+    },
+    { href: "/dashboard/feedback", label: "Reviews & Feedback", icon: "💬" },
+    { href: "/dashboard/insights", label: "AI Insights", icon: "💡" },
     {
       href: "/dashboard/qr-requests",
       label: "QR Requests",
       icon: "📝",
       badge: pendingRequestsCount && pendingRequestsCount > 0 ? pendingRequestsCount : undefined,
     },
-    { href: "/dashboard/qr", label: "QR Codes", icon: "📱" },
-    {
-      href: "/dashboard/loyalty",
-      label: "Stamp & Loyalty",
-      icon: "☕",
-      badge: pendingStampRequestsCount && pendingStampRequestsCount > 0 ? pendingStampRequestsCount : undefined,
-    },
-    { href: "/dashboard/feedback", label: "Guest Feedback", icon: "💬" },
-    { href: "/dashboard/drafts", label: "Past Drafts", icon: "✨" },
-    { href: "/dashboard/insights", label: "AI Insights", icon: "💡" },
-    { href: "/dashboard/payments", label: "Payments & Invoices", icon: "🧾" },
-    { href: "/dashboard/profile", label: "Restaurant Profile", icon: "⚙️" },
+    { href: "/dashboard/qr", label: "QR Management", icon: "📱" },
+    { href: "/dashboard/drafts", label: "Review Drafts", icon: "✨" },
+    { href: "/dashboard/payments", label: "Invoices & Billing", icon: "🧾" },
+    { href: "/dashboard/profile", label: "Restaurant Settings", icon: "⚙️" },
   ];
 
   async function handleLogout() {
@@ -61,45 +62,40 @@ export function AdminSidebar({
   }
 
   return (
-    <aside className="flex flex-col border-b border-line bg-white p-4 md:border-b-0 md:border-r md:min-h-screen">
-      {/* Brand Header — hidden on mobile horizontal scroll bar */}
-      <div className="hidden md:block pb-3 border-b border-line">
-        <div className="flex items-center justify-between">
-          <span className="font-display text-xl font-bold tracking-tight text-leaf">
-            ReviewFlow
-          </span>
-          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200 uppercase tracking-wider">
-            Restaurant
-          </span>
-        </div>
-
-        {/* Restaurant Card */}
-        <div className="mt-3 flex items-center gap-2.5 rounded-lg bg-paper/60 p-2 border border-line/60">
-          <div
-            className="h-3.5 w-3.5 rounded-full shrink-0 ring-2 ring-white"
-            style={{ backgroundColor: restaurant.brandColor || "#1F6F5C" }}
-            title="Brand Accent"
-          />
+    <aside className="flex flex-col border-b border-[#38332E] bg-[#24211E] text-stone-200 p-4 md:border-b-0 md:border-r md:min-h-screen">
+      {/* Brand Header */}
+      <div className="hidden md:block pb-4 border-b border-[#38332E]">
+        <div className="flex items-center gap-2.5">
+          <Image src="/logo.png" alt="ReviewFlow" width={64} height={32} className="rounded-xl object-contain shrink-0" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold text-ink">{restaurant.name}</p>
-            <p className="truncate text-[11px] text-ink/60">{restaurant.city || "Restaurant Portal"}</p>
+            <h2 className="font-display text-base font-bold text-white truncate leading-tight">
+              {restaurant.name}
+            </h2>
+            <p className="text-[11px] text-stone-400 truncate">
+              {restaurant.city || "Restaurant Portal"}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Mobile top bar — brand + sign out always visible */}
-      <div className="flex items-center justify-between md:hidden pb-2 border-b border-line mb-2">
-        <span className="font-display text-base font-bold tracking-tight text-leaf">ReviewFlow</span>
+      {/* Mobile top bar */}
+      <div className="flex items-center justify-between md:hidden pb-3 border-b border-[#38332E] mb-2">
+        <div className="flex items-center gap-2">
+          <Image src="/logo.png" alt="ReviewFlow" width={48} height={24} className="rounded-lg object-contain shrink-0" />
+          <span className="font-display text-sm font-bold text-white truncate max-w-[160px]">
+            {restaurant.name}
+          </span>
+        </div>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition"
+          className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-stone-300 bg-stone-800/80 hover:bg-stone-800 hover:text-white transition"
         >
-          🚪 Sign out
+          <span>🚪</span> Sign out
         </button>
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex gap-1 overflow-x-auto md:mt-4 md:flex-col">
+      <nav className="flex gap-1 overflow-x-auto md:mt-4 md:flex-col md:space-y-1">
         {navItems.map((item) => {
           const isActive =
             item.href === "/dashboard"
@@ -110,19 +106,19 @@ export function AdminSidebar({
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center justify-between whitespace-nowrap rounded-lg px-3 py-2 text-sm transition ${
+              className={`flex items-center justify-between whitespace-nowrap rounded-xl px-3.5 py-2.5 text-xs font-medium transition ${
                 isActive
-                  ? "bg-leaf/10 font-semibold text-leaf"
-                  : "text-ink/75 hover:bg-paper hover:text-ink"
+                  ? "bg-[#B58A4B] text-white shadow-xs font-semibold"
+                  : "text-stone-300 hover:bg-[#2F2B27] hover:text-white"
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <span className="text-base leading-none">{item.icon}</span>
+                <span className="text-sm opacity-90">{item.icon}</span>
                 <span>{item.label}</span>
               </div>
 
               {item.badge != null && (
-                <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-bold text-white shadow-sm">
+                <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#E5B568] px-1.5 text-[10px] font-bold text-[#24211E] shadow-xs">
                   {item.badge}
                 </span>
               )}
@@ -132,18 +128,18 @@ export function AdminSidebar({
       </nav>
 
       {/* Owner Profile & Sign Out Footer — desktop only */}
-      <div className="hidden md:block mt-auto pt-4 border-t border-line">
+      <div className="hidden md:block mt-auto pt-4 border-t border-[#38332E]">
         <div className="flex items-center justify-between">
           <div className="min-w-0 pr-2">
-            <p className="truncate text-xs font-medium text-ink">{user.name}</p>
-            <p className="truncate text-[11px] text-ink/50 font-mono">{user.email}</p>
+            <p className="truncate text-xs font-semibold text-white">{user.name}</p>
+            <p className="truncate text-[11px] text-stone-400 font-mono">{user.email}</p>
           </div>
           <button
             onClick={handleLogout}
             title="Sign out"
-            className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition"
+            className="flex items-center gap-1 rounded-lg p-2 text-xs font-medium text-stone-400 hover:bg-stone-800 hover:text-stone-200 transition"
           >
-            🚪 Sign out
+            🚪
           </button>
         </div>
       </div>

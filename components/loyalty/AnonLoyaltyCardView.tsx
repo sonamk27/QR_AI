@@ -125,7 +125,7 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
       const qrDataUrl = await QRCode.toDataURL(code, {
         width: 260,
         margin: 2,
-        color: { dark: "#0f172a", light: "#ffffff" },
+        color: { dark: "#24211E", light: "#ffffff" },
       });
       setSelectedRewardQr(qrDataUrl);
     } catch {
@@ -164,7 +164,7 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
 
       setStampReqId(data.requestId);
       setStampReqTableNo(data.tableNo || null);
-      setStampReqStatus(data.alreadyPending ? "pending" : "pending");
+      setStampReqStatus("pending");
       setStampReqMessage("Waiting for owner approval…");
 
       // Start polling
@@ -205,7 +205,7 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
     }
   }
 
-  const brandColor = data?.restaurant.brandColor || "#1F6F5C";
+  const brandColor = data?.restaurant.brandColor || "#B58A4B";
   const stampsRequired = data?.program.stampsRequired || 1;
   const currentStamps = data?.customer.currentStamps || 0;
   const progressPercent = Math.min(100, Math.round((currentStamps / stampsRequired) * 100));
@@ -231,19 +231,19 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
   const netPayable = Math.max(0, numericBill - calculatedSavings);
 
   return (
-    <div className="min-h-screen bg-stone-50 pb-16 font-sans text-stone-900 antialiased selection:bg-stone-200">
+    <div className="min-h-screen bg-[#F7F2E9] pb-16 font-sans text-[#24211E] antialiased selection:bg-[#FAF5ED]">
       {/* Top Navigation */}
-      <header className="sticky top-0 z-30 border-b border-stone-200/80 bg-white/95 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-[#E8DFD1] bg-[#F7F2E9]/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
           <Link
             href={`/r/${slug}`}
-            className="flex items-center gap-1.5 text-xs font-semibold text-stone-600 transition hover:text-stone-900"
+            className="flex items-center gap-1.5 text-xs font-semibold text-[#716B64] transition hover:text-[#24211E]"
           >
             <span>←</span> Back to Review
           </Link>
           <div className="flex items-center gap-2">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs font-medium text-stone-500">Anonymous Dining Pass</span>
+            <span className="flex h-2 w-2 rounded-full bg-[#B58A4B] animate-pulse" />
+            <span className="text-xs font-medium text-[#716B64]">Anonymous Dining Pass</span>
           </div>
         </div>
       </header>
@@ -252,33 +252,33 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
         {/* Loading Skeleton */}
         {loading && !data ? (
           <div className="mt-8 space-y-4">
-            <div className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm border border-stone-200/60 animate-pulse">
-              <div className="h-10 w-10 rounded-full bg-stone-200" />
+            <div className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm border border-[#E8DFD1] animate-pulse">
+              <div className="h-10 w-10 rounded-full bg-[#FAF5ED]" />
               <div className="space-y-2">
-                <div className="h-4 w-32 rounded bg-stone-200" />
-                <div className="h-3 w-20 rounded bg-stone-100" />
+                <div className="h-4 w-32 rounded bg-[#FAF5ED]" />
+                <div className="h-3 w-20 rounded bg-[#FAF5ED]" />
               </div>
             </div>
 
-            <div className="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm space-y-4 animate-pulse">
-              <div className="h-6 w-3/4 rounded bg-stone-200" />
-              <div className="h-4 w-1/2 rounded bg-stone-100" />
+            <div className="rounded-3xl border border-[#E8DFD1] bg-white p-6 shadow-sm space-y-4 animate-pulse">
+              <div className="h-6 w-3/4 rounded bg-[#FAF5ED]" />
+              <div className="h-4 w-1/2 rounded bg-[#FAF5ED]" />
               <div className="grid grid-cols-5 gap-2 pt-4">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="h-14 rounded-2xl bg-stone-100" />
+                  <div key={i} className="h-14 rounded-2xl bg-[#FAF5ED]" />
                 ))}
               </div>
             </div>
-            <p className="text-center text-xs font-medium text-stone-400">Loading your private stamp card...</p>
+            <p className="text-center text-xs font-medium text-[#716B64]">Loading your private stamp card...</p>
           </div>
         ) : error ? (
           <div className="mt-8 rounded-3xl border border-rose-200 bg-white p-6 text-center shadow-sm">
             <div className="text-3xl">⚠️</div>
-            <h2 className="mt-2 text-base font-bold text-stone-900">Unable to load card</h2>
-            <p className="mt-1 text-xs text-stone-600">{error}</p>
+            <h2 className="mt-2 text-base font-serif font-bold text-[#24211E]">Unable to load card</h2>
+            <p className="mt-1 text-xs text-[#716B64]">{error}</p>
             <button
               onClick={fetchCard}
-              className="mt-4 rounded-xl bg-stone-900 px-5 py-2 text-xs font-bold text-white transition hover:bg-stone-800"
+              className="mt-4 rounded-xl bg-[#B58A4B] px-5 py-2 text-xs font-bold text-white transition hover:bg-[#9E7438]"
             >
               Try Again
             </button>
@@ -286,34 +286,34 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
         ) : data ? (
           <div className="space-y-4">
             {/* Restaurant Profile Mini Header */}
-            <div className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-xs border border-stone-200/60">
+            <div className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-xs border border-[#E8DFD1]">
               <div className="flex items-center gap-3">
                 {data.restaurant.logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={data.restaurant.logoUrl}
                     alt={data.restaurant.name}
-                    className="h-10 w-10 rounded-full border border-stone-200 object-cover"
+                    className="h-10 w-10 rounded-full border border-[#E8DFD1] object-cover"
                   />
                 ) : (
                   <div
-                    className="flex h-10 w-10 items-center justify-center rounded-full text-base font-bold text-white shadow-sm"
+                    className="flex h-10 w-10 items-center justify-center rounded-full text-base font-serif font-bold text-white shadow-sm"
                     style={{ backgroundColor: brandColor }}
                   >
                     {data.restaurant.name.slice(0, 1).toUpperCase()}
                   </div>
                 )}
                 <div>
-                  <h2 className="text-sm font-bold text-stone-900 leading-tight">
+                  <h2 className="text-sm font-bold text-[#24211E] leading-tight">
                     {data.restaurant.name}
                   </h2>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="inline-flex items-center rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] font-mono font-medium text-stone-600">
+                    <span className="inline-flex items-center rounded-md bg-[#FAF5ED] px-1.5 py-0.5 text-[10px] font-mono font-medium text-[#716B64] border border-[#E8DFD1]">
                       ID: {data.customer.id.slice(0, 12)}…
                     </span>
                     <button
                       onClick={() => handleCopy(data.customer.id)}
-                      className="text-[10px] font-semibold text-stone-400 hover:text-stone-700 underline"
+                      className="text-[10px] font-semibold text-[#B58A4B] hover:text-[#9E7438] underline"
                       title="Copy full anonymous ID"
                     >
                       {copiedCode ? "Copied" : "Copy"}
@@ -324,39 +324,39 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
 
               {/* Privacy badge */}
               <div className="flex flex-col items-end text-right">
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#FAF5ED] px-2 py-0.5 text-[10px] font-bold text-[#B58A4B] border border-[#E8DFD1]">
                   <span>🔒</span> Anonymous
                 </span>
-                <span className="text-[9px] text-stone-400 mt-0.5">No phone number</span>
+                <span className="text-[9px] text-[#716B64] mt-0.5">No phone number</span>
               </div>
             </div>
 
             {/* Privacy Notification Banner */}
-            <div className="flex items-start gap-2.5 rounded-2xl border border-stone-200 bg-white/70 p-3 shadow-xs backdrop-blur-xs">
+            <div className="flex items-start gap-2.5 rounded-2xl border border-[#E8DFD1] bg-white/70 p-3 shadow-xs backdrop-blur-sm">
               <span className="text-sm">🍪</span>
-              <div className="text-[11px] leading-relaxed text-stone-600">
-                <span className="font-semibold text-stone-800">Private Browser Card:</span> Your stamps are securely linked to this browser via cookie. No mobile number or registration needed.
+              <div className="text-[11px] leading-relaxed text-[#716B64]">
+                <span className="font-semibold text-[#24211E]">Private Browser Card:</span> Your stamps are securely linked to this browser via cookie. No mobile number or registration needed.
               </div>
             </div>
 
             {/* DYNAMIC ACTIVE OFFER HERO BANNER */}
             {data.program.isActive && (
-              <div className="rounded-3xl border border-amber-300 bg-gradient-to-br from-amber-500/10 via-amber-50 to-orange-50/50 p-5 shadow-sm">
+              <div className="rounded-3xl border border-[#E8DFD1] bg-white p-5 shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-900 border border-amber-300">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FAF5ED] px-3 py-1 text-xs font-bold text-[#B58A4B] border border-[#E8DFD1]">
                     <span>☕</span>
                     <span>Active Dining Offer</span>
                   </span>
-                  <span className="text-xs font-black text-amber-800">
+                  <span className="text-xs font-bold text-[#B58A4B]">
                     Save {discountDisplay}
                   </span>
                 </div>
 
                 <div className="mt-3">
-                  <h3 className="font-display text-xl font-extrabold text-stone-900 leading-snug">
+                  <h3 className="font-serif text-xl font-bold text-[#24211E] leading-snug">
                     {data.program.rewardTitle}
                   </h3>
-                  <p className="mt-1 text-xs text-stone-600 leading-relaxed">
+                  <p className="mt-1 text-xs text-[#716B64] leading-relaxed">
                     Earn {stampsRequired} stamp{stampsRequired > 1 ? "s" : ""} on bills of ₹{minBillRupees.toFixed(0)} or more to unlock your dining voucher!
                   </p>
                 </div>
@@ -364,13 +364,13 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
             )}
 
             {/* Tab Navigation */}
-            <div className="flex rounded-xl bg-stone-200/70 p-1 text-xs font-bold">
+            <div className="flex rounded-xl bg-white p-1 text-xs font-bold border border-[#E8DFD1]">
               <button
                 onClick={() => setActiveTab("card")}
                 className={`flex-1 rounded-lg py-2 transition ${
                   activeTab === "card"
-                    ? "bg-white text-stone-900 shadow-xs"
-                    : "text-stone-600 hover:text-stone-900"
+                    ? "bg-[#B58A4B] text-white shadow-xs font-semibold"
+                    : "text-[#716B64] hover:text-[#24211E]"
                 }`}
               >
                 Stamp Card ({currentStamps}/{stampsRequired})
@@ -379,13 +379,13 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
                 onClick={() => setActiveTab("rewards")}
                 className={`relative flex-1 rounded-lg py-2 transition ${
                   activeTab === "rewards"
-                    ? "bg-white text-stone-900 shadow-xs"
-                    : "text-stone-600 hover:text-stone-900"
+                    ? "bg-[#B58A4B] text-white shadow-xs font-semibold"
+                    : "text-[#716B64] hover:text-[#24211E]"
                 }`}
               >
                 My Vouchers
                 {activeRewards.length > 0 && (
-                  <span className="ml-1.5 rounded-full bg-amber-500 px-1.5 py-0.2 text-[10px] font-bold text-white">
+                  <span className="ml-1.5 rounded-full bg-white px-1.5 py-0.2 text-[10px] font-bold text-[#B58A4B]">
                     {activeRewards.length}
                   </span>
                 )}
@@ -394,8 +394,8 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
                 onClick={() => setActiveTab("history")}
                 className={`flex-1 rounded-lg py-2 transition ${
                   activeTab === "history"
-                    ? "bg-white text-stone-900 shadow-xs"
-                    : "text-stone-600 hover:text-stone-900"
+                    ? "bg-[#B58A4B] text-white shadow-xs font-semibold"
+                    : "text-[#716B64] hover:text-[#24211E]"
                 }`}
               >
                 Visits
@@ -406,33 +406,32 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
             {activeTab === "card" && (
               <div className="space-y-4">
                 {/* Main Digital Stamp Card Box */}
-                <div className="rounded-3xl border border-stone-200/90 bg-white p-6 shadow-sm">
+                <div className="rounded-3xl border border-[#E8DFD1] bg-white p-6 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#716B64]">
                         Cycle #{data.customer.cycleNumber}
                       </span>
-                      <h4 className="text-base font-extrabold text-stone-900">
+                      <h4 className="text-base font-serif font-bold text-[#24211E]">
                         {currentStamps >= stampsRequired ? "Reward Unlocked! 🎉" : "Collect Stamps"}
                       </h4>
                     </div>
                     <div className="text-right">
-                      <span className="text-2xl font-black" style={{ color: brandColor }}>
+                      <span className="text-2xl font-bold text-[#B58A4B]">
                         {currentStamps}
                       </span>
-                      <span className="text-xs font-semibold text-stone-400">
+                      <span className="text-xs font-semibold text-[#716B64]">
                         /{stampsRequired}
                       </span>
                     </div>
                   </div>
 
                   {/* Progress Bar */}
-                  <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-stone-100">
+                  <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-[#FAF5ED] border border-[#E8DFD1]">
                     <div
-                      className="h-full rounded-full transition-all duration-500 ease-out"
+                      className="h-full rounded-full bg-[#B58A4B] transition-all duration-500 ease-out"
                       style={{
                         width: `${progressPercent}%`,
-                        backgroundColor: brandColor,
                       }}
                     />
                   </div>
@@ -449,14 +448,11 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
                           key={index}
                           className={`relative flex aspect-square flex-col items-center justify-center rounded-2xl border transition-all ${
                             isStamped
-                              ? "border-transparent text-white shadow-xs scale-[1.02]"
+                              ? "border-[#B58A4B] bg-[#B58A4B] text-white shadow-xs scale-[1.02]"
                               : isNext
-                              ? "border-dashed border-stone-400 bg-stone-50 text-stone-400 animate-pulse"
-                              : "border-stone-200 bg-stone-50/50 text-stone-300"
+                              ? "border-dashed border-[#B58A4B] bg-[#FAF5ED] text-[#B58A4B] animate-pulse"
+                              : "border-[#E8DFD1] bg-[#FAF5ED]/50 text-[#716B64]/60"
                           }`}
-                          style={{
-                            backgroundColor: isStamped ? brandColor : undefined,
-                          }}
                         >
                           {isStamped ? (
                             <span className="text-xl">⭐</span>
@@ -467,7 +463,7 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
                           )}
 
                           {isNext && (
-                            <span className="absolute -bottom-1 rounded-full bg-stone-800 px-1 text-[8px] font-bold text-white">
+                            <span className="absolute -bottom-1 rounded-full bg-[#24211E] px-1 text-[8px] font-bold text-white">
                               NEXT
                             </span>
                           )}
@@ -477,23 +473,23 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
                   </div>
 
                   {/* How it works info */}
-                  <div className="mt-6 rounded-2xl bg-stone-50 p-3.5 text-center">
+                  <div className="mt-6 rounded-2xl bg-[#FAF5ED] border border-[#E8DFD1] p-3.5 text-center">
                     {stampsRemaining > 0 ? (
-                      <p className="text-xs font-medium text-stone-600">
+                      <p className="text-xs font-medium text-[#716B64]">
                         Ask staff to verify your bill to earn{" "}
-                        <span className="font-bold text-stone-900">
+                        <span className="font-bold text-[#24211E]">
                           {stampsRemaining} more stamp{stampsRemaining > 1 ? "s" : ""}
                         </span>{" "}
-                        and receive <span className="font-bold text-stone-900">{data.program.rewardTitle}</span>!
+                        and receive <span className="font-bold text-[#24211E]">{data.program.rewardTitle}</span>!
                       </p>
                     ) : (
                       <div className="space-y-1">
-                        <p className="text-xs font-bold text-emerald-700">
+                        <p className="text-xs font-bold text-[#B58A4B]">
                           🎉 Stamp goal achieved! Your voucher is ready to redeem.
                         </p>
                         <button
                           onClick={() => setActiveTab("rewards")}
-                          className="text-xs font-bold underline text-stone-900"
+                          className="text-xs font-bold underline text-[#24211E]"
                         >
                           View Voucher &amp; Show to Staff →
                         </button>
@@ -503,39 +499,39 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
                 </div>
 
                 {/* Diner Bill Savings Calculator */}
-                <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-xs">
+                <div className="rounded-3xl border border-[#E8DFD1] bg-white p-5 shadow-xs">
                   <div className="flex items-center gap-2">
                     <span className="text-base">🧮</span>
-                    <h5 className="text-xs font-bold uppercase tracking-wider text-stone-700">
+                    <h5 className="text-xs font-bold uppercase tracking-wider text-[#24211E]">
                       Check Your Bill Savings
                     </h5>
                   </div>
-                  <p className="mt-1 text-[11px] text-stone-500">
+                  <p className="mt-1 text-[11px] text-[#716B64]">
                     See how much you save on your bill today with this offer.
                   </p>
 
-                  <div className="mt-3 flex items-center rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 focus-within:border-stone-800 focus-within:bg-white transition">
-                    <span className="text-xs font-bold text-stone-500 mr-2">₹</span>
+                  <div className="mt-3 flex items-center rounded-xl border border-[#E8DFD1] bg-[#FAF5ED] px-3 py-2 focus-within:border-[#B58A4B] focus-within:bg-white transition">
+                    <span className="text-xs font-bold text-[#716B64] mr-2">₹</span>
                     <input
                       type="number"
                       placeholder={`Enter bill amount (e.g. ${minBillRupees || 500})`}
                       value={dinerBillInput}
                       onChange={(e) => setDinerBillInput(e.target.value)}
-                      className="w-full bg-transparent text-xs font-medium text-stone-900 outline-none"
+                      className="w-full bg-transparent text-xs font-medium text-[#24211E] outline-none"
                     />
                   </div>
 
                   {numericBill > 0 && (
-                    <div className="mt-3 rounded-xl border border-stone-100 bg-stone-50/70 p-3 text-xs space-y-1.5">
-                      <div className="flex justify-between text-stone-600">
+                    <div className="mt-3 rounded-xl border border-[#E8DFD1] bg-[#FAF5ED]/70 p-3 text-xs space-y-1.5">
+                      <div className="flex justify-between text-[#716B64]">
                         <span>Qualifying Minimum:</span>
-                        <span className="font-semibold">₹{minBillRupees.toFixed(0)}</span>
+                        <span className="font-semibold text-[#24211E]">₹{minBillRupees.toFixed(0)}</span>
                       </div>
-                      <div className="flex justify-between text-stone-600">
+                      <div className="flex justify-between text-[#716B64]">
                         <span>Offer Status:</span>
                         <span
                           className={`font-bold ${
-                            dinerMeetsMin ? "text-emerald-600" : "text-amber-600"
+                            dinerMeetsMin ? "text-[#B58A4B]" : "text-amber-700"
                           }`}
                         >
                           {dinerMeetsMin
@@ -545,11 +541,11 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
                       </div>
                       {dinerMeetsMin && (
                         <>
-                          <div className="flex justify-between font-bold text-emerald-700 pt-1 border-t border-stone-200">
+                          <div className="flex justify-between font-bold text-[#B58A4B] pt-1 border-t border-[#E8DFD1]">
                             <span>Voucher Discount:</span>
                             <span>-₹{calculatedSavings.toFixed(0)}</span>
                           </div>
-                          <div className="flex justify-between font-bold text-stone-900">
+                          <div className="flex justify-between font-bold text-[#24211E]">
                             <span>Estimated Net Payable:</span>
                             <span>₹{netPayable.toFixed(0)}</span>
                           </div>
@@ -560,11 +556,11 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
                 </div>
 
                 {/* ── Request Stamp from Owner ── */}
-                <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xs">
-                  <h5 className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                <div className="rounded-2xl border border-[#E8DFD1] bg-white p-4 shadow-xs">
+                  <h5 className="text-xs font-bold text-[#24211E] flex items-center gap-1.5">
                     <span>📲</span> Request a Stamp from Owner
                   </h5>
-                  <p className="mt-1 text-[11px] text-stone-500 leading-relaxed">
+                  <p className="mt-1 text-[11px] text-[#716B64] leading-relaxed">
                     Tap the button after your visit. The owner will see your request on their dashboard and approve it in real-time.
                   </p>
 
@@ -573,8 +569,7 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
                     <div className="mt-3 space-y-2">
                       <button
                         onClick={handleRequestStamp}
-                        className="w-full rounded-xl py-3 text-sm font-bold text-white shadow-sm transition hover:brightness-105 active:scale-[0.98]"
-                        style={{ backgroundColor: brandColor }}
+                        className="w-full rounded-xl py-3 text-sm font-bold text-white shadow-xs transition hover:bg-[#9E7438] active:scale-[0.98] bg-[#B58A4B]"
                       >
                         ☕ Request Visit Stamp
                       </button>
@@ -588,30 +583,30 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
 
                   {/* Submitting state */}
                   {stampReqStatus === "submitting" && (
-                    <div className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-stone-50 py-3">
-                      <span className="h-3.5 w-3.5 rounded-full border-2 border-stone-300 border-t-stone-700 animate-spin" />
-                      <span className="text-xs font-semibold text-stone-600">Sending request…</span>
+                    <div className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-[#FAF5ED] py-3 border border-[#E8DFD1]">
+                      <span className="h-3.5 w-3.5 rounded-full border-2 border-[#E8DFD1] border-t-[#B58A4B] animate-spin" />
+                      <span className="text-xs font-semibold text-[#716B64]">Sending request…</span>
                     </div>
                   )}
 
                   {/* Pending state — waiting for owner */}
                   {stampReqStatus === "pending" && (
-                    <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3.5">
+                    <div className="mt-3 rounded-xl border border-[#E8DFD1] bg-[#FAF5ED] p-3.5">
                       <div className="flex items-center gap-2">
-                        <span className="h-3.5 w-3.5 rounded-full border-2 border-amber-400 border-t-amber-700 animate-spin shrink-0" />
-                        <span className="text-xs font-bold text-amber-900">
+                        <span className="h-3.5 w-3.5 rounded-full border-2 border-[#B58A4B]/40 border-t-[#B58A4B] animate-spin shrink-0" />
+                        <span className="text-xs font-bold text-[#24211E]">
                           Awaiting owner approval…
                         </span>
-                        <span className="ml-auto rounded-full bg-amber-400/30 px-2 py-0.5 text-[10px] font-bold text-amber-900 animate-pulse">
+                        <span className="ml-auto rounded-full bg-[#B58A4B]/20 px-2 py-0.5 text-[10px] font-bold text-[#B58A4B] animate-pulse">
                           LIVE
                         </span>
                       </div>
                       {stampReqTableNo && (
-                        <p className="mt-1.5 text-[11px] text-amber-700">
+                        <p className="mt-1.5 text-[11px] text-[#716B64]">
                           📍 {stampReqTableNo} — Request sent to owner dashboard
                         </p>
                       )}
-                      <p className="mt-1 text-[10px] text-amber-600">
+                      <p className="mt-1 text-[10px] text-[#716B64]">
                         Keep this page open. Your stamp will appear automatically when approved.
                       </p>
                     </div>
@@ -619,15 +614,15 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
 
                   {/* Approved state */}
                   {stampReqStatus === "approved" && (
-                    <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5">
+                    <div className="mt-3 rounded-xl border border-[#E8DFD1] bg-[#FAF5ED] p-3.5">
                       <div className="flex items-center gap-2">
                         <span className="text-lg">✅</span>
-                        <span className="text-xs font-bold text-emerald-800">
+                        <span className="text-xs font-bold text-[#B58A4B]">
                           Stamp Approved!
                         </span>
                       </div>
                       {stampReqMessage && (
-                        <p className="mt-1 text-[11px] text-emerald-700">{stampReqMessage}</p>
+                        <p className="mt-1 text-[11px] text-[#716B64]">{stampReqMessage}</p>
                       )}
                       <button
                         onClick={() => {
@@ -635,7 +630,7 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
                           setStampReqId(null);
                           setStampReqMessage(null);
                         }}
-                        className="mt-2 text-[11px] font-semibold text-emerald-700 underline"
+                        className="mt-2 text-[11px] font-semibold text-[#B58A4B] underline"
                       >
                         Request another stamp
                       </button>
@@ -674,61 +669,59 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
             {activeTab === "rewards" && (
               <div className="space-y-4">
                 {activeRewards.length === 0 ? (
-                  <div className="rounded-3xl border border-stone-200 bg-white p-8 text-center shadow-xs">
+                  <div className="rounded-3xl border border-[#E8DFD1] bg-white p-8 text-center shadow-xs">
                     <div className="text-3xl">🎟️</div>
-                    <h4 className="mt-2 text-sm font-bold text-stone-900">
+                    <h4 className="mt-2 text-sm font-serif font-bold text-[#24211E]">
                       No Active Vouchers Yet
                     </h4>
-                    <p className="mx-auto mt-1 max-w-xs text-xs text-stone-500">
+                    <p className="mx-auto mt-1 max-w-xs text-xs text-[#716B64]">
                       You need {stampsRemaining} more stamp{stampsRemaining > 1 ? "s" : ""} to unlock your first dining offer!
                     </p>
                     <button
                       onClick={() => setActiveTab("card")}
-                      className="mt-4 rounded-xl py-2 px-4 text-xs font-bold text-white shadow-xs"
-                      style={{ backgroundColor: brandColor }}
+                      className="mt-4 rounded-xl py-2 px-4 text-xs font-bold text-white shadow-xs bg-[#B58A4B] hover:bg-[#9E7438]"
                     >
                       View Stamp Progress →
                     </button>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-[#716B64]">
                       Ready to Redeem ({activeRewards.length})
                     </h4>
                     {activeRewards.map((reward) => (
                       <div
                         key={reward.id}
-                        className="rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/50 p-4 shadow-xs"
+                        className="rounded-2xl border-2 border-dashed border-[#B58A4B] bg-[#FAF5ED] p-4 shadow-xs"
                       >
                         <div className="flex items-start justify-between">
                           <div>
-                            <span className="inline-block rounded-md bg-amber-200 px-2 py-0.5 text-[10px] font-extrabold text-amber-900">
+                            <span className="inline-block rounded-md bg-[#B58A4B]/20 px-2 py-0.5 text-[10px] font-bold text-[#B58A4B]">
                               VOUCHER
                             </span>
-                            <h5 className="mt-1 text-base font-extrabold text-stone-900">
+                            <h5 className="mt-1 text-base font-serif font-bold text-[#24211E]">
                               {reward.rewardTitle}
                             </h5>
-                            <p className="text-[11px] text-stone-500">
+                            <p className="text-[11px] text-[#716B64]">
                               Valid until {new Date(reward.expiresAt).toLocaleDateString()}
                             </p>
                           </div>
                           <div className="text-right">
-                            <span className="text-lg font-black text-amber-700">
+                            <span className="text-lg font-bold text-[#B58A4B]">
                               ₹{(reward.discountAmount / 100).toFixed(0)} OFF
                             </span>
                           </div>
                         </div>
 
-                        <div className="mt-3 flex items-center justify-between border-t border-amber-200/80 pt-3">
-                          <span className="font-mono text-xs font-bold tracking-wider text-stone-800">
+                        <div className="mt-3 flex items-center justify-between border-t border-[#E8DFD1] pt-3">
+                          <span className="font-mono text-xs font-bold tracking-wider text-[#24211E]">
                             {reward.code}
                           </span>
                           <button
                             onClick={() =>
                               showRewardQr(reward.code, reward.rewardTitle, reward.discountAmount)
                             }
-                            className="rounded-xl px-3 py-1.5 text-xs font-bold text-white shadow-xs transition hover:brightness-105"
-                            style={{ backgroundColor: brandColor }}
+                            className="rounded-xl px-3 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-[#9E7438] bg-[#B58A4B]"
                           >
                             Show QR to Staff →
                           </button>
@@ -740,21 +733,21 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
 
                 {/* Redeemed / Expired history */}
                 {data.customer.rewards.some((r) => r.status !== "UNREDEEMED") && (
-                  <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-xs">
-                    <h5 className="text-xs font-bold text-stone-700">Past Vouchers</h5>
-                    <div className="mt-2 divide-y divide-stone-100">
+                  <div className="rounded-2xl border border-[#E8DFD1] bg-white p-4 shadow-xs">
+                    <h5 className="text-xs font-bold text-[#24211E]">Past Vouchers</h5>
+                    <div className="mt-2 divide-y divide-[#E8DFD1]">
                       {data.customer.rewards
                         .filter((r) => r.status !== "UNREDEEMED")
                         .map((r) => (
                           <div key={r.id} className="flex items-center justify-between py-2 text-xs">
                             <div>
-                              <p className="font-semibold text-stone-800">{r.rewardTitle}</p>
-                              <p className="text-[10px] font-mono text-stone-400">{r.code}</p>
+                              <p className="font-semibold text-[#24211E]">{r.rewardTitle}</p>
+                              <p className="text-[10px] font-mono text-[#716B64]">{r.code}</p>
                             </div>
                             <span
                               className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
                                 r.status === "REDEEMED"
-                                  ? "bg-emerald-100 text-emerald-800"
+                                  ? "bg-[#FAF5ED] text-[#B58A4B] border border-[#E8DFD1]"
                                   : "bg-stone-100 text-stone-500"
                               }`}
                             >
@@ -770,34 +763,34 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
 
             {/* TAB: VISITS / STAMP HISTORY */}
             {activeTab === "history" && (
-              <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-xs">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500">
+              <div className="rounded-3xl border border-[#E8DFD1] bg-white p-5 shadow-xs">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#716B64]">
                   Stamp Activity History
                 </h4>
 
                 {data.customer.transactions.length === 0 ? (
-                  <div className="py-8 text-center text-xs text-stone-400">
+                  <div className="py-8 text-center text-xs text-[#716B64]">
                     No stamp visits recorded on this card yet.
                   </div>
                 ) : (
-                  <div className="mt-3 divide-y divide-stone-100">
+                  <div className="mt-3 divide-y divide-[#E8DFD1]">
                     {data.customer.transactions.map((tx) => (
                       <div key={tx.id} className="flex items-center justify-between py-2.5">
                         <div className="flex items-center gap-2.5">
-                          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-800">
+                          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FAF5ED] text-xs font-bold text-[#B58A4B] border border-[#E8DFD1]">
                             +{tx.amount}
                           </span>
                           <div>
-                            <p className="text-xs font-bold text-stone-800">
+                            <p className="text-xs font-bold text-[#24211E]">
                               {tx.type === "ISSUE" ? "Stamp Awarded" : "Stamp Adjustment"}
                             </p>
-                            <p className="text-[10px] text-stone-400">
+                            <p className="text-[10px] text-[#716B64]">
                               {new Date(tx.createdAt).toLocaleString()}
                             </p>
                           </div>
                         </div>
                         {tx.staffNote && (
-                          <span className="text-[10px] text-stone-500 max-w-[120px] truncate">
+                          <span className="text-[10px] text-[#716B64] max-w-[120px] truncate">
                             {tx.staffNote}
                           </span>
                         )}
@@ -813,23 +806,23 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
 
       {/* Voucher QR Code Modal */}
       {selectedRewardCode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-xl border border-[#E8DFD1]">
             <div className="flex items-center justify-between">
-              <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-900">
+              <span className="rounded-full bg-[#FAF5ED] px-2.5 py-0.5 text-xs font-bold text-[#B58A4B] border border-[#E8DFD1]">
                 🎁 Redeem at Counter
               </span>
               <button
                 onClick={() => setSelectedRewardCode(null)}
-                className="text-stone-400 hover:text-stone-700 text-lg leading-none"
+                className="text-[#716B64] hover:text-[#24211E] text-lg leading-none"
               >
                 ✕
               </button>
             </div>
 
-            <h4 className="mt-3 text-lg font-bold text-stone-900">{selectedRewardTitle}</h4>
+            <h4 className="mt-3 text-lg font-serif font-bold text-[#24211E]">{selectedRewardTitle}</h4>
             {selectedRewardDiscount > 0 && (
-              <p className="text-xs font-black text-amber-700">
+              <p className="text-xs font-bold text-[#B58A4B]">
                 Flat ₹{selectedRewardDiscount.toFixed(0)} Discount
               </p>
             )}
@@ -841,31 +834,31 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
                 <img
                   src={selectedRewardQr}
                   alt={`Voucher ${selectedRewardCode}`}
-                  className="h-56 w-56 rounded-2xl border border-stone-200 p-2 shadow-inner"
+                  className="h-56 w-56 rounded-2xl border border-[#E8DFD1] p-2 shadow-inner"
                 />
               ) : (
-                <div className="h-56 w-56 rounded-2xl bg-stone-100 flex items-center justify-center text-xs text-stone-400">
+                <div className="h-56 w-56 rounded-2xl bg-[#FAF5ED] flex items-center justify-center text-xs text-[#716B64]">
                   Generating QR...
                 </div>
               )}
             </div>
 
-            <div className="rounded-xl bg-stone-50 p-2.5">
-              <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider block">
+            <div className="rounded-xl bg-[#FAF5ED] p-2.5 border border-[#E8DFD1]">
+              <span className="text-[10px] font-semibold text-[#716B64] uppercase tracking-wider block">
                 Voucher Code
               </span>
-              <span className="font-mono text-base font-black text-stone-900 tracking-wider">
+              <span className="font-mono text-base font-bold text-[#24211E] tracking-wider">
                 {selectedRewardCode}
               </span>
             </div>
 
-            <p className="mt-3 text-[11px] text-stone-500 leading-tight">
+            <p className="mt-3 text-[11px] text-[#716B64] leading-tight">
               Show this code to the server or cashier to apply your dining discount.
             </p>
 
             <button
               onClick={() => setSelectedRewardCode(null)}
-              className="mt-4 w-full rounded-xl bg-stone-900 py-2.5 text-xs font-bold text-white transition hover:bg-stone-800"
+              className="mt-4 w-full rounded-xl bg-[#B58A4B] py-2.5 text-xs font-bold text-white transition hover:bg-[#9E7438]"
             >
               Done
             </button>

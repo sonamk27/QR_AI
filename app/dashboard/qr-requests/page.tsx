@@ -27,64 +27,64 @@ export default async function QrRequestsPage() {
     },
   });
 
-  const serialized = requests.map((r) => ({
+  const serialized = requests.map((r: any) => ({
     ...r,
     createdAt: r.createdAt.toISOString(),
     reviewedAt: r.reviewedAt?.toISOString() ?? null,
   }));
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div className="space-y-7">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between border-b border-[#E8DFD1] pb-4">
         <div>
-          <h1 className="text-3xl font-semibold">QR Requests</h1>
-          <p className="mt-1 text-ink/70">
+          <h1 className="font-serif text-3xl font-bold text-[#24211E]">QR Code Requests</h1>
+          <p className="mt-1 text-xs text-[#716B64]">
             Request new QR codes. After approval, scan the payment QR and our team will
-            verify your payment and activate the QR code.
+            verify your payment and activate your QR code.
           </p>
         </div>
         <QrRequestForm />
       </div>
 
       {/* Flow explanation */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {[
           {
             step: "1",
             title: "Submit Request",
-            desc: "Tell us the QR name, location, and how many you need.",
-            color: "bg-paper border-line",
+            desc: "Tell us the QR name, location, and placement details.",
+            color: "bg-white border-[#E8DFD1]",
           },
           {
             step: "2",
             title: "Admin Approves",
-            desc: "Our team reviews and approves your request.",
-            color: "bg-amber-50 border-amber-200",
+            desc: "Our platform team reviews and approves your request.",
+            color: "bg-[#FAF5ED] border-[#E8D8BA]",
           },
           {
             step: "3",
             title: "Pay by UPI",
-            desc: "Scan the payment QR. The administrator verifies payment and activates your QR.",
-            color: "bg-emerald-50 border-emerald-200",
+            desc: "Scan the payment QR. Administrator verifies and activates your code.",
+            color: "bg-[#EEF6F2] border-[#D1E7DC]",
           },
         ].map((item) => (
           <div
             key={item.step}
-            className={`rounded-xl border p-4 ${item.color}`}
+            className={`rounded-2xl border p-5 shadow-subtle ${item.color}`}
           >
-            <div className="flex items-center gap-2 mb-1">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink text-white text-xs font-bold">
+            <div className="flex items-center gap-2.5 mb-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#24211E] text-white text-xs font-bold">
                 {item.step}
               </span>
-              <p className="font-semibold text-sm">{item.title}</p>
+              <p className="font-serif font-bold text-sm text-[#24211E]">{item.title}</p>
             </div>
-            <p className="text-xs text-ink/60">{item.desc}</p>
+            <p className="text-xs text-[#716B64] leading-relaxed">{item.desc}</p>
           </div>
         ))}
       </div>
 
-      <div className="space-y-3">
-        <h2 className="text-xl font-semibold">Your Requests</h2>
+      <div className="space-y-4">
+        <h2 className="font-serif text-xl font-bold text-[#24211E]">Your Requests</h2>
         <QrRequestList
           requests={serialized}
           allowTestPayment={process.env.NODE_ENV !== "production"}
