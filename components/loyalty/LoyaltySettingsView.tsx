@@ -146,7 +146,7 @@ export function LoyaltySettingsView({
 
   // Customer Growth state: Day-wise and Month-wise options
   const [growthView, setGrowthView] = useState<"DAY" | "MONTH">("DAY");
-  const [dayRange, setDayRange] = useState<7 | 14 | 30>(7);
+  const [dayRange, setDayRange] = useState<number>(30);
   const [monthRange, setMonthRange] = useState<6 | 12>(6);
   const [channelFilter, setChannelFilter] = useState<"ALL" | "PHONE" | "ANON">("ALL");
   const [hoveredPointIndex, setHoveredPointIndex] = useState<number | null>(null);
@@ -552,7 +552,7 @@ export function LoyaltySettingsView({
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-bold text-stone-900">Customer Growth</h3>
                 <span className="rounded-full bg-amber-50 border border-amber-200/80 px-2 py-0.5 text-[10px] font-bold text-amber-800">
-                  {growthView === "DAY" ? `${dayRange}-Day Trend` : `${monthRange}-Month Trend`}
+                  {growthView === "DAY" ? "Daily Trend (30 Days)" : `${monthRange}-Month Trend`}
                 </span>
               </div>
               <p className="text-[11px] text-stone-400 mt-0.5">
@@ -591,43 +591,7 @@ export function LoyaltySettingsView({
               </div>
 
               {/* Range Selector */}
-              {growthView === "DAY" ? (
-                <div className="flex items-center rounded-lg bg-stone-50 p-0.5 border border-stone-200 text-[11px]">
-                  <button
-                    type="button"
-                    onClick={() => setDayRange(7)}
-                    className={`rounded px-2 py-0.5 transition ${
-                      dayRange === 7
-                        ? "bg-amber-100 text-amber-900 font-bold"
-                        : "text-stone-500 hover:text-stone-700"
-                    }`}
-                  >
-                    7D
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDayRange(14)}
-                    className={`rounded px-2 py-0.5 transition ${
-                      dayRange === 14
-                        ? "bg-amber-100 text-amber-900 font-bold"
-                        : "text-stone-500 hover:text-stone-700"
-                    }`}
-                  >
-                    14D
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDayRange(30)}
-                    className={`rounded px-2 py-0.5 transition ${
-                      dayRange === 30
-                        ? "bg-amber-100 text-amber-900 font-bold"
-                        : "text-stone-500 hover:text-stone-700"
-                    }`}
-                  >
-                    30D
-                  </button>
-                </div>
-              ) : (
+              {growthView === "MONTH" && (
                 <div className="flex items-center rounded-lg bg-stone-50 p-0.5 border border-stone-200 text-[11px]">
                   <button
                     type="button"

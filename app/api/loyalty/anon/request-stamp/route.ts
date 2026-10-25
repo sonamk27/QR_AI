@@ -70,13 +70,32 @@ export async function POST(req: NextRequest) {
 
     const anonCustomer = session.customer;
 
-    // Check for an existing PENDING request within the last 15 minutes (dedup)
+    // Check if they already received a stamp today (1 stamp per visit/day)
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const todayAnonTx = await db.anonymousStampTransaction.findFirst({
+      where: {
+        customerId: anonCustomer.id,
+        amount: { gt: 0 },
+        createdAt: { gte: startOfToday },
+      },
+    });
+
+    if (todayAnonTx) {
+      return NextResponse.json({
+        success: true,
+        alreadyCollected: true,
+        message: "You already received a stamp for today's visit!",
+      });
+    }
+
+    // Check for an existing PENDING request (dedup)
     const existingPending = await db.stampRequest.findFirst({
       where: {
         restaurantId,
         anonCustomerId: anonCustomer.id,
         status: "PENDING",
-        createdAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -89,22 +108,6 @@ export async function POST(req: NextRequest) {
         status: existingPending.status,
         message: "Your stamp request is already pending approval with the restaurant owner.",
         tableNo: existingPending.tableNo || qr.tableNo || qr.name,
-      });
-    }
-
-    // Check if they already received a stamp very recently (2-minute rapid dedup)
-    const recentTx = await db.anonymousStampTransaction.findFirst({
-      where: {
-        customerId: anonCustomer.id,
-        createdAt: { gte: new Date(Date.now() - 2 * 60 * 1000) },
-      },
-    });
-
-    if (recentTx) {
-      return NextResponse.json({
-        success: true,
-        alreadyCollected: true,
-        message: "You already received a stamp for this visit!",
       });
     }
 

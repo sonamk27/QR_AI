@@ -99,6 +99,8 @@ export function CustomerJourneyView({
   const [agreedUpdates, setAgreedUpdates] = useState(true);
   const [registering, setRegistering] = useState(false);
   const [registerError, setRegisterError] = useState("");
+  const registerLockRef = useRef(false);
+  const collectLockRef = useRef(false);
 
   // Review & AI Assist State (Step 7: Share Your Experience)
   const [starRating, setStarRating] = useState<number>(5);
@@ -267,12 +269,20 @@ export function CustomerJourneyView({
 
   // Collect Stamp Handler (Customer sends request to owner)
   async function handleCollectStampClick() {
+    if (collectLockRef.current) return;
     const phoneToUse = customer?.phone || phoneNumber;
     if (!phoneToUse) {
       setCurrentView("register");
       return;
     }
 
+    if (hasCollectedStampToday) {
+      setStampFeedbackMessage("You already collected your stamp for today's visit!");
+      setCurrentView("card");
+      return;
+    }
+
+    collectLockRef.current = true;
     setCollectingStamp(true);
     setCardError(null);
     setRequestError(null);
@@ -291,7 +301,7 @@ export function CustomerJourneyView({
       if (!res.ok) throw new Error(data.error || "Failed to submit stamp request");
 
       if (data.alreadyCollected) {
-        setStampFeedbackMessage(data.message || "You already collected your stamp for this visit!");
+        setStampFeedbackMessage(data.message || "You already collected your stamp for today's visit!");
         await fetchLoyaltyCard(phoneToUse);
         setCurrentView("card");
         return;
@@ -304,12 +314,14 @@ export function CustomerJourneyView({
       setCardError(err.message || "Failed to submit stamp request");
     } finally {
       setCollectingStamp(false);
+      collectLockRef.current = false;
     }
   }
 
   // Step 3 Handler: Register with Name & Phone (NO OTP)
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
+    if (registerLockRef.current) return;
     const cleanPhone = phoneNumber.replace(/\D/g, "");
     const finalPhone = cleanPhone.length > 10 && cleanPhone.startsWith("91") ? cleanPhone.slice(2) : cleanPhone;
 
@@ -323,6 +335,7 @@ export function CustomerJourneyView({
       return;
     }
 
+    registerLockRef.current = true;
     setRegistering(true);
     setRegisterError("");
     try {
@@ -343,7 +356,7 @@ export function CustomerJourneyView({
       if (!res.ok) throw new Error(data.error || "Failed to register request");
 
       if (data.alreadyCollected) {
-        setStampFeedbackMessage(data.message || "You already received a stamp for this visit!");
+        setStampFeedbackMessage(data.message || "You already received a stamp for today's visit!");
         await fetchLoyaltyCard(finalPhone);
         setCurrentView("card");
         return;
@@ -356,6 +369,7 @@ export function CustomerJourneyView({
       setRegisterError(err.message || "Registration failed. Please try again.");
     } finally {
       setRegistering(false);
+      registerLockRef.current = false;
     }
   }
 
@@ -408,10 +422,20 @@ export function CustomerJourneyView({
 
   // Copy & Post to Google Review
   async function handleCopyAndGoogleReview() {
+    // ⚠️ Open Google window SYNCHRONOUSLY (before any await) so browsers allow it.
+    // If opened after an async call, most browsers treat it as a popup and block it.
+    let googleWin: Window | null = null;
+    if (restaurant.googleReviewUrl) {
+      googleWin = window.open(restaurant.googleReviewUrl, "_blank", "noopener,noreferrer");
+    }
+
+    // Now do the async clipboard write
     try {
       await navigator.clipboard.writeText(aiDraft);
       setCopiedReview(true);
-    } catch {}
+    } catch {
+      // Clipboard may fail on HTTP or denied permissions — still continue
+    }
 
     // Track beacon
     navigator.sendBeacon?.(
@@ -419,16 +443,14 @@ export function CustomerJourneyView({
       new Blob([JSON.stringify({ editedText: aiDraft })], { type: "application/json" })
     );
 
-    if (restaurant.googleReviewUrl) {
-      const opened = window.open(restaurant.googleReviewUrl, "_blank", "noopener,noreferrer");
-      if (!opened || opened.closed || typeof opened.closed === "undefined") {
-        // Fallback for mobile browsers blocking async window.open
-        window.location.href = restaurant.googleReviewUrl;
-      }
+    // Fallback: if popup was blocked, navigate in same tab
+    if (restaurant.googleReviewUrl && (!googleWin || googleWin.closed)) {
+      window.location.href = restaurant.googleReviewUrl;
     }
 
     setReviewSubmitted(true);
   }
+
 
   // Show Reward Voucher QR Code
   async function handleOpenRewardQr(reward: RewardItem) {
@@ -451,6 +473,20 @@ export function CustomerJourneyView({
   const currentStamps = customer?.currentStamps || 0;
   const stampsRemaining = Math.max(0, stampsRequired - currentStamps);
   const activeRewards = customer?.rewards?.filter((r) => r.status === "UNREDEEMED") || [];
+
+  // Check if customer already collected a stamp today (1 stamp per visit/day)
+  const hasCollectedStampToday = Boolean(
+    customer?.transactions?.some((tx) => {
+      if (!tx.stampsCount || tx.stampsCount <= 0) return false;
+      const txDate = new Date(tx.createdAt);
+      const now = new Date();
+      return (
+        txDate.getFullYear() === now.getFullYear() &&
+        txDate.getMonth() === now.getMonth() &&
+        txDate.getDate() === now.getDate()
+      );
+    })
+  );
 
   const isPercent = program?.discountType === "PERCENT";
   const discountDisplay = isPercent
@@ -897,21 +933,28 @@ export function CustomerJourneyView({
 
                 {/* Collect Today's Stamp CTA on Card */}
                 <div className="mt-4 pt-3 border-t border-stone-100">
-                  <button
-                    onClick={pendingRequestId ? () => setCurrentView("request_pending") : handleCollectStampClick}
-                    disabled={collectingStamp}
-                    className="w-full rounded-2xl py-3 text-xs font-bold text-white shadow-xs transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
-                    style={{ backgroundColor: brandColor }}
-                  >
-                    <span>☕</span>
-                    <span>
-                      {pendingRequestId
-                        ? "Approval Pending with Owner →"
-                        : collectingStamp
-                        ? "Sending Request to Owner..."
-                        : "Collect Visit Stamp"}
-                    </span>
-                  </button>
+                  {hasCollectedStampToday ? (
+                    <div className="w-full rounded-2xl py-3 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 text-center flex items-center justify-center gap-2 shadow-2xs">
+                      <span>✓</span>
+                      <span>Today&apos;s Visit Stamp Collected ({currentStamps}/{stampsRequired})</span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={pendingRequestId ? () => setCurrentView("request_pending") : handleCollectStampClick}
+                      disabled={collectingStamp}
+                      className="w-full rounded-2xl py-3 text-xs font-bold text-white shadow-xs transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
+                      style={{ backgroundColor: brandColor }}
+                    >
+                      <span>☕</span>
+                      <span>
+                        {pendingRequestId
+                          ? "Approval Pending with Owner →"
+                          : collectingStamp
+                          ? "Sending Request to Owner..."
+                          : "Collect Visit Stamp"}
+                      </span>
+                    </button>
+                  )}
                 </div>
               </div>
 

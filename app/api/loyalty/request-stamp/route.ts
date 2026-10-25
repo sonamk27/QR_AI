@@ -65,12 +65,16 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Check if customer already collected a stamp recently (rapid duplicate prevention: 2 mins)
-    const recentTx = await db.loyaltyTransaction.findFirst({
+    // Check if customer already collected a stamp today (enforce 1 stamp per visit/day)
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const todayTx = await db.loyaltyTransaction.findFirst({
       where: {
         programId: program.id,
         customerId: customer.id,
-        createdAt: { gte: new Date(Date.now() - 2 * 60 * 1000) },
+        stampsCount: { gt: 0 },
+        createdAt: { gte: startOfToday },
       },
       include: {
         customer: {
@@ -82,22 +86,21 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    if (recentTx && recentTx.customer) {
+    if (todayTx && todayTx.customer) {
       return NextResponse.json({
         success: true,
         alreadyCollected: true,
-        message: "You already received a stamp for this visit!",
-        customer: recentTx.customer,
+        message: "You already collected your stamp for today's visit!",
+        customer: todayTx.customer,
       });
     }
 
-    // Check if there is already a PENDING request within the last 15 minutes
+    // Check if there is already an active PENDING request for this customer
     const existingPending = await db.stampRequest.findFirst({
       where: {
         restaurantId: qr.restaurantId,
         customerPhone: phone,
         status: "PENDING",
-        createdAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -122,19 +125,33 @@ export async function POST(req: NextRequest) {
       return response;
     }
 
-    // Create a new StampRequest for owner review
-    const stampRequest = await db.stampRequest.create({
-      data: {
-        restaurantId: qr.restaurantId,
-        programId: program.id,
-        customerId: customer.id,
-        customerName: customer.name || trimmedName || "Valued Diner",
-        customerPhone: phone,
-        qrSlug: qr.slug,
-        tableNo: qr.tableNo ? `Table ${qr.tableNo}` : qr.name || "Main Counter",
-        status: "PENDING",
-        stampsAwarded: 1,
-      },
+    // Atomic transaction: Ensure no concurrent duplicate requests get created
+    const stampRequest = await db.$transaction(async (tx) => {
+      const pendingInTx = await tx.stampRequest.findFirst({
+        where: {
+          restaurantId: qr.restaurantId,
+          customerPhone: phone,
+          status: "PENDING",
+        },
+      });
+
+      if (pendingInTx) {
+        return pendingInTx;
+      }
+
+      return await tx.stampRequest.create({
+        data: {
+          restaurantId: qr.restaurantId,
+          programId: program.id,
+          customerId: customer.id,
+          customerName: customer.name || trimmedName || "Valued Diner",
+          customerPhone: phone,
+          qrSlug: qr.slug,
+          tableNo: qr.tableNo ? `Table ${qr.tableNo}` : qr.name || "Main Counter",
+          status: "PENDING",
+          stampsAwarded: 1,
+        },
+      });
     });
 
     const response = NextResponse.json({

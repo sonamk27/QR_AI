@@ -55,6 +55,38 @@ export async function POST(req: NextRequest) {
           throw new Error("Anonymous customer not found");
         }
 
+        // Duplicate stamp guard for anonymous diner
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+
+        const existingTodayAnonTx = await tx.anonymousStampTransaction.findFirst({
+          where: {
+            customerId: anonCustomer.id,
+            amount: { gt: 0 },
+            createdAt: { gte: startOfToday },
+          },
+        });
+
+        if (existingTodayAnonTx) {
+          const updatedReq = await tx.stampRequest.update({
+            where: { id: stampReq.id },
+            data: {
+              status: "APPROVED",
+              reviewedAt: new Date(),
+              reviewedById: ctx.user.id,
+              staffNote: "Already stamped for this visit",
+            },
+          });
+
+          return {
+            alreadyApproved: true,
+            customer: anonCustomer,
+            stampReq: updatedReq,
+            targetReached: false,
+            isAnon: true,
+          };
+        }
+
         const nextLifetime = anonCustomer.lifetimeStamps + stampsToAdd;
         const finalStamps =
           anonCustomer.currentStamps >= program.stampsRequired
@@ -160,6 +192,39 @@ export async function POST(req: NextRequest) {
           where: { id: customer.id },
           data: { name: stampReq.customerName },
         });
+      }
+
+      // ── DUPLICATE STAMP GUARD: Check if already awarded a stamp today ──
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+
+      const existingTodayTx = await tx.loyaltyTransaction.findFirst({
+        where: {
+          programId: program.id,
+          customerId: customer.id,
+          stampsCount: { gt: 0 },
+          createdAt: { gte: startOfToday },
+        },
+      });
+
+      if (existingTodayTx) {
+        const updatedReq = await tx.stampRequest.update({
+          where: { id: stampReq.id },
+          data: {
+            status: "APPROVED",
+            reviewedAt: new Date(),
+            reviewedById: ctx.user.id,
+            staffNote: "Already stamped for this visit",
+          },
+        });
+
+        return {
+          alreadyApproved: true,
+          customer,
+          stampReq: updatedReq,
+          targetReached: false,
+          isAnon: false,
+        };
       }
 
       const nextLifetime = customer.lifetimeStamps + stampsToAdd;
