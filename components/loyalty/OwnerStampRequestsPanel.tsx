@@ -35,6 +35,14 @@ export function OwnerStampRequestsPanel({
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [activeTab, setActiveTab] = useState<"pending" | "recent">("pending");
+  const [collectedStamp, setCollectedStamp] = useState<{
+    requestId: string;
+    customerName: string | null;
+    customerPhone: string | null;
+    tableNo: string | null;
+    currentStamps: number | null;
+    isAnon: boolean;
+  } | null>(null);
 
   async function fetchRequests(silent = false) {
     if (!silent) setLoading(true);
@@ -72,6 +80,17 @@ export function OwnerStampRequestsPanel({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to approve stamp");
+
+      // Find the request details for the confirmation screen
+      const req = pendingRequests.find((r) => r.id === requestId);
+      setCollectedStamp({
+        requestId,
+        customerName: req?.customerName ?? customerName ?? null,
+        customerPhone: req?.customerPhone ?? null,
+        tableNo: req?.tableNo ?? null,
+        currentStamps: req?.customer?.currentStamps ?? req?.anonCustomer?.currentStamps ?? null,
+        isAnon: Boolean(req?.anonCustomerId),
+      });
 
       setActionMessage({
         type: "success",
@@ -184,6 +203,49 @@ export function OwnerStampRequestsPanel({
         >
           {actionMessage.type === "success" ? "✓ " : "⚠️ "}
           {actionMessage.text}
+        </div>
+      )}
+
+      {/* Stamp Collected Confirmation Screen */}
+      {collectedStamp && (
+        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-xs animate-in fade-in zoom-in duration-300">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-xl">
+              ✓
+            </div>
+            <div>
+              <h4 className="font-bold text-emerald-900">Stamp Collected</h4>
+              <p className="text-xs text-emerald-700">1 stamp added to the customer's loyalty card.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Customer</p>
+              <p className="text-stone-800 font-medium">{collectedStamp.customerName || "Diner"}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Mobile</p>
+              <p className="text-stone-800 font-medium">
+                {collectedStamp.customerPhone ? `+91 ${collectedStamp.customerPhone}` : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Location</p>
+              <p className="text-stone-800 font-medium">{collectedStamp.tableNo || "Table Visit"}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Total Stamps</p>
+              <p className="text-stone-800 font-medium">
+                {collectedStamp.currentStamps !== null ? collectedStamp.currentStamps : "—"}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setCollectedStamp(null)}
+            className="mt-4 w-full rounded-xl border border-emerald-200 bg-white px-4 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition"
+          >
+            Done — Back to Requests
+          </button>
         </div>
       )}
 
