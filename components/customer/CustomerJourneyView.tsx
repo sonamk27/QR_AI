@@ -112,6 +112,9 @@ export function CustomerJourneyView({
   const [isEditingDraft, setIsEditingDraft] = useState(false);
   const [copiedReview, setCopiedReview] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [googlePopupBlocked, setGooglePopupBlocked] = useState(false);
+  const [reviewVariantIndex, setReviewVariantIndex] = useState(0);
+  const [reviewSessionId, setReviewSessionId] = useState<string | null>(null);
 
   // Reward Voucher QR Modal / Screen State
   const [selectedReward, setSelectedReward] = useState<RewardItem | null>(null);
@@ -408,6 +411,8 @@ export function CustomerJourneyView({
   async function handleGenerateAiReview() {
     setGeneratingAi(true);
     try {
+      const variants = ["short", "casual", "detailed"] as const;
+      const variant = variants[reviewVariantIndex % variants.length];
       const combinedText = [
         selectedChips.join(", "),
         customComment.trim(),
@@ -420,18 +425,22 @@ export function CustomerJourneyView({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           slug,
+          sessionId: reviewSessionId,
           overall: starRating,
           food: starRating,
           service: starRating,
           chips: selectedChips,
           text: combinedText || "Wonderful dining experience!",
+          variant,
+          previousDraft: aiGenerated ? aiDraft : undefined,
         }),
       });
-
       const data = await res.json();
       if (res.ok && data.text) {
         setAiDraft(data.text);
         setAiGenerated(true);
+        setReviewSessionId(data.sessionId);
+        setReviewVariantIndex((i) => i + 1);
       } else {
         // Fallback default review
         setAiDraft(
@@ -453,11 +462,19 @@ export function CustomerJourneyView({
 
   // Copy & Post to Google Review
   async function handleCopyAndGoogleReview() {
+    // Normalize URL to ensure https:// prefix
+    const rawUrl = restaurant.googleReviewUrl;
+    const googleUrl = rawUrl
+      ? rawUrl.startsWith("http://") || rawUrl.startsWith("https://")
+        ? rawUrl
+        : `https://${rawUrl}`
+      : null;
+
     // ⚠️ Open Google window SYNCHRONOUSLY (before any await) so browsers allow it.
     // If opened after an async call, most browsers treat it as a popup and block it.
     let googleWin: Window | null = null;
-    if (restaurant.googleReviewUrl) {
-      googleWin = window.open(restaurant.googleReviewUrl, "_blank", "noopener,noreferrer");
+    if (googleUrl) {
+      googleWin = window.open(googleUrl, "_blank", "noopener,noreferrer");
     }
 
     // Now do the async clipboard write
@@ -474,9 +491,10 @@ export function CustomerJourneyView({
       new Blob([JSON.stringify({ editedText: aiDraft })], { type: "application/json" })
     );
 
-    // Fallback: if popup was blocked, navigate in same tab
-    if (restaurant.googleReviewUrl && (!googleWin || googleWin.closed)) {
-      window.location.href = restaurant.googleReviewUrl;
+    // If popup was blocked, don't auto-navigate — show a manual link instead
+    // (window.location.href navigates away and can be jarring)
+    if (googleUrl && (!googleWin || googleWin.closed)) {
+      setGooglePopupBlocked(true);
     }
 
     setReviewSubmitted(true);
@@ -1251,7 +1269,13 @@ export function CustomerJourneyView({
               style={{ backgroundColor: brandColor }}
             >
               <span>✨</span>
-              <span>{generatingAi ? "Crafting Review with AI..." : "Generate Review with AI"}</span>
+              <span>
+                {generatingAi
+                  ? "Crafting Review with AI..."
+                  : aiGenerated
+                  ? "Generate another draft"
+                  : "Generate Review with AI"}
+              </span>
             </button>
 
             {restaurant.googleReviewUrl && (
@@ -1336,15 +1360,37 @@ export function CustomerJourneyView({
                   <p className="text-xs font-bold text-emerald-800">
                     ✅ Review copied to clipboard!
                   </p>
-                  <p className="text-[11px] text-emerald-700">
-                    Paste your copied review text into the Google review box that opened.
-                  </p>
+                  {googlePopupBlocked ? (
+                    <>
+                      <p className="text-[11px] text-emerald-700">
+                        Popup was blocked. Click below to open Google Reviews:
+                      </p>
+                      <button
+                        onClick={() => {
+                          const rawUrl = restaurant.googleReviewUrl;
+                          const googleUrl = rawUrl
+                            ? rawUrl.startsWith("http://") || rawUrl.startsWith("https://")
+                              ? rawUrl
+                              : `https://${rawUrl}`
+                            : null;
+                          if (googleUrl) window.open(googleUrl, "_blank", "noopener,noreferrer");
+                        }}
+                        className="inline-block mt-1.5 rounded-xl bg-[#1A73E8] px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-[#1557B0] transition"
+                      >
+                        Open Google Reviews ↗
+                      </button>
+                    </>
+                  ) : (
+                    <p className="text-[11px] text-emerald-700">
+                      Paste your copied review text into the Google review box that opened.
+                    </p>
+                  )}
                   {restaurant.googleReviewUrl && (
                     <a
                       href={restaurant.googleReviewUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-block mt-1 text-xs font-bold text-[#1A73E8] underline hover:text-[#1557B0]"
+                      className="inline-block mt-1 text-[10px] font-bold text-[#1A73E8] underline hover:text-[#1557B0]"
                     >
                       Click here if Google Reviews didn&apos;t open automatically ↗
                     </a>
