@@ -6,7 +6,6 @@ type R = {
   name: string;
   city: string | null;
   logoUrl: string | null;
-  brandColor: string;
   googleReviewUrl: string | null;
   instagramUrl: string | null;
   facebookUrl: string | null;
@@ -199,21 +198,6 @@ export function ProfileForm({ r }: { r: R }) {
             <div>
               <label className="label" htmlFor="city">City</label>
               <input id="city" name="city" defaultValue={r.city ?? ""} className="input mt-1" placeholder="New York" />
-            </div>
-          </div>
-
-          {/* Brand colour */}
-          <div>
-            <label className="label" htmlFor="brandColor">Brand Colour</label>
-            <div className="mt-1 flex items-center gap-3">
-              <input
-                id="brandColor"
-                name="brandColor"
-                type="color"
-                defaultValue={r.brandColor}
-                className="h-10 w-14 cursor-pointer rounded-lg border border-line p-0.5"
-              />
-              <span className="text-xs text-ink/50">Used as the accent colour across your loyalty experience</span>
             </div>
           </div>
 

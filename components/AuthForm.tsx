@@ -1,7 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 
 type Portal = "restaurant_admin" | "super_admin";
 
@@ -48,7 +47,7 @@ export function AuthForm({
 
   return (
     <main className="mx-auto grid min-h-screen max-w-md content-center px-5 py-10">
-      <Link href="/" className="font-display text-xl font-semibold">ReviewFlow</Link>
+      <a href="/" className="font-display text-xl font-semibold">ReviewFlow</a>
       <p className="mt-6 text-xs font-semibold uppercase tracking-wider text-ink/50">
         {portal === "super_admin" ? "Platform management" : portal === "restaurant_admin" ? "Restaurant portal" : "Secure account access"}
       </p>
@@ -71,29 +70,6 @@ export function AuthForm({
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
         <button className="btn w-full" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>
       </form>
-
-      {mode === "login" && portal === "super_admin" ? (
-        <p className="mt-6 text-sm text-ink/70">
-          Super Admin accounts are provisioned by the system administrator.
-        </p>
-      ) : (
-        <p className="mt-6 text-sm text-ink/70">
-          {mode === "login" ? "New here? " : "Already have an account? "}
-          <Link className="underline" href={mode === "login" ? "/signup" : "/login"}>
-            {mode === "login" ? "Create an account" : "Sign in"}
-          </Link>
-        </p>
-      )}
-      {mode === "login" && (
-        <div className="mt-3 flex gap-4 text-sm">
-          {portal !== "restaurant_admin" && (
-            <Link className="text-ink/60 underline" href="/admin/login">Restaurant Admin portal</Link>
-          )}
-          {portal !== "super_admin" && (
-            <Link className="text-ink/60 underline" href="/super-admin/login">Super Admin portal</Link>
-          )}
-        </div>
-      )}
     </main>
   );
 }
