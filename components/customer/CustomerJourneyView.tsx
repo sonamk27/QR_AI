@@ -130,22 +130,39 @@ export function CustomerJourneyView({
   // Primary Theme Color (Warm Bronze/Coffee or Restaurant Brand)
   const brandColor = restaurant.brandColor || "#8C5A2B";
 
-  // Check on mount for remembered phone — pre-fill but always show the register prompt
+  // Check on mount for remembered phone — auto-load card if saved, else show register prompt
   useEffect(() => {
-    const savedPhone =
-      initialPhone ||
-      localStorage.getItem(`loyalty_phone_${slug}`) ||
-      localStorage.getItem("loyalty_phone");
+    let cancelled = false;
 
-    const savedName =
-      initialName ||
-      localStorage.getItem(`loyalty_name_${slug}`);
+    async function init() {
+      const savedPhone =
+        initialPhone ||
+        localStorage.getItem(`loyalty_phone_${slug}`) ||
+        localStorage.getItem("loyalty_phone");
 
-    if (savedName) setFullName(savedName);
-    if (savedPhone) setPhoneNumber(savedPhone);
+      const savedName =
+        initialName ||
+        localStorage.getItem(`loyalty_name_${slug}`);
 
-    // Always start at register (phone prompt) — user must confirm their number each scan
-    setCurrentView("register");
+      if (savedName) setFullName(savedName);
+      if (savedPhone) setPhoneNumber(savedPhone);
+
+      if (savedPhone && !cancelled) {
+        // Try to load the existing card silently
+        await fetchLoyaltyCard(savedPhone, true);
+        if (!cancelled) {
+          // If we have customer data, go straight to card view
+          setCurrentView(customer ? "card" : "register");
+        }
+      } else if (!cancelled) {
+        setCurrentView("register");
+      }
+    }
+
+    init();
+    return () => {
+      cancelled = true;
+    };
   }, [slug, initialPhone, initialName]);
 
   // Ref to track if component has mounted (skip first-render side-effects)
@@ -171,6 +188,20 @@ export function CustomerJourneyView({
 
     return () => clearInterval(interval);
   }, [currentView, customer?.phone, phoneNumber]);
+
+  // Auto-load card data when entering card view without customer data (safety net)
+  const cardLoadRef = useRef(false);
+  useEffect(() => {
+    if (currentView !== "card") {
+      cardLoadRef.current = false;
+      return;
+    }
+    if (customer || cardLoadRef.current) return;
+    const phoneToUse = phoneNumber;
+    if (!phoneToUse) return;
+    cardLoadRef.current = true;
+    fetchLoyaltyCard(phoneToUse);
+  }, [currentView, phoneNumber]);
 
   async function fetchLoyaltyCard(phoneToFetch: string, silent = false) {
     if (!silent) {
@@ -198,9 +229,9 @@ export function CustomerJourneyView({
           setFullName(data.customer.name);
           localStorage.setItem(`loyalty_name_${slug}`, data.customer.name);
         }
-        // If we loaded the card, navigate to card view (only on first non-silent load)
+        // If we loaded the card, navigate to card view
         if (!silent) {
-          setCurrentView((v) => (v === "register" || v === "welcome" ? "card" : v));
+          setCurrentView("card");
         }
       }
     } catch (err: any) {
@@ -474,17 +505,13 @@ export function CustomerJourneyView({
   const stampsRemaining = Math.max(0, stampsRequired - currentStamps);
   const activeRewards = customer?.rewards?.filter((r) => r.status === "UNREDEEMED") || [];
 
-  // Check if customer already collected a stamp today (1 stamp per visit/day)
+  // Check if customer already collected a stamp in the last 24 hours (1 stamp per 24 hrs per number)
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const hasCollectedStampToday = Boolean(
     customer?.transactions?.some((tx) => {
       if (!tx.stampsCount || tx.stampsCount <= 0) return false;
       const txDate = new Date(tx.createdAt);
-      const now = new Date();
-      return (
-        txDate.getFullYear() === now.getFullYear() &&
-        txDate.getMonth() === now.getMonth() &&
-        txDate.getDate() === now.getDate()
-      );
+      return txDate >= twentyFourHoursAgo;
     })
   );
 
@@ -777,7 +804,7 @@ export function CustomerJourneyView({
 
           <div className="w-full max-w-xs space-y-3 mx-auto pb-4">
             <button
-              onClick={() => setCurrentView("card")}
+              onClick={() => fetchLoyaltyCard(customer?.phone || phoneNumber)}
               className="w-full rounded-2xl border border-stone-300 bg-white py-3 text-xs font-bold text-stone-700 shadow-2xs hover:bg-stone-50 transition"
             >
               View My Loyalty Card Meanwhile →
@@ -1121,7 +1148,7 @@ export function CustomerJourneyView({
 
           <div className="w-full max-w-xs space-y-2.5">
             <button
-              onClick={() => setCurrentView("card")}
+              onClick={() => fetchLoyaltyCard(customer?.phone || phoneNumber)}
               className="w-full rounded-2xl py-3.5 text-sm font-bold text-white shadow-md transition hover:brightness-105 active:scale-[0.98]"
               style={{ backgroundColor: brandColor }}
             >

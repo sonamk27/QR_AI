@@ -105,6 +105,43 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Check if customer already collected a stamp in the last 24 hours (per-number daily limit)
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const dailyTx = await db.loyaltyTransaction.findFirst({
+      where: {
+        programId: program.id,
+        customer: { phone },
+        stampsCount: { gt: 0 },
+        createdAt: { gte: twentyFourHoursAgo },
+      },
+      include: {
+        customer: {
+          include: {
+            rewards: { orderBy: { createdAt: "desc" } },
+            transactions: { orderBy: { createdAt: "desc" }, take: 20 },
+          },
+        },
+      },
+    });
+
+    if (dailyTx && dailyTx.customer) {
+      return NextResponse.json({
+        success: true,
+        alreadyCollected: true,
+        message: "You already collected a stamp in the last 24 hours. Please try again later.",
+        customer: {
+          id: dailyTx.customer.id,
+          name: dailyTx.customer.name,
+          phone: dailyTx.customer.phone,
+          currentStamps: dailyTx.customer.currentStamps,
+          lifetimeStamps: dailyTx.customer.lifetimeStamps,
+          rewards: dailyTx.customer.rewards,
+          transactions: dailyTx.customer.transactions,
+        },
+        program,
+      });
+    }
+
     // Award 1 stamp in an atomic transaction
     const result = await db.$transaction(async (tx) => {
       let customer = await tx.loyaltyCustomer.findUnique({
