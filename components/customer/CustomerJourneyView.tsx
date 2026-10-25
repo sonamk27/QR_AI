@@ -1298,13 +1298,37 @@ export function CustomerJourneyView({
 
               {/* Action Buttons: Edit & Copy & Review on Google */}
               <div className="pt-2">
-                <button
-                  onClick={handleCopyAndGoogleReview}
-                  className="w-full rounded-2xl bg-[#1A73E8] py-3.5 text-xs font-bold text-white shadow-sm hover:bg-[#1557B0] transition active:scale-[0.98] flex items-center justify-center gap-2"
-                >
-                  <span className="font-black text-sm">G</span>
-                  <span>{copiedReview ? "Review Copied! Opening Google..." : "Copy & Review on Google"}</span>
-                </button>
+                {restaurant.googleReviewUrl ? (
+                  <>
+                    {/* Prominent Continue to Google button */}
+                    <button
+                      onClick={handleCopyAndGoogleReview}
+                      className="w-full rounded-2xl bg-[#1A73E8] py-4 text-xs font-bold text-white shadow-sm hover:bg-[#1557B0] transition active:scale-[0.98] flex items-center justify-center gap-2 border border-[#1A73E8]/30"
+                    >
+                      <span className="font-black text-sm">G</span>
+                      <span>
+                        {copiedReview ? "Review Copied! Opening Google..." : "Continue to Google →"}
+                      </span>
+                    </button>
+                    <p className="text-[10px] text-stone-500 text-center mt-1.5">
+                      Copies your review &amp; opens {restaurant.name}&rsquo;s Google Business Profile
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleCopyAndGoogleReview}
+                      disabled
+                      className="w-full rounded-2xl bg-stone-100 py-4 text-xs font-bold text-stone-400 shadow-sm flex items-center justify-center gap-2"
+                    >
+                      <span className="font-black text-sm">G</span>
+                      <span>Google Reviews Not Set Up</span>
+                    </button>
+                    <p className="text-[10px] text-stone-500 text-center mt-1.5">
+                      Ask the restaurant to add their Google Business Profile link.
+                    </p>
+                  </>
+                )}
               </div>
 
               {reviewSubmitted && (
