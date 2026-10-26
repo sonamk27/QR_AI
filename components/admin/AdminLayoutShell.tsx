@@ -23,14 +23,14 @@ export function AdminLayoutShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-[#F7F2E9] text-[#24211E] md:grid md:grid-cols-[240px_1fr]">
+    <div className="min-h-screen bg-[#F7F2E9] text-[#24211E] md:grid md:grid-cols-[240px_minmax(0,1fr)]">
       <AdminSidebar
         restaurant={restaurant}
         user={user}
         pendingRequestsCount={pendingRequestsCount}
         pendingStampRequestsCount={pendingStampRequestsCount}
       />
-      <main className="mx-auto w-full max-w-6xl p-5 md:p-8">
+      <main className="mx-auto min-w-0 w-full max-w-6xl p-4 sm:p-5 md:p-8">
         {restaurant.status !== "ACTIVE" && (
           <div
             role="alert"

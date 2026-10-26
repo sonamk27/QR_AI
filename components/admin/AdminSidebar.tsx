@@ -33,26 +33,41 @@ export function AdminSidebar({
   const pathname = usePathname();
   const router = useRouter();
 
-  const navItems: AdminNavItem[] = [
-    { href: "/dashboard", label: "Dashboard", icon: "📊" },
+  const navGroups: { label: string; items: AdminNavItem[] }[] = [
+    { label: "Workspace", items: [{ href: "/dashboard", label: "Dashboard", icon: "📊" }] },
     {
-      href: "/dashboard/loyalty",
-      label: "Loyalty Program",
-      icon: "☕",
-      badge: pendingStampRequestsCount && pendingStampRequestsCount > 0 ? pendingStampRequestsCount : undefined,
+      label: "Guest Experience",
+      items: [
+        {
+          href: "/dashboard/loyalty",
+          label: "Loyalty Program",
+          icon: "☕",
+          badge: pendingStampRequestsCount && pendingStampRequestsCount > 0 ? pendingStampRequestsCount : undefined,
+        },
+        { href: "/dashboard/feedback", label: "Reviews & Feedback", icon: "💬" },
+        { href: "/dashboard/insights", label: "AI Insights", icon: "💡" },
+        { href: "/dashboard/drafts", label: "Review Drafts", icon: "✨" },
+      ],
     },
-    { href: "/dashboard/feedback", label: "Reviews & Feedback", icon: "💬" },
-    { href: "/dashboard/insights", label: "AI Insights", icon: "💡" },
     {
-      href: "/dashboard/qr-requests",
-      label: "QR Requests",
-      icon: "📝",
-      badge: pendingRequestsCount && pendingRequestsCount > 0 ? pendingRequestsCount : undefined,
+      label: "QR Codes",
+      items: [
+        {
+          href: "/dashboard/qr-requests",
+          label: "QR Requests",
+          icon: "📝",
+          badge: pendingRequestsCount && pendingRequestsCount > 0 ? pendingRequestsCount : undefined,
+        },
+        { href: "/dashboard/qr", label: "QR Management", icon: "📱" },
+      ],
     },
-    { href: "/dashboard/qr", label: "QR Management", icon: "📱" },
-    { href: "/dashboard/drafts", label: "Review Drafts", icon: "✨" },
-    { href: "/dashboard/payments", label: "Invoices & Billing", icon: "🧾" },
-    { href: "/dashboard/profile", label: "Restaurant Settings", icon: "⚙️" },
+    {
+      label: "Account",
+      items: [
+        { href: "/dashboard/payments", label: "Invoices & Billing", icon: "🧾" },
+        { href: "/dashboard/profile", label: "Restaurant Settings", icon: "⚙️" },
+      ],
+    },
   ];
 
   async function handleLogout() {
@@ -95,36 +110,44 @@ export function AdminSidebar({
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex gap-1 overflow-x-auto md:mt-4 md:flex-col md:space-y-1">
-        {navItems.map((item) => {
-          const isActive =
-            item.href === "/dashboard"
-              ? pathname === "/dashboard"
-              : pathname.startsWith(item.href);
+      <nav aria-label="Restaurant navigation" className="flex gap-1 overflow-x-auto md:mt-4 md:flex-col md:gap-3">
+        {navGroups.map((group) => (
+          <div key={group.label} className="flex shrink-0 items-center gap-1 md:block md:space-y-1">
+            <p className="hidden px-3.5 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-stone-500 md:block">
+              {group.label}
+            </p>
+            {group.items.map((item) => {
+              const isActive =
+                item.href === "/dashboard"
+                  ? pathname === "/dashboard"
+                  : pathname.startsWith(item.href);
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center justify-between whitespace-nowrap rounded-xl px-3.5 py-2.5 text-xs font-medium transition ${
-                isActive
-                  ? "bg-[#B58A4B] text-white shadow-xs font-semibold"
-                  : "text-stone-300 hover:bg-[#2F2B27] hover:text-white"
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <span className="text-sm opacity-90">{item.icon}</span>
-                <span>{item.label}</span>
-              </div>
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={isActive ? "page" : undefined}
+                  className={`flex min-h-11 items-center justify-between whitespace-nowrap rounded-xl px-3.5 text-xs font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E5B568] ${
+                    isActive
+                      ? "bg-[#B58A4B] text-white shadow-xs font-semibold"
+                      : "text-stone-300 hover:bg-[#2F2B27] hover:text-white"
+                  }`}
+                >
+                  <span className="flex items-center gap-2.5">
+                    <span className="text-sm opacity-90">{item.icon}</span>
+                    <span>{item.label}</span>
+                  </span>
 
-              {item.badge != null && (
-                <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#E5B568] px-1.5 text-[10px] font-bold text-[#24211E] shadow-xs">
-                  {item.badge}
-                </span>
-              )}
-            </Link>
-          );
-        })}
+                  {item.badge != null && (
+                    <span className="ml-3 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#E5B568] px-1.5 text-[10px] font-bold text-[#24211E] shadow-xs">
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* Owner Profile & Sign Out Footer — desktop only */}

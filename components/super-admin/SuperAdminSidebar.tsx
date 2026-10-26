@@ -26,19 +26,29 @@ export function SuperAdminSidebar({
   const pathname = usePathname();
   const router = useRouter();
 
-  const navItems: SuperAdminNavItem[] = [
-    { href: "/super-admin", label: "Platform Overview", icon: "⚡" },
+  const navGroups: { label: string; items: SuperAdminNavItem[] }[] = [
+    { label: "Overview", items: [{ href: "/super-admin", label: "Platform Overview", icon: "⚡" }] },
     {
-      href: "/super-admin/qr-requests",
-      label: "QR Requests",
-      icon: "📥",
-      badge: pendingRequestsCount && pendingRequestsCount > 0 ? pendingRequestsCount : undefined,
+      label: "QR Codes",
+      items: [
+        {
+          href: "/super-admin/qr-requests",
+          label: "QR Requests",
+          icon: "📥",
+          badge: pendingRequestsCount && pendingRequestsCount > 0 ? pendingRequestsCount : undefined,
+        },
+        { href: "/super-admin/qr-codes", label: "QR Fleet", icon: "🔲" },
+      ],
     },
-    { href: "/super-admin/restaurants", label: "Restaurants", icon: "🏢" },
-    { href: "/super-admin/qr-codes", label: "QR Fleet", icon: "🔲" },
-    { href: "/super-admin/payments", label: "Payments Ledger", icon: "💳" },
-    { href: "/super-admin/audit", label: "Audit Log", icon: "📜" },
-    { href: "/super-admin/users", label: "User Management", icon: "👥" },
+    {
+      label: "Platform",
+      items: [
+        { href: "/super-admin/restaurants", label: "Restaurants", icon: "🏢" },
+        { href: "/super-admin/payments", label: "Payments Ledger", icon: "💳" },
+        { href: "/super-admin/audit", label: "Audit Log", icon: "📜" },
+        { href: "/super-admin/users", label: "User Management", icon: "👥" },
+      ],
+    },
   ];
 
   async function handleLogout() {
@@ -73,40 +83,48 @@ export function SuperAdminSidebar({
         </div>
 
         {/* Navigation Items */}
-        <nav className="mt-4 flex gap-1 overflow-x-auto md:flex-col md:space-y-1">
-          {navItems.map((item) => {
-            const isActive =
-              item.href === "/super-admin"
-                ? pathname === "/super-admin"
-                : pathname.startsWith(item.href);
+        <nav aria-label="Platform navigation" className="mt-4 flex gap-1 overflow-x-auto md:flex-col md:gap-3">
+          {navGroups.map((group) => (
+            <div key={group.label} className="flex shrink-0 items-center gap-1 md:block md:space-y-1">
+              <p className="hidden px-3.5 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-stone-500 md:block">
+                {group.label}
+              </p>
+              {group.items.map((item) => {
+                const isActive =
+                  item.href === "/super-admin"
+                    ? pathname === "/super-admin"
+                    : pathname.startsWith(item.href);
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center justify-between whitespace-nowrap rounded-xl px-3.5 py-2.5 text-xs font-medium transition ${
-                  isActive
-                    ? "bg-[#B58A4B] text-white shadow-xs font-semibold"
-                    : "text-stone-300 hover:bg-[#2F2B27] hover:text-white"
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="text-sm opacity-90">{item.icon}</span>
-                  <span>{item.label}</span>
-                </div>
-
-                {item.badge != null && (
-                  <span
-                    className={`inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold shadow-xs ${
-                      isActive ? "bg-white text-[#24211E]" : "bg-[#B58A4B] text-white"
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={isActive ? "page" : undefined}
+                    className={`flex min-h-11 items-center justify-between whitespace-nowrap rounded-xl px-3.5 text-xs font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E5B568] ${
+                      isActive
+                        ? "bg-[#B58A4B] text-white shadow-xs font-semibold"
+                        : "text-stone-300 hover:bg-[#2F2B27] hover:text-white"
                     }`}
                   >
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
+                    <span className="flex items-center gap-2.5">
+                      <span className="text-sm opacity-90">{item.icon}</span>
+                      <span>{item.label}</span>
+                    </span>
+
+                    {item.badge != null && (
+                      <span
+                        className={`ml-3 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold shadow-xs ${
+                          isActive ? "bg-white text-[#24211E]" : "bg-[#B58A4B] text-white"
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
       </div>
 

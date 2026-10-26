@@ -109,7 +109,6 @@ export function CustomerJourneyView({
   const [aiDraft, setAiDraft] = useState("");
   const [generatingAi, setGeneratingAi] = useState(false);
   const [aiGenerated, setAiGenerated] = useState(false);
-  const [isEditingDraft, setIsEditingDraft] = useState(false);
   const [copiedReview, setCopiedReview] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [googlePopupBlocked, setGooglePopupBlocked] = useState(false);
@@ -1181,10 +1180,11 @@ export function CustomerJourneyView({
           <div className="space-y-4 rounded-3xl border border-[#E8DFD1] bg-white p-5 shadow-subtle">
             <div>
               <label className="block text-xs font-semibold text-[#716B64] mb-2">
-                What did you like? (Optional)
+                {aiGenerated ? "Your review draft (you can edit it)" : "What did you like? (Optional)"}
               </label>
-              <div className="flex flex-wrap gap-2">
-                {reviewChips.map((chip) => {
+              {!aiGenerated && (
+                <div className="flex flex-wrap gap-2">
+                  {reviewChips.map((chip) => {
                   const isSelected = selectedChips.includes(chip);
                   return (
                     <button
@@ -1203,16 +1203,17 @@ export function CustomerJourneyView({
                       {chip}
                     </button>
                   );
-                })}
-              </div>
+                  })}
+                </div>
+              )}
             </div>
 
             <div>
               <textarea
-                placeholder="Great coffee, cozy ambience and friendly staff. Loved the pasta!"
-                value={customComment}
-                onChange={(e) => setCustomComment(e.target.value)}
-                rows={2}
+                placeholder={aiGenerated ? "Your generated review will appear here." : "Great coffee, cozy ambience and friendly staff. Loved the pasta!"}
+                value={aiGenerated ? aiDraft : customComment}
+                onChange={(e) => aiGenerated ? setAiDraft(e.target.value) : setCustomComment(e.target.value)}
+                rows={aiGenerated ? 5 : 2}
                 className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF7F2]/60 p-3 text-xs text-[#24211E] outline-none focus:border-[#B58A4B] focus:bg-white transition"
               />
             </div>
@@ -1245,69 +1246,35 @@ export function CustomerJourneyView({
                 </a>
               </div>
             )}
-          </div>
-
-          {/* AI Suggested Review Box */}
-          {aiGenerated && (
-            <div className="mt-5 rounded-3xl border border-[#E8D8BA] bg-[#FAF5ED] p-5 shadow-subtle space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="rounded-md bg-[#F4ECDD] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#7A5826]">
-                  AI Suggested Review
-                </span>
-                <button
-                  onClick={() => setIsEditingDraft(!isEditingDraft)}
-                  className="text-xs font-bold text-[#716B64] hover:text-[#24211E] underline"
-                >
-                  {isEditingDraft ? "Done Editing" : "Edit"}
-                </button>
-              </div>
-
-              {isEditingDraft ? (
-                <textarea
-                  value={aiDraft}
-                  onChange={(e) => setAiDraft(e.target.value)}
-                  rows={4}
-                  className="w-full rounded-xl border border-[#E8D8BA] bg-white p-3 text-xs text-[#24211E] outline-none"
-                />
-              ) : (
-                <p className="text-xs font-medium text-[#24211E] leading-relaxed italic bg-white/90 p-3.5 rounded-xl border border-[#E8DFD1]">
-                  &ldquo;{aiDraft}&rdquo;
-                </p>
-              )}
-
-              {/* Action Buttons: Edit & Copy & Review on Google */}
-              <div className="pt-2">
+            {aiGenerated && (
+              <div className="space-y-3 border-t border-[#E8DFD1] pt-4">
                 <button
                   onClick={handleCopyAndGoogleReview}
-                  className="w-full rounded-2xl bg-[#1A73E8] py-3.5 text-xs font-bold text-white shadow-sm hover:bg-[#1557B0] transition active:scale-[0.98] flex items-center justify-center gap-2"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1A73E8] py-3.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#1557B0] active:scale-[0.98]"
                 >
-                  <span className="font-black text-sm">G</span>
+                  <span className="text-sm font-black">G</span>
                   <span>{copiedReview ? "Review Copied! Opening Google..." : "Copy & Review on Google"}</span>
                 </button>
-              </div>
 
-              {reviewSubmitted && (
-                <div className="rounded-2xl bg-[#EEF6F2] p-3.5 border border-[#D1E7DC] text-center space-y-1.5">
-                  <p className="text-xs font-bold text-[#2E6B4F]">
-                    ✅ Review copied to clipboard!
-                  </p>
-                  <p className="text-[11px] text-emerald-700">
-                    Paste your copied review text into the Google review box that opened.
-                  </p>
-                  {restaurant.googleReviewUrl && (
-                    <a
-                      href={restaurant.googleReviewUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block mt-1 text-xs font-bold text-[#1A73E8] underline hover:text-[#1557B0]"
-                    >
-                      Click here if Google Reviews didn&apos;t open automatically ↗
-                    </a>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                {reviewSubmitted && (
+                  <div className="space-y-1.5 text-center text-xs text-[#2E6B4F]">
+                    <p className="font-bold">✅ Review copied to clipboard!</p>
+                    <p>Paste your copied review into the Google review box that opened.</p>
+                    {restaurant.googleReviewUrl && (
+                      <a
+                        href={restaurant.googleReviewUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block text-xs font-bold text-[#1A73E8] underline hover:text-[#1557B0]"
+                      >
+                        Open Google Reviews ↗
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Bottom Stamp CTA */}
           <div className="mt-5 rounded-2xl border border-[#E8DFD1] bg-white p-4 text-center">
