@@ -34,13 +34,12 @@ export function appBaseUrl() {
   return url.origin;
 }
 
-export const qrUrl = (slug: string, baseUrl = appBaseUrl()) =>
-  new URL(`/r/${slug}`, baseUrl).toString();
+export const qrUrl = (slug: string) => new URL(`/r/${slug}`, appBaseUrl()).toString();
 
 /** QR images are generated on demand. The slug is the source of truth. */
-export async function qrSvg(slug: string, baseUrl?: string) {
-  return QRCode.toString(qrUrl(slug, baseUrl), { type: "svg", margin: 2, errorCorrectionLevel: "M" });
+export async function qrSvg(slug: string) {
+  return QRCode.toString(qrUrl(slug), { type: "svg", margin: 2, errorCorrectionLevel: "M" });
 }
-export async function qrPng(slug: string, baseUrl?: string) {
-  return QRCode.toBuffer(qrUrl(slug, baseUrl), { type: "png", margin: 2, width: 1024, errorCorrectionLevel: "M" });
+export async function qrPng(slug: string) {
+  return QRCode.toBuffer(qrUrl(slug), { type: "png", margin: 2, width: 1024, errorCorrectionLevel: "M" });
 }

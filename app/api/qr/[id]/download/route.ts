@@ -19,12 +19,11 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (!qr) return NextResponse.json({ error: "QR code not found." }, { status: 404 });
 
   const format = new URL(req.url).searchParams.get("format") === "svg" ? "svg" : "png";
-  const baseUrl = new URL(req.url).origin;
   const inline = new URL(req.url).searchParams.get("inline") === "1";
   const safeName = qr.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "qrcode";
 
   if (format === "svg") {
-    return new NextResponse(await qrSvg(qr.slug, baseUrl), {
+    return new NextResponse(await qrSvg(qr.slug), {
       headers: {
         "Content-Type": "image/svg+xml",
         "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${safeName}.svg"`,
@@ -32,7 +31,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     });
   }
 
-  return new NextResponse(new Uint8Array(await qrPng(qr.slug, baseUrl)), {
+  return new NextResponse(new Uint8Array(await qrPng(qr.slug)), {
     headers: {
       "Content-Type": "image/png",
       "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${safeName}.png"`,
