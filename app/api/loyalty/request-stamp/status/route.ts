@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (!stampRequest) {
-      return NextResponse.json({ status: "NONE" });
+      return NextResponse.json({ status: "NONE" }, { headers: { "Cache-Control": "no-store, max-age=0" } });
     }
 
     if (stampRequest.status === "APPROVED") {
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
           message: "🎉 Your stamp has been approved by the restaurant owner!",
           isAnonymous: true,
           reviewedAt: stampRequest.reviewedAt,
-        });
+        }, { headers: { "Cache-Control": "no-store, max-age=0" } });
       }
 
       const cardData = await getCustomerLoyaltyCard(
@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
         customer: cardData.customer,
         program: cardData.program,
         reviewedAt: stampRequest.reviewedAt,
-      });
+      }, { headers: { "Cache-Control": "no-store, max-age=0" } });
     }
 
     if (stampRequest.status === "REJECTED") {
@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
         status: "REJECTED",
         requestId: stampRequest.id,
         message: "Your stamp request was declined by the restaurant.",
-      });
+      }, { headers: { "Cache-Control": "no-store, max-age=0" } });
     }
 
     return NextResponse.json({
@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
       tableNo: stampRequest.tableNo,
       createdAt: stampRequest.createdAt,
       message: "Waiting for owner approval...",
-    });
+    }, { headers: { "Cache-Control": "no-store, max-age=0" } });
   } catch (error: any) {
     console.error("[loyalty/request-stamp/status] Error:", error);
     return NextResponse.json(

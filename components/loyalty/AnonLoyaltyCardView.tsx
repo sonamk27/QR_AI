@@ -169,9 +169,10 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
 
       // Start polling
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      void pollRequestStatus(data.requestId);
       pollIntervalRef.current = setInterval(() => {
         pollRequestStatus(data.requestId);
-      }, 4000);
+      }, 1500);
     } catch (err: any) {
       setStampReqStatus("error");
       setStampReqMessage(err.message || "Could not send request. Please try again.");
@@ -181,7 +182,8 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
   async function pollRequestStatus(reqId: string) {
     try {
       const res = await fetch(
-        `/api/loyalty/anon/request-stamp/status?slug=${encodeURIComponent(slug)}&requestId=${reqId}`
+        `/api/loyalty/anon/request-stamp/status?slug=${encodeURIComponent(slug)}&requestId=${reqId}`,
+        { cache: "no-store" }
       );
       const data = await res.json();
 

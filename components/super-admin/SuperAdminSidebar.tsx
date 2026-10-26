@@ -58,13 +58,15 @@ export function SuperAdminSidebar({
   }
 
   return (
-    <aside className="flex flex-col justify-between border-b border-[#38332E] bg-[#24211E] text-stone-200 p-4 md:border-b-0 md:border-r min-h-screen">
-      <div>
+    <aside className="flex h-auto flex-col justify-between border-b border-[#38332E] bg-[#24211E] p-4 text-stone-200 md:sticky md:top-0 md:h-screen md:border-b-0 md:border-r">
+      <div className="flex min-h-0 flex-1 flex-col">
         {/* SuperAdmin Brand Header */}
         <div className="pb-4 border-b border-[#38332E]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <Image src="/logo.png" alt="ReviewFlow" width={48} height={24} className="rounded-lg object-contain shrink-0" />
+              <span className="flex h-10 w-20 shrink-0 items-center justify-center rounded-lg bg-[#F7F2E9] px-1.5 shadow-sm">
+                <Image src="/logo.png" alt="" width={160} height={80} className="h-auto w-full object-contain" />
+              </span>
               <span className="font-serif text-xl font-bold tracking-tight text-white">
                 ReviewFlow
               </span>
@@ -83,7 +85,7 @@ export function SuperAdminSidebar({
         </div>
 
         {/* Navigation Items */}
-        <nav aria-label="Platform navigation" className="mt-4 flex gap-1 overflow-x-auto md:flex-col md:gap-3">
+        <nav aria-label="Platform navigation" className="mt-4 flex gap-1 overflow-x-auto md:min-h-0 md:flex-1 md:flex-col md:gap-3 md:overflow-y-auto md:overflow-x-hidden">
           {navGroups.map((group) => (
             <div key={group.label} className="flex shrink-0 items-center gap-1 md:block md:space-y-1">
               <p className="hidden px-3.5 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-stone-500 md:block">
@@ -129,7 +131,7 @@ export function SuperAdminSidebar({
       </div>
 
       {/* Super Admin Profile & Sign Out Footer */}
-      <div className="mt-6 pt-4 border-t border-[#38332E]">
+      <div className="mt-6 shrink-0 border-t border-[#38332E] pt-4 md:mt-auto">
         <div className="flex items-center justify-between">
           <div className="min-w-0 pr-2">
             <p className="truncate text-xs font-semibold text-white">{admin.name}</p>
@@ -137,10 +139,10 @@ export function SuperAdminSidebar({
           </div>
           <button
             onClick={handleLogout}
-            title="Sign out"
-            className="rounded-lg p-2 text-xs text-stone-400 hover:bg-[#2F2B27] hover:text-rose-400 transition"
+            className="flex min-h-10 items-center gap-2 rounded-lg px-3 text-xs font-medium text-stone-300 hover:bg-[#2F2B27] hover:text-white transition"
           >
-            🚪
+            <span aria-hidden="true">↗</span>
+            <span>Sign out</span>
           </button>
         </div>
       </div>

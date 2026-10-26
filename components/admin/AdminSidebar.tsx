@@ -77,7 +77,7 @@ export function AdminSidebar({
   }
 
   return (
-    <aside className="flex flex-col border-b border-[#38332E] bg-[#24211E] text-stone-200 p-4 md:border-b-0 md:border-r md:min-h-screen">
+    <aside className="flex flex-col border-b border-[#38332E] bg-[#24211E] p-4 text-stone-200 md:sticky md:top-0 md:h-screen md:border-b-0 md:border-r">
       {/* Brand Header */}
       <div className="hidden md:block pb-4 border-b border-[#38332E]">
         <div className="flex items-center gap-2.5">
@@ -114,7 +114,7 @@ export function AdminSidebar({
       </div>
 
       {/* Navigation Items */}
-      <nav aria-label="Restaurant navigation" className="flex gap-1 overflow-x-auto md:mt-4 md:flex-col md:gap-3">
+      <nav aria-label="Restaurant navigation" className="flex gap-1 overflow-x-auto md:mt-4 md:min-h-0 md:flex-1 md:flex-col md:gap-3 md:overflow-y-auto md:overflow-x-hidden">
         {navGroups.map((group) => (
           <div key={group.label} className="flex shrink-0 items-center gap-1 md:block md:space-y-1">
             <p className="hidden px-3.5 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-stone-500 md:block">
@@ -155,7 +155,7 @@ export function AdminSidebar({
       </nav>
 
       {/* Owner Profile & Sign Out Footer — desktop only */}
-      <div className="hidden md:block mt-auto pt-4 border-t border-[#38332E]">
+      <div className="mt-auto hidden shrink-0 border-t border-[#38332E] pt-4 md:block">
         <div className="flex items-center justify-between">
           <div className="min-w-0 pr-2">
             <p className="truncate text-xs font-semibold text-white">{user.name}</p>
@@ -163,10 +163,10 @@ export function AdminSidebar({
           </div>
           <button
             onClick={handleLogout}
-            title="Sign out"
-            className="flex items-center gap-1 rounded-lg p-2 text-xs font-medium text-stone-400 hover:bg-stone-800 hover:text-stone-200 transition"
+            className="flex min-h-10 items-center gap-2 rounded-lg px-3 text-xs font-medium text-stone-300 hover:bg-stone-800 hover:text-white transition"
           >
-            🚪
+            <span aria-hidden="true">↗</span>
+            <span>Sign out</span>
           </button>
         </div>
       </div>

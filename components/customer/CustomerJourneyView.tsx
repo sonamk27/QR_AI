@@ -103,11 +103,12 @@ export function CustomerJourneyView({
   const collectLockRef = useRef(false);
 
   // Review & AI Assist State (Step 7: Share Your Experience)
-  const [starRating, setStarRating] = useState<number>(5);
+  const [starRating, setStarRating] = useState<number>(0);
   const [selectedChips, setSelectedChips] = useState<string[]>([]);
   const [customComment, setCustomComment] = useState("");
   const [aiDraft, setAiDraft] = useState("");
   const [generatingAi, setGeneratingAi] = useState(false);
+  const [reviewGenerationError, setReviewGenerationError] = useState("");
   const [aiGenerated, setAiGenerated] = useState(false);
   const [copiedReview, setCopiedReview] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
@@ -253,7 +254,7 @@ export function CustomerJourneyView({
         : `/api/loyalty/request-stamp/status?slug=${encodeURIComponent(slug)}&phone=${encodeURIComponent(phoneToUse)}`;
 
       try {
-        const res = await fetch(url);
+        const res = await fetch(url, { cache: "no-store" });
         const data = await res.json();
         if (isCancelled) return;
 
@@ -286,7 +287,7 @@ export function CustomerJourneyView({
     }
 
     checkStatus();
-    const interval = setInterval(checkStatus, 2500);
+      const interval = setInterval(checkStatus, 1500);
     return () => {
       isCancelled = true;
       clearInterval(interval);
@@ -401,7 +402,9 @@ export function CustomerJourneyView({
 
   // Step 7 Handler: AI Review Generator
   async function handleGenerateAiReview() {
+    if (starRating < 1 || starRating > 5) return;
     setGeneratingAi(true);
+    setReviewGenerationError("");
     try {
       const variants = ["short", "casual", "detailed"] as const;
       const variant = variants[reviewVariantIndex % variants.length];
@@ -419,32 +422,24 @@ export function CustomerJourneyView({
           slug,
           sessionId: reviewSessionId,
           overall: starRating,
-          food: starRating,
-          service: starRating,
           chips: selectedChips,
-          text: combinedText || "Wonderful dining experience!",
+          text: combinedText || undefined,
           variant,
           previousDraft: aiGenerated ? aiDraft : undefined,
         }),
       });
-      const data = await res.json();
-      if (res.ok && data.text) {
-        setAiDraft(data.text);
-        setAiGenerated(true);
-        setReviewSessionId(data.sessionId);
-        setReviewVariantIndex((i) => i + 1);
-      } else {
-        setAiDraft(
-          `Had a wonderful experience at ${restaurant.name}! ${selectedChips.length > 0 ? selectedChips.join(", ") + ". " : ""
-          }The coffee and food were excellent, the ambience is cozy, and the staff is very friendly. Highly recommended!`
-        );
-        setAiGenerated(true);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.text) {
+        throw new Error(data.error || "Could not generate your review. Please try again.");
       }
-    } catch {
-      setAiDraft(
-        `Had a wonderful experience at ${restaurant.name}! The coffee was excellent, the ambience is cozy, and the staff is very friendly. Highly recommended!`
-      );
+      setAiDraft(data.text);
       setAiGenerated(true);
+      setReviewSessionId(data.sessionId);
+      setReviewVariantIndex((i) => i + 1);
+    } catch (error) {
+      setReviewGenerationError(
+        error instanceof Error ? error.message : "Could not generate your review. Please try again.",
+      );
     } finally {
       setGeneratingAi(false);
     }
@@ -1170,9 +1165,19 @@ export function CustomerJourneyView({
               Note others discover great food. We&apos;ll help you write an honest review.
             </p>
 
-            {/* 5-Star Rating Component in Gold */}
-            <div className="my-5 flex justify-center">
-              <Stars value={starRating} onChange={setStarRating} />
+            <div className="my-5">
+              <p className="mb-2 text-sm font-semibold text-[#24211E]">How was your overall experience?</p>
+              <Stars
+                value={starRating}
+                onChange={(rating) => {
+                  setStarRating(rating);
+                  setReviewGenerationError("");
+                }}
+                label="Rate your overall experience from 1 to 5 stars"
+              />
+              <p className="mt-1.5 text-[11px] text-[#716B64]" aria-live="polite">
+                {starRating === 0 ? "Choose 1 to 5 stars before generating your review." : `Your rating: ${starRating} out of 5`}
+              </p>
             </div>
           </div>
 
@@ -1221,7 +1226,7 @@ export function CustomerJourneyView({
             {/* Button: Generate Review with AI */}
             <button
               onClick={handleGenerateAiReview}
-              disabled={generatingAi}
+              disabled={generatingAi || starRating === 0}
               className="w-full rounded-2xl bg-[#B58A4B] py-3 text-xs font-bold text-white shadow-xs transition hover:bg-[#9E7438] active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
             >
               <span>✨</span>
@@ -1233,6 +1238,12 @@ export function CustomerJourneyView({
                     : "Generate Review with AI"}
               </span>
             </button>
+
+            {reviewGenerationError && (
+              <p role="alert" className="rounded-xl border border-[#F7D6D6] bg-[#FDF2F2] p-3 text-xs font-semibold text-[#A83B3B]">
+                {reviewGenerationError}
+              </p>
+            )}
 
             {restaurant.googleReviewUrl && (
               <div className="pt-0.5 text-center">

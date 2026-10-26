@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase-client";
 
@@ -134,7 +135,12 @@ export function AuthForm({
 
   return (
     <main className="mx-auto grid min-h-screen max-w-md content-center px-5 py-10">
-      <Link href="/" className="font-display text-xl font-semibold">ReviewFlow</Link>
+      <Link href="/" aria-label="ReviewFlow home" className="inline-flex w-fit items-center gap-3 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#B58A4B]">
+        <span className="flex h-12 w-24 items-center justify-center rounded-xl border border-[#E8DFD1] bg-white px-2 shadow-sm">
+          <Image src="/logo.png" alt="" width={160} height={80} priority className="h-auto w-full object-contain" />
+        </span>
+        <span className="font-display text-xl font-semibold">ReviewFlow</span>
+      </Link>
       <p className="mt-6 text-xs font-semibold uppercase tracking-wider text-ink/50">
         {portal === "super_admin" ? "Platform management" : portal === "restaurant_admin" ? "Restaurant portal" : "Secure account access"}
       </p>
