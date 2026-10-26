@@ -1216,7 +1216,7 @@ export function CustomerJourneyView({
 
             {/* Button: Generate Review with AI */}
             <button
-              onClick={handleGenerateAiReview}
+              onClick={aiGenerated ? handleCopyAndGoogleReview : handleGenerateAiReview}
               disabled={generatingAi || reviewRatings.some((rating) => rating === 0)}
               className="sticky bottom-3 z-20 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/40 bg-[#B58A4B] py-3 text-sm font-bold text-white shadow-lg transition hover:bg-[#9E7438] active:scale-[0.98] disabled:opacity-60"
               aria-live="polite"
@@ -1226,7 +1226,7 @@ export function CustomerJourneyView({
                 {generatingAi
                   ? "Crafting Review with AI..."
                   : aiGenerated
-                    ? "Generate another draft"
+                    ? "Continue to Google Reviews"
                     : "Continue"}
               </span>
             </button>
@@ -1239,28 +1239,10 @@ export function CustomerJourneyView({
 
             {aiGenerated && (
               <div className="space-y-3 border-t border-[#E8DFD1] pt-4">
-                <button
-                  onClick={handleCopyAndGoogleReview}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1A73E8] py-3.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#1557B0] active:scale-[0.98]"
-                >
-                  <span className="text-sm font-black">G</span>
-                  <span>{copiedReview ? "Review copied — opening Google..." : "Continue to Google Reviews"}</span>
-                </button>
-
                 {reviewSubmitted && (
                   <div className="space-y-1.5 text-center text-xs text-[#2E6B4F]">
                     <p className="font-bold">✅ Review copied to clipboard!</p>
                     <p>Paste your copied review into the Google review box that opened.</p>
-                    {restaurant.googleReviewUrl && (
-                      <a
-                        href={restaurant.googleReviewUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-block text-xs font-bold text-[#1A73E8] underline hover:text-[#1557B0]"
-                      >
-                        Open Google Reviews ↗
-                      </a>
-                    )}
                   </div>
                 )}
               </div>
