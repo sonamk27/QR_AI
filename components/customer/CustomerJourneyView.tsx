@@ -67,6 +67,28 @@ type CustomerData = {
   transactions: TransactionItem[];
 };
 
+function questionsForRating(rating: number) {
+  if (rating <= 2) {
+    return [
+      { question: "What affected your visit most?", options: ["Food", "Service", "Wait time", "Cleanliness", "Value"] },
+      { question: "What could be improved first?", options: ["Food", "Service", "Speed", "Atmosphere", "Value"] },
+      { question: "Would you visit again?", options: ["Yes, after changes", "Maybe", "Not likely"] },
+    ];
+  }
+  if (rating === 3) {
+    return [
+      { question: "What stood out during your visit?", options: ["Food", "Staff", "Atmosphere", "Speed", "Value"] },
+      { question: "What could be better?", options: ["Food", "Service", "Wait time", "Atmosphere", "Value"] },
+      { question: "What would make you return?", options: ["Better food", "Faster service", "Better value", "More choice"] },
+    ];
+  }
+  return [
+    { question: "What did you enjoy most?", options: ["Food", "Drinks", "Friendly staff", "Atmosphere", "Quick service"] },
+    { question: "What made the visit memorable?", options: ["A great meal", "Warm welcome", "Lovely setting", "Quick service", "Good value"] },
+    { question: "Who would you recommend it to?", options: ["Friends", "Family", "A date", "Food lovers"] },
+  ];
+}
+
 export function CustomerJourneyView({
   slug,
   restaurant,
@@ -104,8 +126,7 @@ export function CustomerJourneyView({
 
   // Review & AI Assist State (Step 7: Share Your Experience)
   const [starRating, setStarRating] = useState<number>(0);
-  const [selectedChips, setSelectedChips] = useState<string[]>([]);
-  const [customComment, setCustomComment] = useState("");
+  const [reviewAnswers, setReviewAnswers] = useState<string[]>([]);
   const [aiDraft, setAiDraft] = useState("");
   const [generatingAi, setGeneratingAi] = useState(false);
   const [reviewGenerationError, setReviewGenerationError] = useState("");
@@ -119,16 +140,6 @@ export function CustomerJourneyView({
   // Reward Voucher QR Modal / Screen State
   const [selectedReward, setSelectedReward] = useState<RewardItem | null>(null);
   const [rewardQrDataUrl, setRewardQrDataUrl] = useState<string | null>(null);
-
-  // Quick Chips for review
-  const reviewChips = [
-    "Great coffee",
-    "Cozy ambience",
-    "Friendly staff",
-    "Delicious food",
-    "Quick service",
-    "Loved the desserts",
-  ];
 
   // Theme Accent: Muted Gold #B58A4B
   const accentGold = "#B58A4B";
@@ -408,23 +419,20 @@ export function CustomerJourneyView({
     try {
       const variants = ["short", "casual", "detailed"] as const;
       const variant = variants[reviewVariantIndex % variants.length];
-      const combinedText = [
-        selectedChips.join(", "),
-        customComment.trim(),
-      ]
-        .filter(Boolean)
-        .join(". ");
-
       const res = await fetch("/api/public/generate-review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           slug,
-          sessionId: reviewSessionId,
+          // The API accepts an omitted sessionId, not null. JSON null caused
+          // first-time review generation to fail schema validation (400).
+          sessionId: reviewSessionId || undefined,
           overall: starRating,
-          chips: selectedChips,
-          text: combinedText || undefined,
+          chips: reviewAnswers,
           variant,
+          variationId: typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
           previousDraft: aiGenerated ? aiDraft : undefined,
         }),
       });
@@ -532,8 +540,8 @@ export function CustomerJourneyView({
                   className="h-12 w-12 rounded-full border border-[#E8DFD1] object-cover shadow-2xs"
                 />
               ) : (
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#B58A4B] text-2xl text-white shadow-2xs">
-                  ☕
+                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[#E8D8BA] bg-white font-serif text-xl font-bold text-[#7A5826] shadow-2xs">
+                  {restaurant.name.trim().charAt(0).toUpperCase() || "R"}
                 </div>
               )}
             </div>
@@ -547,14 +555,28 @@ export function CustomerJourneyView({
 
           {/* Hero Welcome Card */}
           <div className="my-auto py-4 text-center">
-            {/* Visual Cafe / Dish Hero Illustration */}
-            <div className="relative mx-auto mb-6 flex h-48 w-full max-w-[300px] items-center justify-center overflow-hidden rounded-3xl border border-[#E8DFD1] bg-gradient-to-b from-[#FAF6F0] via-[#F4ECE1] to-[#EFE4D2] shadow-subtle">
-              <div className="flex flex-col items-center">
-                <span className="text-6xl drop-shadow-sm">☕🥐</span>
-                <div className="mt-3 flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur-sm px-3.5 py-1 shadow-sm text-xs font-semibold text-[#7A5826] border border-[#E8D8BA]">
-                  <span>✨</span>
-                  <span>{program.rewardTitle || "Rewards & Diners Club"}</span>
+            {/* Simple loyalty-card visual */}
+            <div className="mx-auto mb-6 flex h-48 w-full max-w-[300px] items-center justify-center rounded-3xl border border-[#E8DFD1] bg-[#F1E8D9] p-5 shadow-subtle">
+              <div className="w-full rounded-2xl border border-[#E8DFD1] bg-white p-4 text-left shadow-sm">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#716B64]">Visit card</p>
+                  <span className="rounded-full bg-[#FAF5ED] px-2.5 py-1 text-[10px] font-semibold text-[#7A5826]">{program.rewardTitle || "Rewards"}</span>
                 </div>
+                <div className="my-5 flex items-center justify-between gap-2" aria-hidden="true">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <span
+                      key={index}
+                      className={`flex h-9 w-9 items-center justify-center rounded-full border text-sm ${
+                        index === 0
+                          ? "border-[#B58A4B] bg-[#B58A4B] font-bold text-white"
+                          : "border-dashed border-[#D8C8AF] bg-[#FAF7F2] text-[#B8B1A8]"
+                      }`}
+                    >
+                      {index === 0 ? "✓" : "·"}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-xs font-semibold text-[#24211E]">Every visit brings you closer to a reward</p>
               </div>
             </div>
 
@@ -572,7 +594,7 @@ export function CustomerJourneyView({
                 disabled={collectingStamp}
                 className="w-full rounded-2xl bg-[#B58A4B] py-3.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#9E7438] active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
               >
-                <span>☕</span>
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-sm">✓</span>
                 <span>{collectingStamp ? "Collecting Stamp..." : "Collect My Stamp"}</span>
               </button>
 
@@ -589,7 +611,7 @@ export function CustomerJourneyView({
           {/* Three Value Badges at Bottom */}
           <div className="flex items-center justify-center gap-6 border-t border-[#E8DFD1] pt-5 text-center text-xs font-medium text-[#716B64]">
             <div className="flex items-center gap-1.5">
-              <span>☕</span>
+              <span>★</span>
               <span>Great Food</span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -1078,9 +1100,9 @@ export function CustomerJourneyView({
       ───────────────────────────────────────────────────────────── */}
       {currentView === "stamp_added" && (
         <main className="mx-auto flex min-h-screen max-w-sm flex-col items-center justify-center px-5 py-8 text-center">
-          {/* Celebratory stamp stamp icon with warm gold burst */}
-          <div className="relative mb-6 flex h-28 w-28 items-center justify-center rounded-full bg-[#FAF5ED] text-5xl shadow-subtle border-4 border-white animate-bounce">
-            <span className="text-[#B58A4B]">☕</span>
+          {/* A clear success mark instead of decorative food imagery */}
+          <div className="relative mb-6 flex h-28 w-28 items-center justify-center rounded-full border-4 border-white bg-[#EEF6F2] text-5xl font-semibold text-[#2E6B4F] shadow-subtle">
+            <span aria-hidden="true">✓</span>
           </div>
 
           <span className="rounded-full bg-[#EEF6F2] px-3.5 py-1 text-xs font-bold text-[#2E6B4F] border border-[#D1E7DC] mb-3">
@@ -1106,7 +1128,7 @@ export function CustomerJourneyView({
                       : "border border-[#E8DFD1] bg-[#FAF7F2] text-[#B8B1A8]"
                     }`}
                 >
-                  {isStamped ? "☕" : index + 1}
+                  {isStamped ? "✓" : index + 1}
                 </div>
               );
             })}
@@ -1171,63 +1193,82 @@ export function CustomerJourneyView({
                 value={starRating}
                 onChange={(rating) => {
                   setStarRating(rating);
+                  setReviewAnswers([]);
+                  setAiGenerated(false);
+                  setAiDraft("");
                   setReviewGenerationError("");
                 }}
                 label="Rate your overall experience from 1 to 5 stars"
               />
               <p className="mt-1.5 text-[11px] text-[#716B64]" aria-live="polite">
-                {starRating === 0 ? "Choose 1 to 5 stars before generating your review." : `Your rating: ${starRating} out of 5`}
+                {starRating === 0 ? "Choose 1 to 5 stars to continue." : `Your rating: ${starRating} out of 5`}
               </p>
             </div>
           </div>
 
-          {/* What Did You Like (Chips & Text) */}
           <div className="space-y-4 rounded-3xl border border-[#E8DFD1] bg-white p-5 shadow-subtle">
-            <div>
-              <label className="block text-xs font-semibold text-[#716B64] mb-2">
-                {aiGenerated ? "Your review draft (you can edit it)" : "What did you like? (Optional)"}
-              </label>
-              {!aiGenerated && (
-                <div className="flex flex-wrap gap-2">
-                  {reviewChips.map((chip) => {
-                  const isSelected = selectedChips.includes(chip);
-                  return (
-                    <button
-                      key={chip}
-                      type="button"
-                      onClick={() => {
-                        setSelectedChips((prev) =>
-                          isSelected ? prev.filter((c) => c !== chip) : [...prev, chip]
+            {starRating > 0 && (
+              <div className="space-y-4">
+                <p className="text-center text-sm font-semibold text-[#24211E]">
+                  A few quick questions help make your review personal.
+                </p>
+                {questionsForRating(starRating).map((item, index) => (
+                  <fieldset key={`${starRating}-${item.question}`} className="space-y-2">
+                    <legend className="mb-2 text-xs font-semibold text-[#716B64]">
+                      {index + 1}. {item.question}
+                    </legend>
+                    <div className="flex flex-wrap gap-2">
+                      {item.options.map((option) => {
+                        const selected = reviewAnswers[index] === option;
+                        return (
+                          <button
+                            key={option}
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() => {
+                              setReviewAnswers((current) => {
+                                const next = [...current];
+                                next[index] = option;
+                                return next;
+                              });
+                              setAiGenerated(false);
+                              setReviewGenerationError("");
+                            }}
+                            className={`min-h-10 rounded-full border px-3 py-2 text-xs font-semibold transition ${selected
+                              ? "border-[#24211E] bg-[#24211E] text-white"
+                              : "border-[#E8DFD1] bg-[#FAF7F2] text-[#716B64] hover:bg-[#F2ECE1]"
+                            }`}
+                          >
+                            {option}
+                          </button>
                         );
-                      }}
-                      className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${isSelected
-                          ? "bg-[#24211E] text-white font-semibold shadow-2xs"
-                          : "border border-[#E8DFD1] bg-[#FAF7F2] text-[#716B64] hover:bg-[#F2ECE1]"
-                        }`}
-                    >
-                      {chip}
-                    </button>
-                  );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <textarea
-                placeholder={aiGenerated ? "Your generated review will appear here." : "Great coffee, cozy ambience and friendly staff. Loved the pasta!"}
-                value={aiGenerated ? aiDraft : customComment}
-                onChange={(e) => aiGenerated ? setAiDraft(e.target.value) : setCustomComment(e.target.value)}
-                rows={aiGenerated ? 5 : 2}
-                className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF7F2]/60 p-3 text-xs text-[#24211E] outline-none focus:border-[#B58A4B] focus:bg-white transition"
-              />
-            </div>
+                      })}
+                    </div>
+                  </fieldset>
+                ))}
+              </div>
+            )}
+            {aiGenerated && (
+              <div>
+                <label htmlFor="generated-review" className="mb-2 block text-xs font-semibold text-[#716B64]">
+                  Your review draft (you can edit it)
+                </label>
+                <textarea
+                  id="generated-review"
+                  value={aiDraft}
+                  onChange={(e) => setAiDraft(e.target.value)}
+                  rows={5}
+                  className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF7F2]/60 p-3 text-sm text-[#24211E] outline-none transition focus:border-[#B58A4B] focus:bg-white"
+                />
+              </div>
+            )}
 
             {/* Button: Generate Review with AI */}
             <button
               onClick={handleGenerateAiReview}
-              disabled={generatingAi || starRating === 0}
+              disabled={generatingAi || starRating === 0 || !reviewAnswers[0] || !reviewAnswers[1] || !reviewAnswers[2]}
               className="sticky bottom-3 z-20 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/40 bg-[#B58A4B] py-3 text-sm font-bold text-white shadow-lg transition hover:bg-[#9E7438] active:scale-[0.98] disabled:opacity-60"
+              aria-live="polite"
             >
               <span>✨</span>
               <span>
@@ -1235,7 +1276,9 @@ export function CustomerJourneyView({
                   ? "Crafting Review with AI..."
                   : aiGenerated
                     ? "Generate another draft"
-                    : "Generate Review with AI"}
+                    : !reviewAnswers[0] || !reviewAnswers[1] || !reviewAnswers[2]
+                      ? "Answer all 3 questions to continue"
+                      : "Generate Review with AI"}
               </span>
             </button>
 

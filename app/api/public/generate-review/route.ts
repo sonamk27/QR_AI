@@ -15,9 +15,10 @@ const schema = z.object({
   chips: z.array(z.string().max(30)).max(8),
   text: z.string().max(600).optional(),
   variant: z.enum(["short", "casual", "detailed"]).optional(),
+  variationId: z.string().min(1).max(80).optional(),
 });
 
-export async function POST(req: Request) {
+async function generateReview(req: Request) {
   if (!rateLimit(`gen:${clientIp(req)}`, 12, 600_000)) {
     return NextResponse.json({ error: "Too many requests. Please wait a few minutes." }, { status: 429 });
   }
@@ -88,6 +89,7 @@ export async function POST(req: Request) {
       text: d.text,
       previousDraft,
       variant: d.variant,
+      variationId: d.variationId,
     },
     { enabled: qr.restaurant.aiEnabled !== false },
   );
@@ -106,4 +108,16 @@ export async function POST(req: Request) {
     facebookUrl: qr.restaurant.facebookUrl,
     shareCaption: qr.restaurant.shareCaption,
   });
+}
+
+export async function POST(req: Request) {
+  try {
+    return await generateReview(req);
+  } catch (error) {
+    console.error("[public/generate-review] Review generation failed", error);
+    return NextResponse.json(
+      { error: "We couldn't generate your review right now. Please try again." },
+      { status: 500 },
+    );
+  }
 }
