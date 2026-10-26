@@ -144,7 +144,7 @@ export function AuthForm({
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
         <button className="btn w-full" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>
       </form>
-      {portal !== "super_admin" && (
+      {mode === "signup" && portal !== "super_admin" && (
         <>
           <div className="my-5 flex items-center gap-3 text-xs text-ink/45">
             <span className="h-px flex-1 bg-line" />
@@ -171,24 +171,14 @@ export function AuthForm({
         <p className="mt-6 text-sm text-ink/70">
           Super Admin accounts are provisioned by the system administrator.
         </p>
-      ) : (
+      ) : mode === "signup" ? (
         <p className="mt-6 text-sm text-ink/70">
-          {mode === "login" ? "New here? " : "Already have an account? "}
-          <Link className="underline" href={mode === "login" ? "/signup" : "/login"}>
-            {mode === "login" ? "Create an account" : "Sign in"}
+          Already have an account? {" "}
+          <Link className="underline" href="/login">
+            Sign in
           </Link>
         </p>
-      )}
-      {mode === "login" && (
-        <div className="mt-3 flex gap-4 text-sm">
-          {portal !== "restaurant_admin" && (
-            <Link className="text-ink/60 underline" href="/admin/login">Restaurant Admin portal</Link>
-          )}
-          {portal !== "super_admin" && (
-            <Link className="text-ink/60 underline" href="/super-admin/login">Super Admin portal</Link>
-          )}
-        </div>
-      )}
+      ) : null}
     </main>
   );
 }
