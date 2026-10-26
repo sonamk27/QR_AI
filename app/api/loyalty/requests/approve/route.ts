@@ -55,15 +55,14 @@ export async function POST(req: NextRequest) {
           throw new Error("Anonymous customer not found");
         }
 
-        // Duplicate stamp guard for anonymous diner
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
+        // Duplicate stamp guard for anonymous diner (24-hour rolling window)
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
         const existingTodayAnonTx = await tx.anonymousStampTransaction.findFirst({
           where: {
             customerId: anonCustomer.id,
             amount: { gt: 0 },
-            createdAt: { gte: startOfToday },
+            createdAt: { gte: twentyFourHoursAgo },
           },
         });
 
@@ -194,16 +193,15 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // ── DUPLICATE STAMP GUARD: Check if already awarded a stamp today ──
-      const startOfToday = new Date();
-      startOfToday.setHours(0, 0, 0, 0);
+      // ── DUPLICATE STAMP GUARD: Check if already awarded a stamp in last 24 hours ──
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
       const existingTodayTx = await tx.loyaltyTransaction.findFirst({
         where: {
           programId: program.id,
           customerId: customer.id,
           stampsCount: { gt: 0 },
-          createdAt: { gte: startOfToday },
+          createdAt: { gte: twentyFourHoursAgo },
         },
       });
 
@@ -214,7 +212,7 @@ export async function POST(req: NextRequest) {
             status: "APPROVED",
             reviewedAt: new Date(),
             reviewedById: ctx.user.id,
-            staffNote: "Already stamped for this visit",
+            staffNote: "Already stamped within last 24 hours",
           },
         });
 

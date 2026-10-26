@@ -65,16 +65,15 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Check if customer already collected a stamp today (enforce 1 stamp per visit/day)
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
+    // Check if customer already collected a stamp in the last 24 hours (enforce 1 stamp per 24 hrs per number)
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     const todayTx = await db.loyaltyTransaction.findFirst({
       where: {
         programId: program.id,
         customerId: customer.id,
         stampsCount: { gt: 0 },
-        createdAt: { gte: startOfToday },
+        createdAt: { gte: twentyFourHoursAgo },
       },
       include: {
         customer: {
@@ -90,7 +89,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         alreadyCollected: true,
-        message: "You already collected your stamp for today's visit!",
+        message: "You already collected a stamp in the last 24 hours. Please try again later.",
         customer: todayTx.customer,
       });
     }

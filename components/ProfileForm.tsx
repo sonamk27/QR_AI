@@ -6,7 +6,6 @@ type R = {
   name: string;
   city: string | null;
   logoUrl: string | null;
-  brandColor: string;
   googleReviewUrl: string | null;
   instagramUrl: string | null;
   facebookUrl: string | null;
@@ -33,11 +32,10 @@ function StatusBadge({ msg, isError }: { msg: string; isError?: boolean }) {
   return (
     <span
       role="status"
-      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${
-        isError
+      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${isError
           ? "border border-[#F7D6D6] bg-[#FDF2F2] text-[#A83B3B]"
           : "border border-[#D1E7DC] bg-[#EEF6F2] text-[#2E6B4F]"
-      }`}
+        }`}
     >
       {isError ? "⚠" : "✓"} {msg}
     </span>
@@ -207,23 +205,6 @@ export function ProfileForm({ r }: { r: R }) {
                 className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] px-3.5 py-2 text-xs font-medium text-[#24211E] outline-none focus:border-[#B58A4B] focus:bg-white"
                 placeholder="Mumbai"
               />
-            </div>
-          </div>
-
-          {/* Brand colour */}
-          <div>
-            <label className="block text-xs font-semibold text-[#716B64] mb-1" htmlFor="brandColor">
-              Brand Accent Colour
-            </label>
-            <div className="flex items-center gap-3">
-              <input
-                id="brandColor"
-                name="brandColor"
-                type="color"
-                defaultValue={r.brandColor || "#B58A4B"}
-                className="h-10 w-14 cursor-pointer rounded-xl border border-[#E8DFD1] p-0.5 bg-white"
-              />
-              <span className="text-xs text-[#716B64]">Used as the accent colour across your loyalty cards</span>
             </div>
           </div>
 

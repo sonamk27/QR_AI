@@ -112,6 +112,9 @@ export function CustomerJourneyView({
   const [isEditingDraft, setIsEditingDraft] = useState(false);
   const [copiedReview, setCopiedReview] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [googlePopupBlocked, setGooglePopupBlocked] = useState(false);
+  const [reviewVariantIndex, setReviewVariantIndex] = useState(0);
+  const [reviewSessionId, setReviewSessionId] = useState<string | null>(null);
 
   // Reward Voucher QR Modal / Screen State
   const [selectedReward, setSelectedReward] = useState<RewardItem | null>(null);
@@ -130,21 +133,34 @@ export function CustomerJourneyView({
   // Theme Accent: Muted Gold #B58A4B
   const accentGold = "#B58A4B";
 
-  // Check on mount for remembered phone
+  const brandColor = restaurant.brandColor || "#B58A4B";
+
+  // Check on mount for remembered phone — pre-fill but always show the register prompt
   useEffect(() => {
-    const savedPhone =
-      initialPhone ||
-      localStorage.getItem(`loyalty_phone_${slug}`) ||
-      localStorage.getItem("loyalty_phone");
+    let cancelled = false;
 
-    const savedName =
-      initialName ||
-      localStorage.getItem(`loyalty_name_${slug}`);
+    async function init() {
+      const savedPhone =
+        initialPhone ||
+        localStorage.getItem(`loyalty_phone_${slug}`) ||
+        localStorage.getItem("loyalty_phone");
 
-    if (savedName) setFullName(savedName);
-    if (savedPhone) setPhoneNumber(savedPhone);
+      const savedName =
+        initialName ||
+        localStorage.getItem(`loyalty_name_${slug}`);
 
-    setCurrentView("register");
+      if (savedName) setFullName(savedName);
+      if (savedPhone) setPhoneNumber(savedPhone);
+
+      // Always start at register (phone prompt) — user must confirm their number each scan
+      setCurrentView("register");
+    }
+
+    init();
+
+    return () => {
+      cancelled = true;
+    };
   }, [slug, initialPhone, initialName]);
 
   const isMounted = useRef(false);
@@ -168,6 +184,20 @@ export function CustomerJourneyView({
 
     return () => clearInterval(interval);
   }, [currentView, customer?.phone, phoneNumber]);
+
+  // Auto-load card data when entering card view without customer data (safety net)
+  const cardLoadRef = useRef(false);
+  useEffect(() => {
+    if (currentView !== "card") {
+      cardLoadRef.current = false;
+      return;
+    }
+    if (customer || cardLoadRef.current) return;
+    const phoneToUse = phoneNumber;
+    if (!phoneToUse) return;
+    cardLoadRef.current = true;
+    fetchLoyaltyCard(phoneToUse);
+  }, [currentView, phoneNumber]);
 
   async function fetchLoyaltyCard(phoneToFetch: string, silent = false) {
     if (!silent) {
@@ -195,8 +225,9 @@ export function CustomerJourneyView({
           setFullName(data.customer.name);
           localStorage.setItem(`loyalty_name_${slug}`, data.customer.name);
         }
+        // If we loaded the card, navigate to card view (only on first non-silent load)
         if (!silent) {
-          setCurrentView((v) => (v === "register" || v === "welcome" ? "card" : v));
+          setCurrentView("card");
         }
       }
     } catch (err: any) {
@@ -373,6 +404,8 @@ export function CustomerJourneyView({
   async function handleGenerateAiReview() {
     setGeneratingAi(true);
     try {
+      const variants = ["short", "casual", "detailed"] as const;
+      const variant = variants[reviewVariantIndex % variants.length];
       const combinedText = [
         selectedChips.join(", "),
         customComment.trim(),
@@ -385,22 +418,25 @@ export function CustomerJourneyView({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           slug,
+          sessionId: reviewSessionId,
           overall: starRating,
           food: starRating,
           service: starRating,
           chips: selectedChips,
           text: combinedText || "Wonderful dining experience!",
+          variant,
+          previousDraft: aiGenerated ? aiDraft : undefined,
         }),
       });
-
       const data = await res.json();
       if (res.ok && data.text) {
         setAiDraft(data.text);
         setAiGenerated(true);
+        setReviewSessionId(data.sessionId);
+        setReviewVariantIndex((i) => i + 1);
       } else {
         setAiDraft(
-          `Had a wonderful experience at ${restaurant.name}! ${
-            selectedChips.length > 0 ? selectedChips.join(", ") + ". " : ""
+          `Had a wonderful experience at ${restaurant.name}! ${selectedChips.length > 0 ? selectedChips.join(", ") + ". " : ""
           }The coffee and food were excellent, the ambience is cozy, and the staff is very friendly. Highly recommended!`
         );
         setAiGenerated(true);
@@ -417,9 +453,12 @@ export function CustomerJourneyView({
 
   // Copy & Post to Google Review
   async function handleCopyAndGoogleReview() {
+    // ⚠️ Open Google window SYNCHRONOUSLY (before any await) so browsers allow it.
+    // If opened after an async call, most browsers treat it as a popup and block it.
     let googleWin: Window | null = null;
-    if (restaurant.googleReviewUrl) {
-      googleWin = window.open(restaurant.googleReviewUrl, "_blank", "noopener,noreferrer");
+    const googleUrl = restaurant.googleReviewUrl;
+    if (googleUrl) {
+      googleWin = window.open(googleUrl, "_blank", "noopener,noreferrer");
     }
 
     try {
@@ -434,6 +473,7 @@ export function CustomerJourneyView({
       new Blob([JSON.stringify({ editedText: aiDraft })], { type: "application/json" })
     );
 
+    // Fallback: if popup was blocked, navigate in same tab
     if (restaurant.googleReviewUrl && (!googleWin || googleWin.closed)) {
       window.location.href = restaurant.googleReviewUrl;
     }
@@ -463,16 +503,13 @@ export function CustomerJourneyView({
   const stampsRemaining = Math.max(0, stampsRequired - currentStamps);
   const activeRewards = customer?.rewards?.filter((r) => r.status === "UNREDEEMED") || [];
 
+  // Check if customer already collected a stamp today (1 stamp per visit/day)
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const hasCollectedStampToday = Boolean(
     customer?.transactions?.some((tx) => {
       if (!tx.stampsCount || tx.stampsCount <= 0) return false;
       const txDate = new Date(tx.createdAt);
-      const now = new Date();
-      return (
-        txDate.getFullYear() === now.getFullYear() &&
-        txDate.getMonth() === now.getMonth() &&
-        txDate.getDate() === now.getDate()
-      );
+      return txDate >= twentyFourHoursAgo;
     })
   );
 
@@ -480,8 +517,8 @@ export function CustomerJourneyView({
   const discountDisplay = isPercent
     ? `${program.rewardDiscount}% OFF`
     : program.discountType === "FREE_ITEM"
-    ? "Free Item"
-    : `₹${(program.rewardDiscount / 100).toFixed(0)} OFF`;
+      ? "Free Item"
+      : `₹${(program.rewardDiscount / 100).toFixed(0)} OFF`;
 
   return (
     <div className="min-h-screen bg-[#F7F2E9] font-sans text-[#24211E] antialiased selection:bg-[#FAF5ED] selection:text-[#24211E]">
@@ -740,7 +777,7 @@ export function CustomerJourneyView({
           <div className="w-full max-w-xs space-y-3 mx-auto pb-2">
             <button
               onClick={() => setCurrentView("card")}
-              className="w-full rounded-2xl border border-[#E8DFD1] bg-white py-3 text-xs font-bold text-[#24211E] shadow-2xs hover:bg-[#FAF7F2] transition"
+              className="w-full rounded-2xl border border-stone-300 bg-white py-3 text-xs font-bold text-stone-700 shadow-2xs hover:bg-stone-50 transition"
             >
               View My Loyalty Card Meanwhile →
             </button>
@@ -848,13 +885,12 @@ export function CustomerJourneyView({
                     return (
                       <div
                         key={index}
-                        className={`relative flex aspect-square flex-col items-center justify-center rounded-2xl transition-all ${
-                          isStamped
+                        className={`relative flex aspect-square flex-col items-center justify-center rounded-2xl transition-all ${isStamped
                             ? "bg-[#B58A4B] text-white shadow-xs scale-105"
                             : isTarget
-                            ? "border-2 border-dashed border-[#B58A4B] bg-[#FAF5ED] text-[#B58A4B]"
-                            : "border border-[#E8DFD1] bg-[#FAF7F2] text-[#B8B1A8]"
-                        }`}
+                              ? "border-2 border-dashed border-[#B58A4B] bg-[#FAF5ED] text-[#B58A4B]"
+                              : "border border-[#E8DFD1] bg-[#FAF7F2] text-[#B8B1A8]"
+                          }`}
                       >
                         {isStamped ? (
                           <span className="text-lg">☕</span>
@@ -864,9 +900,8 @@ export function CustomerJourneyView({
                           <span className="text-sm font-medium">☕</span>
                         )}
                         <span
-                          className={`text-[8px] font-bold ${
-                            isStamped ? "text-white/90" : "text-[#716B64]"
-                          }`}
+                          className={`text-[8px] font-bold ${isStamped ? "text-white/90" : "text-[#716B64]"
+                            }`}
                         >
                           {index + 1}
                         </span>
@@ -881,8 +916,8 @@ export function CustomerJourneyView({
                     {currentStamps >= stampsRequired
                       ? "🎉 Goal Reached! Your reward voucher is ready to redeem!"
                       : stampsRemaining === 1
-                      ? "4/5 Stamps — One more visit to unlock your reward!"
-                      : `${currentStamps}/${stampsRequired} Stamps — ${stampsRemaining} more visits to unlock your reward!`}
+                        ? "4/5 Stamps — One more visit to unlock your reward!"
+                        : `${currentStamps}/${stampsRequired} Stamps — ${stampsRemaining} more visits to unlock your reward!`}
                   </p>
                   {customer?.cycleEndsAt && customer.currentStamps > 0 && (
                     <p className="mt-1 text-[10px] text-[#7A5826]/80">
@@ -916,8 +951,8 @@ export function CustomerJourneyView({
                         {pendingRequestId
                           ? "Approval Pending with Staff →"
                           : collectingStamp
-                          ? "Sending Request..."
-                          : "Collect Visit Stamp"}
+                            ? "Sending Request..."
+                            : "Collect Visit Stamp"}
                       </span>
                     </button>
                   )}
@@ -1072,11 +1107,10 @@ export function CustomerJourneyView({
               return (
                 <div
                   key={index}
-                  className={`flex h-8 w-8 items-center justify-center rounded-xl text-xs font-bold transition-all ${
-                    isStamped
+                  className={`flex h-8 w-8 items-center justify-center rounded-xl text-xs font-bold transition-all ${isStamped
                       ? "bg-[#B58A4B] text-white shadow-2xs scale-110"
                       : "border border-[#E8DFD1] bg-[#FAF7F2] text-[#B8B1A8]"
-                  }`}
+                    }`}
                 >
                   {isStamped ? "☕" : index + 1}
                 </div>
@@ -1087,7 +1121,8 @@ export function CustomerJourneyView({
           <div className="w-full max-w-xs space-y-2.5">
             <button
               onClick={() => setCurrentView("card")}
-              className="w-full rounded-2xl bg-[#B58A4B] py-3.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#9E7438] active:scale-[0.98]"
+              className="w-full rounded-2xl py-3.5 text-sm font-bold text-white shadow-md transition hover:brightness-105 active:scale-[0.98]"
+              style={{ backgroundColor: brandColor }}
             >
               View My Rewards ({currentStamps}/{stampsRequired}) →
             </button>
@@ -1160,11 +1195,10 @@ export function CustomerJourneyView({
                           isSelected ? prev.filter((c) => c !== chip) : [...prev, chip]
                         );
                       }}
-                      className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                        isSelected
+                      className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${isSelected
                           ? "bg-[#24211E] text-white font-semibold shadow-2xs"
                           : "border border-[#E8DFD1] bg-[#FAF7F2] text-[#716B64] hover:bg-[#F2ECE1]"
-                      }`}
+                        }`}
                     >
                       {chip}
                     </button>
@@ -1190,7 +1224,13 @@ export function CustomerJourneyView({
               className="w-full rounded-2xl bg-[#B58A4B] py-3 text-xs font-bold text-white shadow-xs transition hover:bg-[#9E7438] active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
             >
               <span>✨</span>
-              <span>{generatingAi ? "Crafting Review with AI..." : "Generate Review with AI"}</span>
+              <span>
+                {generatingAi
+                  ? "Crafting Review with AI..."
+                  : aiGenerated
+                    ? "Generate another draft"
+                    : "Generate Review with AI"}
+              </span>
             </button>
 
             {restaurant.googleReviewUrl && (
@@ -1239,11 +1279,9 @@ export function CustomerJourneyView({
               <div className="pt-2">
                 <button
                   onClick={handleCopyAndGoogleReview}
-                  className="w-full rounded-2xl bg-[#B58A4B] py-3.5 text-xs font-bold text-white shadow-xs hover:bg-[#9E7438] transition active:scale-[0.98] flex items-center justify-center gap-2"
+                  className="w-full rounded-2xl bg-[#1A73E8] py-3.5 text-xs font-bold text-white shadow-sm hover:bg-[#1557B0] transition active:scale-[0.98] flex items-center justify-center gap-2"
                 >
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[#B58A4B] font-black text-xs">
-                    G
-                  </span>
+                  <span className="font-black text-sm">G</span>
                   <span>{copiedReview ? "Review Copied! Opening Google..." : "Copy & Review on Google"}</span>
                 </button>
               </div>
@@ -1253,7 +1291,7 @@ export function CustomerJourneyView({
                   <p className="text-xs font-bold text-[#2E6B4F]">
                     ✅ Review copied to clipboard!
                   </p>
-                  <p className="text-[11px] text-[#2E6B4F]">
+                  <p className="text-[11px] text-emerald-700">
                     Paste your copied review text into the Google review box that opened.
                   </p>
                   {restaurant.googleReviewUrl && (
@@ -1261,7 +1299,7 @@ export function CustomerJourneyView({
                       href={restaurant.googleReviewUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-block mt-1 text-xs font-bold text-[#B58A4B] underline"
+                      className="inline-block mt-1 text-xs font-bold text-[#1A73E8] underline hover:text-[#1557B0]"
                     >
                       Click here if Google Reviews didn&apos;t open automatically ↗
                     </a>
