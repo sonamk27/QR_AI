@@ -89,13 +89,13 @@ export default async function QrPage() {
               return (
                 <article key={q.id} className="overflow-hidden rounded-2xl border border-[#E8DFD1] bg-white shadow-subtle">
                   <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:p-5">
-                    <div className="flex h-36 w-36 shrink-0 items-center justify-center self-center rounded-2xl border border-[#E8DFD1] bg-[#FAF7F2] p-2 sm:self-start">
+                    <div className="flex h-52 w-52 shrink-0 items-center justify-center self-center rounded-2xl border border-[#E8DFD1] bg-[#FAF7F2] p-2 sm:h-56 sm:w-56 sm:self-start">
                       {isActive ? (
                         <img
-                          src={`/api/qr/${q.id}/download?format=png&inline=1&size=320`}
+                          src={`/api/qr/${q.id}/download?format=png&inline=1&size=512`}
                           alt={`QR code for ${q.name}`}
-                          width={320}
-                          height={320}
+                          width={512}
+                          height={512}
                           loading="lazy"
                           decoding="async"
                           className="h-full w-full object-contain"

@@ -1227,7 +1227,7 @@ export function CustomerJourneyView({
             <button
               onClick={handleGenerateAiReview}
               disabled={generatingAi || starRating === 0}
-              className="w-full rounded-2xl bg-[#B58A4B] py-3 text-xs font-bold text-white shadow-xs transition hover:bg-[#9E7438] active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
+              className="sticky bottom-3 z-20 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/40 bg-[#B58A4B] py-3 text-sm font-bold text-white shadow-lg transition hover:bg-[#9E7438] active:scale-[0.98] disabled:opacity-60"
             >
               <span>✨</span>
               <span>
