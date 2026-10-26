@@ -40,6 +40,6 @@ export const qrUrl = (slug: string) => new URL(`/r/${slug}`, appBaseUrl()).toStr
 export async function qrSvg(slug: string) {
   return QRCode.toString(qrUrl(slug), { type: "svg", margin: 2, errorCorrectionLevel: "M" });
 }
-export async function qrPng(slug: string) {
-  return QRCode.toBuffer(qrUrl(slug), { type: "png", margin: 2, width: 1024, errorCorrectionLevel: "M" });
+export async function qrPng(slug: string, width = 1024) {
+  return QRCode.toBuffer(qrUrl(slug), { type: "png", margin: 2, width, errorCorrectionLevel: "M" });
 }

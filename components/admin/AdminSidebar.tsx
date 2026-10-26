@@ -58,7 +58,7 @@ export function AdminSidebar({
           icon: "📝",
           badge: pendingRequestsCount && pendingRequestsCount > 0 ? pendingRequestsCount : undefined,
         },
-        { href: "/dashboard/qr", label: "QR Management", icon: "📱" },
+        { href: "/dashboard/qr", label: "QR Code", icon: "📱" },
       ],
     },
     {

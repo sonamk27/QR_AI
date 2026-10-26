@@ -4,9 +4,9 @@ import { db } from "@/lib/db";
 import { getOwnerContext } from "@/lib/auth";
 
 const schema = z.object({
-  name: z.string().min(1).max(60),
-  location: z.string().max(60).optional(),
-  tableNo: z.string().max(20).optional(),
+  name: z.string().trim().min(1).max(60),
+  location: z.string().trim().max(60).optional(),
+  tableNo: z.string().trim().max(20).optional(),
   quantity: z.number().int().min(1).max(1).default(1),
   note: z.string().max(500).optional(),
 });
@@ -52,38 +52,59 @@ export async function POST(req: Request) {
 
   const { name, location, tableNo, note } = parsed.data;
   const quantity = 1;
+  const result = await db.$transaction(async (tx) => {
+    // Serialize request creation for this restaurant so a double-submit cannot
+    // create multiple open requests or bypass the one-primary-QR rule.
+    await tx.$queryRaw`
+      SELECT id FROM "Restaurant" WHERE id = ${ctx.restaurant.id} FOR UPDATE
+    `;
 
-  const existingQr = await db.qrCode.findFirst({
-    where: { restaurantId: ctx.restaurant.id },
-    select: { id: true },
+    const existingQr = await tx.qrCode.findFirst({
+      where: { restaurantId: ctx.restaurant.id },
+      select: { id: true },
+    });
+    if (existingQr) return { error: "HAS_QR" as const };
+
+    const openRequest = await tx.qrRequest.findFirst({
+      where: {
+        restaurantId: ctx.restaurant.id,
+        status: { in: ["PENDING_APPROVAL", "APPROVED_PAYMENT_DUE"] },
+      },
+      select: { id: true },
+    });
+    if (openRequest) return { error: "REQUEST_OPEN" as const };
+
+    const request = await tx.qrRequest.create({
+      data: {
+        restaurantId: ctx.restaurant.id,
+        name,
+        location: location || undefined,
+        tableNo: tableNo || undefined,
+        quantity,
+        note: note?.trim() || undefined,
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        actorId: ctx.user.id,
+        action: "qr_request.submit",
+        target: request.id,
+        restaurantId: ctx.restaurant.id,
+        meta: { restaurantId: ctx.restaurant.id, name, quantity },
+      },
+    });
+    return { request };
   });
-  if (existingQr) {
+
+  if ("error" in result) {
     return NextResponse.json(
-      { error: "This restaurant already has a QR code. Only one QR is allowed per restaurant." },
+      { error: result.error === "HAS_QR"
+        ? "This restaurant already has a QR code. Only one QR is allowed per restaurant."
+        : "Your QR request is already awaiting review or payment." },
       { status: 409 },
     );
   }
 
-  const request = await db.qrRequest.create({
-    data: {
-      restaurantId: ctx.restaurant.id,
-      name: name.trim(),
-      location: location?.trim() || undefined,
-      tableNo: tableNo?.trim() || undefined,
-      quantity,
-      note: note?.trim() || undefined,
-    },
-  });
-
-  await db.auditLog.create({
-    data: {
-      actorId: ctx.user.id,
-      action: "qr_request.submit",
-      target: request.id,
-      restaurantId: ctx.restaurant.id,
-      meta: { restaurantId: ctx.restaurant.id, name, quantity },
-    },
-  });
-
-  return NextResponse.json({ ok: true, request }, { status: 201 });
+  return NextResponse.json({ ok: true, request: result.request }, { status: 201 });
 }

@@ -7,7 +7,15 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const ownerCtx = await getOwnerContext();
+    if (!ownerCtx) {
+      return NextResponse.json({ error: "Sign in as the restaurant owner to issue a stamp." }, { status: 401 });
+    }
+
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "A valid stamp request is required." }, { status: 400 });
+    }
     const {
       restaurantId: reqRestaurantId,
       slug,
@@ -17,28 +25,23 @@ export async function POST(req: NextRequest) {
       billReference,
     } = body;
 
-    const phone = normalizePhone(rawPhone || "");
+    const phone = normalizePhone(typeof rawPhone === "string" ? rawPhone : "");
     if (!phone || phone.length < 10) {
       return NextResponse.json({ error: "A valid 10-digit mobile number is required" }, { status: 400 });
     }
 
-    let restaurantId = reqRestaurantId;
-    if (!restaurantId && slug) {
-      const qr = await db.qrCode.findUnique({
-        where: { slug },
-        select: { restaurantId: true },
+    const restaurantId = ownerCtx.restaurant.id;
+    if (reqRestaurantId && reqRestaurantId !== restaurantId) {
+      return NextResponse.json({ error: "You can only issue stamps for your own restaurant." }, { status: 403 });
+    }
+    if (slug) {
+      const ownedQr = await db.qrCode.findFirst({
+        where: { slug: String(slug), restaurantId },
+        select: { id: true },
       });
-      if (qr) restaurantId = qr.restaurantId;
-    }
-
-    // Check owner session
-    const ownerCtx = await getOwnerContext();
-    if (ownerCtx && !restaurantId) {
-      restaurantId = ownerCtx.restaurant.id;
-    }
-
-    if (!restaurantId) {
-      return NextResponse.json({ error: "Restaurant is required" }, { status: 400 });
+      if (!ownedQr) {
+        return NextResponse.json({ error: "QR code not found for your restaurant." }, { status: 404 });
+      }
     }
 
     const program = await getOrCreateLoyaltyProgram(restaurantId);
@@ -48,25 +51,17 @@ export async function POST(req: NextRequest) {
 
     const cycleDays = getStampCycleDays(program);
 
-    const isOwner = ownerCtx?.restaurant.id === restaurantId;
-
     const minRs = program.minBillAmount / 100;
     const defaultBill = Math.max(minRs, 100);
     const rawBill = Number(billAmountRupees);
-    const billAmount = !isNaN(rawBill) && rawBill > 0 ? rawBill : defaultBill;
+    const billAmount = Number.isFinite(rawBill) && rawBill > 0 ? rawBill : defaultBill;
+    if (billAmount > 1_000_000 || !Number.isSafeInteger(Math.round(billAmount * 100))) {
+      return NextResponse.json({ error: "Bill amount is out of range." }, { status: 400 });
+    }
     const billAmountPaise = Math.round(billAmount * 100);
 
-    const normalizedRef = billReference?.trim() || `STAFF-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-
-    // ── APP-LEVEL PRE-CHECK (fast path before acquiring DB lock) ──
-    const recentTx = await db.loyaltyTransaction.findFirst({
-      where: {
-        programId: program.id,
-        customer: { phone },
-        billAmount: billAmountPaise,
-        createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) },
-      },
-    });
+    const normalizedRef = (typeof billReference === "string" ? billReference.trim().slice(0, 120) : "") ||
+      `STAFF-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
     // ── ATOMIC STAMP UPDATE with row-level customer lock ──
     const result = await db.$transaction(
@@ -86,15 +81,15 @@ export async function POST(req: NextRequest) {
             data: {
               programId: program.id,
               phone,
-              name: customerName?.trim() || null,
+              name: (typeof customerName === "string" ? customerName.trim().slice(0, 80) : "") || null,
               currentStamps: 0,
               lifetimeStamps: 0,
             },
           });
-        } else if (customerName && !customer.name) {
+        } else if (typeof customerName === "string" && customerName.trim() && !customer.name) {
           customer = await tx.loyaltyCustomer.update({
             where: { id: customer.id },
-            data: { name: customerName.trim() },
+            data: { name: customerName.trim().slice(0, 80) },
           });
         }
 
@@ -176,7 +171,7 @@ export async function POST(req: NextRequest) {
             stampsCount: 1,
             billAmount: billAmountPaise,
             billReference: normalizedRef,
-            staffNote: isOwner ? "Owner Award" : "Direct Visit Award",
+            staffNote: "Owner Award",
           },
         });
 

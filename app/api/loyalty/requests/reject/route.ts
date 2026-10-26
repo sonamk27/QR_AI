@@ -11,42 +11,52 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await req.json();
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "A valid rejection request is required." }, { status: 400 });
+    }
     const { requestId, reason } = body;
 
-    if (!requestId) {
+    if (typeof requestId !== "string" || !requestId.trim()) {
       return NextResponse.json({ error: "Request ID is required" }, { status: 400 });
+    }
+    if (typeof reason !== "undefined" && (typeof reason !== "string" || reason.length > 500)) {
+      return NextResponse.json({ error: "Reason must be 500 characters or fewer." }, { status: 400 });
     }
 
     const restaurantId = ctx.restaurant.id;
-
-    const stampReq = await db.stampRequest.findFirst({
-      where: {
-        id: requestId,
-        restaurantId,
-      },
+    const staffNote = reason?.trim() || `Declined by ${ctx.user.name}`;
+    const rejected = await db.$transaction(async (tx) => {
+      const result = await tx.stampRequest.updateMany({
+        where: { id: requestId, restaurantId, status: "PENDING" },
+        data: {
+          status: "REJECTED",
+          reviewedAt: new Date(),
+          reviewedById: ctx.user.id,
+          staffNote,
+        },
+      });
+      if (result.count === 1) {
+        await tx.auditLog.create({
+          data: {
+            restaurantId,
+            actorId: ctx.user.id,
+            action: "stamp_request.rejected",
+            target: requestId,
+            meta: { staffNote },
+          },
+        });
+      }
+      return result.count === 1;
     });
 
-    if (!stampReq) {
-      return NextResponse.json({ error: "Stamp request not found" }, { status: 404 });
-    }
-
-    if (stampReq.status === "APPROVED") {
+    if (!rejected) {
+      const exists = await db.stampRequest.findFirst({ where: { id: requestId, restaurantId }, select: { id: true } });
       return NextResponse.json(
-        { error: "Cannot decline a stamp that has already been approved" },
-        { status: 400 }
+        { error: exists ? "This stamp request has already been reviewed." : "Stamp request not found." },
+        { status: exists ? 409 : 404 },
       );
     }
-
-    await db.stampRequest.update({
-      where: { id: stampReq.id },
-      data: {
-        status: "REJECTED",
-        reviewedAt: new Date(),
-        reviewedById: ctx.user.id,
-        staffNote: reason || `Declined by ${ctx.user.name}`,
-      },
-    });
 
     return NextResponse.json({
       success: true,

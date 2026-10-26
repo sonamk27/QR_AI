@@ -12,17 +12,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await req.json();
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "A valid stamp request is required." }, { status: 400 });
+    }
     const { requestId, staffNote } = body;
 
-    if (!requestId) {
+    if (typeof requestId !== "string" || !requestId.trim()) {
       return NextResponse.json({ error: "Request ID is required" }, { status: 400 });
+    }
+    if (typeof staffNote !== "undefined" && (typeof staffNote !== "string" || staffNote.length > 500)) {
+      return NextResponse.json({ error: "Staff note must be 500 characters or fewer." }, { status: 400 });
     }
 
     const restaurantId = ctx.restaurant.id;
     const program = await getOrCreateLoyaltyProgram(restaurantId);
 
     const result = await db.$transaction(async (tx) => {
+      const requestLock = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT id
+        FROM stamp_requests
+        WHERE id = ${requestId} AND restaurant_id = ${restaurantId}
+        FOR UPDATE
+      `;
+      if (!requestLock.length) throw new Error("Stamp request not found");
+
       const stampReq = await tx.stampRequest.findFirst({
         where: {
           id: requestId,
@@ -47,13 +61,18 @@ export async function POST(req: NextRequest) {
 
       // ── ANONYMOUS CUSTOMER FLOW ──────────────────────────────────────────
       if (stampReq.anonCustomerId) {
-        const anonCustomer = await tx.anonymousCustomer.findUnique({
+        let anonCustomer = await tx.anonymousCustomer.findUnique({
           where: { id: stampReq.anonCustomerId },
         });
 
         if (!anonCustomer) {
           throw new Error("Anonymous customer not found");
         }
+
+        await tx.$queryRaw`
+          SELECT id FROM anonymous_customers WHERE id = ${anonCustomer.id} FOR UPDATE
+        `;
+        anonCustomer = await tx.anonymousCustomer.findUniqueOrThrow({ where: { id: anonCustomer.id } });
 
         // Duplicate stamp guard for anonymous diner (24-hour rolling window)
         const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -192,6 +211,11 @@ export async function POST(req: NextRequest) {
           data: { name: stampReq.customerName },
         });
       }
+
+      await tx.$queryRaw`
+        SELECT id FROM loyalty_customers WHERE id = ${customer.id} FOR UPDATE
+      `;
+      customer = await tx.loyaltyCustomer.findUniqueOrThrow({ where: { id: customer.id } });
 
       // ── DUPLICATE STAMP GUARD: Check if already awarded a stamp in last 24 hours ──
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);

@@ -137,7 +137,7 @@ export function OpenQrButton({
                   <div className="my-3 flex justify-center">
                     <div className="rounded-xl border border-[#E8DFD1] bg-white p-2 shadow-inner">
                       <img
-                        src={`/api/qr/${qrId}/download?format=png&inline=1`}
+                        src={`/api/qr/${qrId}/download?format=png&inline=1&size=320`}
                         alt={`QR code for ${name}`}
                         className="h-36 w-36 object-contain"
                       />
@@ -211,7 +211,7 @@ export function OpenQrButton({
               <div className="space-y-4">
                 <div className="flex justify-center rounded-2xl bg-[#FAF7F2] p-6 border border-[#E8DFD1]">
                   <img
-                    src={`/api/qr/${qrId}/download?format=png&inline=1`}
+                    src={`/api/qr/${qrId}/download?format=png&inline=1&size=320`}
                     alt={`QR code for ${name}`}
                     className="h-56 w-56 object-contain"
                   />

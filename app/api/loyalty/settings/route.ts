@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getOwnerContext } from "@/lib/auth";
 import { getOrCreateLoyaltyProgram } from "@/lib/loyalty";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +62,19 @@ export async function GET() {
   }
 }
 
-export async function PATCH(req: NextRequest) {
+const settingsSchema = z.object({
+  title: z.string().trim().min(1).max(80).optional(),
+  isActive: z.boolean().optional(),
+  discountType: z.enum(["PERCENT", "FLAT", "FREE_ITEM"]).optional(),
+  stampsRequired: z.number().int().min(1).max(20).optional(),
+  minBillAmountRupees: z.number().finite().min(0).max(1_000_000).optional(),
+  rewardTitle: z.string().trim().min(1).max(120).optional(),
+  rewardDiscountRupees: z.number().finite().min(0).max(50_000).optional(),
+  rewardExpiryDays: z.number().int().min(1).max(365).optional(),
+  terminalPin: z.string().trim().max(32).optional(),
+}).strict().refine((body) => Object.keys(body).length > 0, "At least one setting is required.");
+
+async function updateSettings(req: NextRequest) {
   try {
     const ownerCtx = await getOwnerContext();
     if (!ownerCtx) {
@@ -69,19 +82,16 @@ export async function PATCH(req: NextRequest) {
     }
 
     const restaurantId = ownerCtx.restaurant.id;
-    const body = await req.json();
+    const parsed = settingsSchema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Check the loyalty settings and try again." }, { status: 400 });
+    }
+    const body = parsed.data;
 
     const program = await getOrCreateLoyaltyProgram(restaurantId);
 
     // Determine the effective discount type (use sent value or fall back to existing)
-    const effectiveDiscountType: string | undefined =
-      body.discountType !== undefined
-        ? body.discountType === "PERCENT"
-          ? "PERCENT"
-          : body.discountType === "FREE_ITEM"
-          ? "FREE_ITEM"
-          : "FLAT"
-        : undefined;
+    const effectiveDiscountType = body.discountType;
 
     // Determine discount value — interpretation depends on the type that will be saved
     const resolvedType = effectiveDiscountType ?? program.discountType ?? "PERCENT";
@@ -92,8 +102,10 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: "Discount value must be a valid number" }, { status: 400 });
       }
       if (resolvedType === "PERCENT") {
-        // Percentage: store the raw % value (1–100)
-        rewardDiscountData = Math.max(1, Math.min(100, Math.round(rawVal)));
+        if (rawVal < 1 || rawVal > 100) {
+          return NextResponse.json({ error: "Percentage discount must be between 1 and 100." }, { status: 400 });
+        }
+        rewardDiscountData = Math.round(rawVal);
       } else if (resolvedType === "FREE_ITEM") {
         rewardDiscountData = 0;
       } else {
@@ -103,32 +115,22 @@ export async function PATCH(req: NextRequest) {
     }
 
     // Validate minBillAmount
-    let minBillData: number | undefined = undefined;
+    let minBillData: number | undefined;
     if (body.minBillAmountRupees !== undefined) {
-      const minVal = Number(body.minBillAmountRupees);
-      if (isNaN(minVal) || minVal < 0) {
-        return NextResponse.json({ error: "Minimum bill amount must be a non-negative number" }, { status: 400 });
-      }
-      minBillData = Math.round(minVal * 100);
+      minBillData = Math.round(body.minBillAmountRupees * 100);
     }
 
     const updated = await db.loyaltyProgram.update({
       where: { id: program.id },
       data: {
         title: body.title !== undefined ? String(body.title).trim() : undefined,
-        isActive: body.isActive !== undefined ? Boolean(body.isActive) : undefined,
+        isActive: body.isActive,
         discountType: effectiveDiscountType,
-        stampsRequired:
-          body.stampsRequired !== undefined
-            ? Math.max(1, Math.min(20, Number(body.stampsRequired)))
-            : undefined,
+        stampsRequired: body.stampsRequired,
         minBillAmount: minBillData,
         rewardTitle: body.rewardTitle !== undefined ? String(body.rewardTitle).trim() : undefined,
         rewardDiscount: rewardDiscountData,
-        rewardExpiryDays:
-          body.rewardExpiryDays !== undefined
-            ? Math.max(1, Math.min(365, Number(body.rewardExpiryDays)))
-            : undefined,
+        rewardExpiryDays: body.rewardExpiryDays,
         terminalPin:
           body.terminalPin !== undefined
             ? String(body.terminalPin).trim() || null
@@ -146,4 +148,13 @@ export async function PATCH(req: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// Keep POST as a compatibility alias for clients that still have the older settings form cached.
+export async function PATCH(req: NextRequest) {
+  return updateSettings(req);
+}
+
+export async function POST(req: NextRequest) {
+  return updateSettings(req);
 }

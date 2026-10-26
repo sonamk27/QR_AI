@@ -69,7 +69,7 @@ export default async function Overview() {
             View feedback
           </Link>
           <Link href="/dashboard/qr" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#B58A4B] px-3.5 text-xs font-bold text-white shadow-xs transition hover:bg-[#9E7438]">
-            Manage QR codes
+            View QR code
           </Link>
         </div>
       </header>

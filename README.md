@@ -92,12 +92,17 @@ payment reference for admin verification.
 
 ### Render deployment
 
-In the Render service environment, set `APP_URL` to the public HTTPS URL for your
-service (for example, `https://your-service.onrender.com`). QR downloads and
-dashboard links use this value to build `/r/<slug>` scan URLs. On Render,
-`RENDER_EXTERNAL_URL` is also used as a fallback when `APP_URL` is not set.
-Production QR generation fails rather than silently embedding a localhost URL
-when neither public URL is configured.
+Deploy this project as a Render **Web Service** (or create it from the checked-in
+`render.yaml` Blueprint), not as a Static Site. The app needs a running Next.js
+server for its API routes, middleware, and authenticated dashboards. The
+Blueprint builds and starts the standalone server and copies the public/static
+assets it needs, so opening the service's root URL (`/`) serves the website.
+
+Set the prompted `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`, and Firebase web
+app variables in Render. Keep `APP_URL` unset to use Render's automatically
+provided `RENDER_EXTERNAL_URL`, or set it to the service's public HTTPS URL.
+QR downloads and dashboard links use that public origin to build `/r/<slug>`
+scan URLs; production QR generation will not silently embed localhost.
 
 For an existing database that already has the legacy schema but no Prisma migration
 history, mark the matching baseline as applied once, then deploy the remaining

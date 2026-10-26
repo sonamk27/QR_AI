@@ -37,7 +37,7 @@ export default async function QrPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[#E8DFD1] pb-4">
         <div>
-          <h1 className="font-serif text-3xl font-bold text-[#24211E]">QR Code Management</h1>
+          <h1 className="font-serif text-3xl font-bold text-[#24211E]">QR Code</h1>
           <p className="mt-1 text-xs text-[#716B64]">
             Download high-res QR codes and print branded table tent cards for tables, billing counters, and bars.
           </p>
@@ -77,120 +77,117 @@ export default async function QrPage() {
         />
       ) : (
         <div className="space-y-6">
-          <div className="rounded-2xl border border-[#E8DFD1] bg-white shadow-subtle overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-xs">
-              <thead>
-                <tr className="border-b border-[#E8DFD1] bg-[#FAF7F2] text-[10px] font-bold text-[#716B64] uppercase tracking-wider">
-                  <th className="px-4 py-3">Name &amp; Placement</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Validity</th>
-                  <th className="px-4 py-3">Scans</th>
-                  <th className="px-4 py-3">Reviews</th>
-                  <th className="px-4 py-3 text-right">Download &amp; Print</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E8DFD1]/50">
-                {qrs.map((q: any) => {
-                  const status = resolveStatus(q);
-                  const badge = STATUS_BADGE[status] || STATUS_BADGE.ACTIVE;
-                  const isActive = status === "ACTIVE" || status === "GRACE";
+          <div className="grid gap-4 xl:grid-cols-2">
+            {qrs.map((q: any) => {
+              const status = resolveStatus(q);
+              const badge = STATUS_BADGE[status] || STATUS_BADGE.ACTIVE;
+              const isActive = status === "ACTIVE" || status === "GRACE";
+              const days = q.validUntil
+                ? Math.ceil((q.validUntil.getTime() - Date.now()) / DAY)
+                : 0;
 
-                  const days = q.validUntil
-                    ? Math.ceil((q.validUntil.getTime() - Date.now()) / DAY)
-                    : 0;
-
-                  return (
-                    <tr key={q.id} className="hover:bg-[#FAF7F2] transition">
-                      <td className="px-4 py-3.5">
-                        <p className="font-semibold text-[#24211E]">{q.name}</p>
-                        <p className="text-[11px] text-[#716B64]">
-                          {[q.location, q.tableNo && `Table ${q.tableNo}`]
-                            .filter(Boolean)
-                            .join(" • ") || "Default"}
+              return (
+                <article key={q.id} className="overflow-hidden rounded-2xl border border-[#E8DFD1] bg-white shadow-subtle">
+                  <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:p-5">
+                    <div className="flex h-36 w-36 shrink-0 items-center justify-center self-center rounded-2xl border border-[#E8DFD1] bg-[#FAF7F2] p-2 sm:self-start">
+                      {isActive ? (
+                        <img
+                          src={`/api/qr/${q.id}/download?format=png&inline=1&size=320`}
+                          alt={`QR code for ${q.name}`}
+                          width={320}
+                          height={320}
+                          loading="lazy"
+                          decoding="async"
+                          className="h-full w-full object-contain"
+                        />
+                      ) : (
+                        <p className="px-2 text-center text-xs leading-relaxed text-[#716B64]">
+                          QR unavailable while this code is {badge.label.toLowerCase()}.
                         </p>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${badge.className}`}
-                        >
+                      )}
+                    </div>
+
+                    <div className="min-w-0 flex-1 text-center sm:text-left">
+                      <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <h2 className="break-words font-serif text-lg font-bold text-[#24211E]">{q.name}</h2>
+                          <p className="mt-0.5 text-xs text-[#716B64]">
+                            {[q.location, q.tableNo && `Table ${q.tableNo}`]
+                              .filter(Boolean)
+                              .join(" · ") || "Default placement"}
+                          </p>
+                        </div>
+                        <span className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[10px] font-bold ${badge.className}`}>
                           {badge.label}
                         </span>
-                      </td>
-                      <td className="px-4 py-3.5 text-xs">
-                        {status === "DISABLED" || status === "PENDING_PAYMENT" ? (
-                          <span className="text-[#716B64]/50">–</span>
-                        ) : days > 30 ? (
-                          <div>
-                            <span className="font-semibold text-[#2E6B4F]">{days} days left</span>
-                            <p className="text-[10px] text-[#716B64]">
-                              Valid until {q.validUntil?.toLocaleDateString("en-IN", { dateStyle: "medium" })}
-                            </p>
-                          </div>
-                        ) : days > 0 ? (
-                          <div>
-                            <span className="font-semibold text-[#7A5826]">⚠️ {days} days left</span>
-                            <p className="text-[10px] text-[#716B64]">
-                              Valid until {q.validUntil?.toLocaleDateString("en-IN", { dateStyle: "medium" })}
-                            </p>
-                          </div>
-                        ) : (
-                          <div>
-                            <span className="font-semibold text-[#A83B3B]">Expired {Math.abs(days)}d ago</span>
-                            <p className="text-[10px] text-[#716B64]">
-                              Ended {q.validUntil?.toLocaleDateString("en-IN", { dateStyle: "medium" })}
-                            </p>
-                          </div>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-2 text-left">
+                        <div className="rounded-xl bg-[#FAF7F2] px-3 py-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-[#716B64]">Scans</p>
+                          <p className="mt-0.5 text-sm font-bold text-[#24211E]">{q._count.scans}</p>
+                        </div>
+                        <div className="rounded-xl bg-[#FAF7F2] px-3 py-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-[#716B64]">Reviews</p>
+                          <p className="mt-0.5 text-sm font-bold text-[#24211E]">{q._count.sessions}</p>
+                        </div>
+                      </div>
+
+                      <p className={`mt-3 text-xs font-semibold ${status === "EXPIRED" ? "text-[#A83B3B]" : days <= 30 ? "text-[#7A5826]" : "text-[#2E6B4F]"}`}>
+                        {status === "DISABLED" || status === "PENDING_PAYMENT"
+                          ? status === "PENDING_PAYMENT" ? "Payment required" : "Disabled"
+                          : days > 0 ? `${days} days left` : `Expired ${Math.abs(days)} days ago`}
+                        {q.validUntil && status !== "DISABLED" && status !== "PENDING_PAYMENT" && (
+                          <span className="font-normal text-[#716B64]"> · until {q.validUntil.toLocaleDateString("en-IN", { dateStyle: "medium" })}</span>
                         )}
-                      </td>
-                      <td className="px-4 py-3.5 font-medium text-[#24211E]">{q._count.scans}</td>
-                      <td className="px-4 py-3.5 font-medium text-[#24211E]">{q._count.sessions}</td>
-                      <td className="px-4 py-3.5 text-right">
-                        {isActive ? (
-                          <div className="flex items-center justify-end gap-2">
-                            <OpenQrButton
-                              qrId={q.id}
-                              name={q.name}
-                              location={q.location}
-                              tableNo={q.tableNo}
-                              restaurantName={restaurant.name}
-                              logoUrl={restaurant.logoUrl || "/logo.png"}
-                              brandColor={restaurant.brandColor}
-                              googleReviewUrl={restaurant.googleReviewUrl}
-                              instagramUrl={restaurant.instagramUrl}
-                              facebookUrl={restaurant.facebookUrl}
-                              shareCaption={restaurant.shareCaption}
-                            />
-                            <Link
-                              href={`/dashboard/qr/${q.id}/print`}
-                              target="_blank"
-                              className="rounded-xl border border-[#E8DFD1] bg-white px-2.5 py-1 text-xs font-semibold text-[#24211E] shadow-2xs hover:bg-[#FAF7F2] transition whitespace-nowrap flex items-center gap-1"
-                              title="Print Table Tent Card"
-                            >
-                              <span>🖨️</span>
-                              <span>Print Card</span>
-                            </Link>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-end gap-2">
-                            <span className="text-[11px] text-[#716B64]">
-                              {status === "PENDING_PAYMENT"
-                                ? "Payment required"
-                                : "Expired/Disabled"}
-                            </span>
-                            <Link
-                              href="/dashboard/qr-requests"
-                              className="rounded-xl bg-[#B58A4B] px-2.5 py-1 text-xs font-bold text-white shadow-2xs hover:bg-[#9E7438]"
-                            >
-                              Renew / Activate
-                            </Link>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap justify-center gap-2 border-t border-[#E8DFD1] bg-[#FAF7F2]/60 p-3 sm:justify-end sm:px-5">
+                    {isActive ? (
+                      <>
+                        <OpenQrButton
+                          qrId={q.id}
+                          name={q.name}
+                          location={q.location}
+                          tableNo={q.tableNo}
+                          restaurantName={restaurant.name}
+                          logoUrl={restaurant.logoUrl || "/logo.png"}
+                          brandColor={restaurant.brandColor}
+                          googleReviewUrl={restaurant.googleReviewUrl}
+                          instagramUrl={restaurant.instagramUrl}
+                          facebookUrl={restaurant.facebookUrl}
+                          shareCaption={restaurant.shareCaption}
+                        />
+                        <Link
+                          href={`/dashboard/qr/${q.id}/print`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex min-h-9 items-center rounded-xl bg-[#24211E] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#3A3530]"
+                        >
+                          Print stand card
+                        </Link>
+                        <a
+                          href={`/api/qr/${q.id}/download?format=png`}
+                          download
+                          className="inline-flex min-h-9 items-center rounded-xl border border-[#E8DFD1] bg-white px-3 py-2 text-xs font-semibold text-[#24211E] transition hover:bg-[#FAF7F2]"
+                        >
+                          Download PNG
+                        </a>
+                      </>
+                    ) : (
+                      <Link
+                        href="/dashboard/qr-requests"
+                        className="inline-flex min-h-9 items-center rounded-xl bg-[#B58A4B] px-3 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[#9E7438]"
+                      >
+                        Renew / activate
+                      </Link>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
           </div>
 
           <div className="rounded-2xl border border-[#E8DFD1] bg-[#FAF7F2] p-5 text-xs text-[#716B64] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
