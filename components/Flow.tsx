@@ -723,7 +723,11 @@ export function Flow({
           Back
         </button>
       )}
-      <footer className="mt-4 text-center text-xs text-ink/40">Powered by ReviewFlow</footer>
+      <footer className="mt-4 flex items-center justify-center gap-1.5 text-center text-xs text-ink/40">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="ReviewFlow" className="h-5 w-10 rounded object-contain opacity-50" />
+        Powered by ReviewFlow
+      </footer>
     </main>
   );
 }

@@ -10,11 +10,11 @@ export const dynamic = "force-dynamic";
 const DAY = 86_400_000;
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  ACTIVE: { label: "Active", className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  GRACE: { label: "Grace period", className: "bg-amber-50 text-amber-700 border-amber-200" },
-  EXPIRED: { label: "Expired", className: "bg-rose-50 text-rose-700 border-rose-200" },
-  DISABLED: { label: "Disabled", className: "bg-zinc-100 text-zinc-600 border-zinc-200" },
-  PENDING_PAYMENT: { label: "Pending Payment", className: "bg-blue-50 text-blue-700 border-blue-200" },
+  ACTIVE: { label: "Active", className: "bg-[#EEF6F2] text-[#2E6B4F] border-[#D1E7DC]" },
+  GRACE: { label: "Grace period", className: "bg-[#FAF5ED] text-[#7A5826] border-[#E8D8BA]" },
+  EXPIRED: { label: "Expired", className: "bg-[#FDF2F2] text-[#A83B3B] border-[#F7D6D6]" },
+  DISABLED: { label: "Disabled", className: "bg-[#FAF7F2] text-[#716B64] border-[#E8DFD1]" },
+  PENDING_PAYMENT: { label: "Pending Payment", className: "bg-[#FAF5ED] text-[#7A5826] border-[#E8D8BA]" },
 };
 
 export default async function QrPage() {
@@ -25,7 +25,7 @@ export default async function QrPage() {
     include: { _count: { select: { scans: true, sessions: true } } },
   });
 
-  const expiringSoonCount = qrs.filter((q) => {
+  const expiringSoonCount = qrs.filter((q: any) => {
     const status = resolveStatus(q);
     if (status !== "ACTIVE" && status !== "GRACE") return false;
     if (!q.validUntil) return false;
@@ -35,20 +35,23 @@ export default async function QrPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[#E8DFD1] pb-4">
         <div>
-          <h1 className="text-3xl font-semibold">QR codes</h1>
-          <p className="mt-1 text-ink/70">
-            Download high-res QR codes and print branded table tent cards (with Instagram, Facebook &amp; Google badges) for table stands, billing counters, and takeaway menus.
+          <h1 className="font-serif text-3xl font-bold text-[#24211E]">QR Code Management</h1>
+          <p className="mt-1 text-xs text-[#716B64]">
+            Download high-res QR codes and print branded table tent cards for tables, billing counters, and bars.
           </p>
         </div>
-        <Link href="/dashboard/qr-requests" className="btn whitespace-nowrap self-start">
+        <Link
+          href="/dashboard/qr-requests"
+          className="rounded-2xl bg-[#B58A4B] px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-[#9E7438] transition whitespace-nowrap self-start"
+        >
           + Request New QR
         </Link>
       </div>
 
       {expiringSoonCount > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 flex items-center justify-between gap-4">
+        <div className="rounded-2xl border border-[#E8D8BA] bg-[#FAF5ED] p-4 text-xs text-[#7A5826] flex items-center justify-between gap-4 shadow-subtle">
           <div className="flex items-center gap-2">
             <span className="font-bold text-sm">⚠️ Renewal Notice:</span>
             <span>
@@ -58,7 +61,7 @@ export default async function QrPage() {
           </div>
           <Link
             href="/dashboard/qr-requests"
-            className="btn !bg-amber-600 hover:!bg-amber-700 whitespace-nowrap text-xs"
+            className="rounded-xl bg-[#B58A4B] px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-[#9E7438] whitespace-nowrap"
           >
             Renew QR Codes
           </Link>
@@ -74,20 +77,20 @@ export default async function QrPage() {
         />
       ) : (
         <div className="space-y-6">
-          <div className="panel overflow-x-auto">
-            <table className="w-full min-w-[720px]">
+          <div className="rounded-2xl border border-[#E8DFD1] bg-white shadow-subtle overflow-x-auto">
+            <table className="w-full min-w-[720px] text-left text-xs">
               <thead>
-                <tr>
-                  <th className="th">Name &amp; Placement</th>
-                  <th className="th">Status</th>
-                  <th className="th">Validity &amp; Countdown</th>
-                  <th className="th">Scans</th>
-                  <th className="th">Reviews</th>
-                  <th className="th">Download &amp; Print</th>
+                <tr className="border-b border-[#E8DFD1] bg-[#FAF7F2] text-[10px] font-bold text-[#716B64] uppercase tracking-wider">
+                  <th className="px-4 py-3">Name &amp; Placement</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Validity</th>
+                  <th className="px-4 py-3">Scans</th>
+                  <th className="px-4 py-3">Reviews</th>
+                  <th className="px-4 py-3 text-right">Download &amp; Print</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-line">
-                {qrs.map((q) => {
+              <tbody className="divide-y divide-[#E8DFD1]/50">
+                {qrs.map((q: any) => {
                   const status = resolveStatus(q);
                   const badge = STATUS_BADGE[status] || STATUS_BADGE.ACTIVE;
                   const isActive = status === "ACTIVE" || status === "GRACE";
@@ -97,53 +100,53 @@ export default async function QrPage() {
                     : 0;
 
                   return (
-                    <tr key={q.id} className="hover:bg-paper/40 transition">
-                      <td className="td">
-                        <p className="font-semibold text-ink">{q.name}</p>
-                        <p className="text-xs text-ink/60">
+                    <tr key={q.id} className="hover:bg-[#FAF7F2] transition">
+                      <td className="px-4 py-3.5">
+                        <p className="font-semibold text-[#24211E]">{q.name}</p>
+                        <p className="text-[11px] text-[#716B64]">
                           {[q.location, q.tableNo && `Table ${q.tableNo}`]
                             .filter(Boolean)
                             .join(" • ") || "Default"}
                         </p>
                       </td>
-                      <td className="td">
+                      <td className="px-4 py-3.5">
                         <span
-                          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${badge.className}`}
+                          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${badge.className}`}
                         >
                           {badge.label}
                         </span>
                       </td>
-                      <td className="td text-xs">
+                      <td className="px-4 py-3.5 text-xs">
                         {status === "DISABLED" || status === "PENDING_PAYMENT" ? (
-                          <span className="text-ink/40">–</span>
+                          <span className="text-[#716B64]/50">–</span>
                         ) : days > 30 ? (
                           <div>
-                            <span className="font-semibold text-emerald-700">{days} days left</span>
-                            <p className="text-[11px] text-ink/50">
+                            <span className="font-semibold text-[#2E6B4F]">{days} days left</span>
+                            <p className="text-[10px] text-[#716B64]">
                               Valid until {q.validUntil?.toLocaleDateString("en-IN", { dateStyle: "medium" })}
                             </p>
                           </div>
                         ) : days > 0 ? (
                           <div>
-                            <span className="font-semibold text-amber-700">⚠️ {days} days left</span>
-                            <p className="text-[11px] text-ink/50">
+                            <span className="font-semibold text-[#7A5826]">⚠️ {days} days left</span>
+                            <p className="text-[10px] text-[#716B64]">
                               Valid until {q.validUntil?.toLocaleDateString("en-IN", { dateStyle: "medium" })}
                             </p>
                           </div>
                         ) : (
                           <div>
-                            <span className="font-semibold text-rose-700">Expired {Math.abs(days)}d ago</span>
-                            <p className="text-[11px] text-ink/50">
+                            <span className="font-semibold text-[#A83B3B]">Expired {Math.abs(days)}d ago</span>
+                            <p className="text-[10px] text-[#716B64]">
                               Ended {q.validUntil?.toLocaleDateString("en-IN", { dateStyle: "medium" })}
                             </p>
                           </div>
                         )}
                       </td>
-                      <td className="td text-sm font-medium">{q._count.scans}</td>
-                      <td className="td text-sm font-medium">{q._count.sessions}</td>
-                      <td className="td">
+                      <td className="px-4 py-3.5 font-medium text-[#24211E]">{q._count.scans}</td>
+                      <td className="px-4 py-3.5 font-medium text-[#24211E]">{q._count.sessions}</td>
+                      <td className="px-4 py-3.5 text-right">
                         {isActive ? (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-end gap-2">
                             <OpenQrButton
                               qrId={q.id}
                               name={q.name}
@@ -160,27 +163,23 @@ export default async function QrPage() {
                             <Link
                               href={`/dashboard/qr/${q.id}/print`}
                               target="_blank"
-                              className="btn !px-2.5 !py-1 text-xs whitespace-nowrap flex items-center gap-1"
+                              className="rounded-xl border border-[#E8DFD1] bg-white px-2.5 py-1 text-xs font-semibold text-[#24211E] shadow-2xs hover:bg-[#FAF7F2] transition whitespace-nowrap flex items-center gap-1"
                               title="Print Table Tent Card"
                             >
-                              <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="6 9 6 2 18 2 18 9" />
-                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-                                <rect x="6" y="14" width="12" height="8" />
-                              </svg>
-                              Print Card
+                              <span>🖨️</span>
+                              <span>Print Card</span>
                             </Link>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-ink/50">
+                          <div className="flex items-center justify-end gap-2">
+                            <span className="text-[11px] text-[#716B64]">
                               {status === "PENDING_PAYMENT"
                                 ? "Payment required"
                                 : "Expired/Disabled"}
                             </span>
                             <Link
                               href="/dashboard/qr-requests"
-                              className="btn !px-2.5 !py-1 text-xs"
+                              className="rounded-xl bg-[#B58A4B] px-2.5 py-1 text-xs font-bold text-white shadow-2xs hover:bg-[#9E7438]"
                             >
                               Renew / Activate
                             </Link>
@@ -194,15 +193,18 @@ export default async function QrPage() {
             </table>
           </div>
 
-          <div className="rounded-xl border border-line bg-paper/60 p-4 text-sm text-ink/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="rounded-2xl border border-[#E8DFD1] bg-[#FAF7F2] p-5 text-xs text-[#716B64] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
             <div>
-              <p className="font-semibold text-ink">Need more table QRs or standees?</p>
-              <p className="text-xs text-ink/70">
+              <p className="font-serif font-bold text-sm text-[#24211E]">Need more table QRs or standees?</p>
+              <p className="text-xs text-[#716B64] mt-0.5">
                 Submit a QR request and activate multiple stands for your billing counters, patio, or bar.
               </p>
             </div>
-            <Link href="/dashboard/qr-requests" className="btn whitespace-nowrap">
-              Request QR code
+            <Link
+              href="/dashboard/qr-requests"
+              className="rounded-2xl bg-[#B58A4B] px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-[#9E7438] transition whitespace-nowrap"
+            >
+              Request QR Code
             </Link>
           </div>
         </div>

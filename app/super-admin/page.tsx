@@ -67,8 +67,8 @@ export default async function SuperAdminOverview() {
       {/* Header & Quick Action Buttons */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold text-ink">Platform Overview</h1>
-          <p className="mt-1 text-sm text-ink/70">
+          <h1 className="font-serif text-3xl font-bold tracking-tight text-[#24211E]">Platform Overview</h1>
+          <p className="mt-1 text-sm text-[#716B64]">
             High-level metrics, pending review requests, and quick administrative actions.
           </p>
         </div>
@@ -113,39 +113,39 @@ export default async function SuperAdminOverview() {
 
       {/* Pending QR Requests Banner if any */}
       {pendingRequestsCount > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 sm:p-5">
+        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-4 sm:p-5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500 font-bold text-white text-sm">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#B58A4B] font-bold text-white text-sm">
                 !
               </span>
               <div>
-                <h3 className="font-semibold text-amber-950">
+                <h3 className="font-serif font-bold text-[#24211E]">
                   {pendingRequestsCount} Pending QR Request{pendingRequestsCount > 1 ? "s" : ""}
                 </h3>
-                <p className="text-xs text-amber-800/90 mt-0.5">
+                <p className="text-xs text-[#716B64] mt-0.5">
                   Restaurants are waiting for your review. QR codes are generated only after payment is confirmed.
                 </p>
               </div>
             </div>
             <Link
               href="/super-admin/qr-requests"
-              className="btn whitespace-nowrap !bg-amber-600 hover:!bg-amber-700 text-xs"
+              className="btn whitespace-nowrap text-xs"
             >
               Review Requests →
             </Link>
           </div>
 
-          <div className="mt-4 divide-y divide-amber-200/60 border-t border-amber-200/60 pt-2">
+          <div className="mt-4 divide-y divide-[#E8DFD1] border-t border-[#E8DFD1] pt-2">
             {recentRequests.map((req) => (
               <div key={req.id} className="flex items-center justify-between py-2 text-xs">
                 <div>
-                  <span className="font-medium text-amber-950">{req.restaurant.name}</span>
-                  <span className="text-amber-800/80 ml-2">
+                  <span className="font-medium text-[#24211E]">{req.restaurant.name}</span>
+                  <span className="text-[#716B64] ml-2">
                     requested &ldquo;{req.name}&rdquo; ({req.quantity} QR{req.quantity > 1 ? "s" : ""})
                   </span>
                 </div>
-                <span className="text-amber-800/60 font-mono">
+                <span className="text-[#716B64] font-mono">
                   {req.createdAt.toLocaleDateString("en-IN", { dateStyle: "short" })}
                 </span>
               </div>
@@ -158,19 +158,19 @@ export default async function SuperAdminOverview() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Link
           href="/super-admin/restaurants"
-          className="panel p-5 transition hover:border-leaf hover:shadow-sm group"
+          className="panel p-5 transition hover:border-[#B58A4B] hover:shadow-xs group"
         >
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-ink group-hover:text-leaf">Manage Restaurants</h3>
-            <span className="text-xs text-leaf font-medium">View all →</span>
+            <h3 className="font-serif font-bold text-[#24211E] group-hover:text-[#B58A4B]">Manage Restaurants</h3>
+            <span className="text-xs text-[#B58A4B] font-medium">View all →</span>
           </div>
-          <p className="mt-1 text-xs text-ink/60">
+          <p className="mt-1 text-xs text-[#716B64]">
             {stats.restaurants} registered restaurants with owners &amp; sales attribution.
           </p>
-          <div className="mt-4 space-y-1.5 border-t border-line pt-3">
+          <div className="mt-4 space-y-1.5 border-t border-[#E8DFD1] pt-3">
             {recentRestaurants.slice(0, 3).map((r) => (
-              <div key={r.id} className="flex justify-between text-xs text-ink/70">
-                <span className="font-medium truncate max-w-[160px]">{r.name}</span>
+              <div key={r.id} className="flex justify-between text-xs text-[#716B64]">
+                <span className="font-medium truncate max-w-[160px] text-[#24211E]">{r.name}</span>
                 <span>{r._count.qrCodes} QRs</span>
               </div>
             ))}
@@ -179,16 +179,16 @@ export default async function SuperAdminOverview() {
 
         <Link
           href="/super-admin/qr-codes"
-          className="panel p-5 transition hover:border-leaf hover:shadow-sm group"
+          className="panel p-5 transition hover:border-[#B58A4B] hover:shadow-xs group"
         >
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-ink group-hover:text-leaf">QR Code Fleet</h3>
-            <span className="text-xs text-leaf font-medium">View all →</span>
+            <h3 className="font-serif font-bold text-[#24211E] group-hover:text-[#B58A4B]">QR Code Fleet</h3>
+            <span className="text-xs text-[#B58A4B] font-medium">View all →</span>
           </div>
-          <p className="mt-1 text-xs text-ink/60">
+          <p className="mt-1 text-xs text-[#716B64]">
             {stats.qrActive} active QR codes. Renew, enable/disable, and download print assets.
           </p>
-          <div className="mt-4 flex items-center justify-between border-t border-line pt-3 text-xs text-ink/70">
+          <div className="mt-4 flex items-center justify-between border-t border-[#E8DFD1] pt-3 text-xs text-[#716B64]">
             <span>Grace/Expired: {stats.qrExpired}</span>
             <span>Total Scans: {stats.scans}</span>
           </div>
@@ -196,18 +196,18 @@ export default async function SuperAdminOverview() {
 
         <Link
           href="/super-admin/payments"
-          className="panel p-5 transition hover:border-leaf hover:shadow-sm group sm:col-span-2 lg:col-span-1"
+          className="panel p-5 transition hover:border-[#B58A4B] hover:shadow-xs group sm:col-span-2 lg:col-span-1"
         >
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-ink group-hover:text-leaf">Payment Ledger</h3>
-            <span className="text-xs text-leaf font-medium">View ledger →</span>
+            <h3 className="font-serif font-bold text-[#24211E] group-hover:text-[#B58A4B]">Payment Ledger</h3>
+            <span className="text-xs text-[#B58A4B] font-medium">View ledger →</span>
           </div>
-          <p className="mt-1 text-xs text-ink/60">
+          <p className="mt-1 text-xs text-[#716B64]">
             All direct UPI, Cash, Bank, and Gateway payments with invoice records.
           </p>
-          <div className="mt-4 flex items-center justify-between border-t border-line pt-3 text-xs text-ink/70">
+          <div className="mt-4 flex items-center justify-between border-t border-[#E8DFD1] pt-3 text-xs text-[#716B64]">
             <span>Verified Total</span>
-            <span className="font-semibold text-leaf">{rupees(stats.revenue)}</span>
+            <span className="font-bold text-[#B58A4B]">{rupees(stats.revenue)}</span>
           </div>
         </Link>
       </div>
@@ -216,10 +216,10 @@ export default async function SuperAdminOverview() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-ink">Recent Audit Log</h2>
-            <p className="text-xs text-ink/60">Latest 10 actions recorded across the system.</p>
+            <h2 className="font-serif text-xl font-bold text-[#24211E]">Recent Audit Log</h2>
+            <p className="text-xs text-[#716B64]">Latest 10 actions recorded across the system.</p>
           </div>
-          <Link href="/super-admin/audit" className="text-xs font-medium text-leaf hover:underline">
+          <Link href="/super-admin/audit" className="text-xs font-semibold text-[#B58A4B] hover:underline">
             Full Audit Log →
           </Link>
         </div>
@@ -234,24 +234,24 @@ export default async function SuperAdminOverview() {
                 <th className="th">Time</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-line">
+            <tbody className="divide-y divide-[#E8DFD1]">
               {recentAuditLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="td text-center text-ink/60 py-6">
+                  <td colSpan={4} className="td text-center text-[#716B64] py-6">
                     No actions logged yet.
                   </td>
                 </tr>
               ) : (
                 recentAuditLogs.map((log) => (
                   <tr key={log.id}>
-                    <td className="td font-mono text-xs font-medium text-ink">{log.action}</td>
-                    <td className="td font-mono text-xs text-ink/60">{log.target ?? "—"}</td>
-                    <td className="td text-xs text-ink/60">
+                    <td className="td font-mono text-xs font-medium text-[#24211E]">{log.action}</td>
+                    <td className="td font-mono text-xs text-[#716B64]">{log.target ?? "—"}</td>
+                    <td className="td text-xs text-[#716B64]">
                       {log.actorId === "webhook"
                         ? "System webhook"
                         : auditActorNames.get(log.actorId) || "Unknown actor"}
                     </td>
-                    <td className="td text-xs text-ink/60">
+                    <td className="td text-xs text-[#716B64]">
                       {log.createdAt.toLocaleString("en-IN", {
                         dateStyle: "short",
                         timeStyle: "short",

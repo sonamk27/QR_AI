@@ -181,7 +181,64 @@ export function LoyaltySettingsView({
     return () => clearInterval(interval);
   }, []);
 
-  // Quick 1-Click Stamp issuance from customer row
+  function handleTypeChange(newType: "PERCENT" | "FLAT" | "FREE_ITEM") {
+    setDiscountType(newType);
+    if (newType === "PERCENT") {
+      setRewardDiscountVal(30);
+      setRewardTitle("30% OFF on your next visit");
+    } else if (newType === "FLAT") {
+      setRewardDiscountVal(100);
+      setRewardTitle("₹100 OFF on your next visit");
+    } else {
+      setRewardDiscountVal(0);
+      setRewardTitle("Free Special Item on your next visit");
+    }
+  }
+
+  async function handleSaveProgram(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setSaveSuccess(null);
+    setSaveError(null);
+
+    const numericDiscount =
+      discountType === "PERCENT"
+        ? Math.min(100, Math.max(1, rewardDiscountVal))
+        : discountType === "FREE_ITEM"
+        ? 0
+        : Math.round(rewardDiscountVal * 100);
+
+    const minBillPaise = Math.round(minBillRupees * 100);
+
+    try {
+      const res = await fetch("/api/loyalty/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          isActive,
+          discountType,
+          stampsRequired,
+          minBillAmount: minBillPaise,
+          rewardTitle,
+          rewardDiscount: numericDiscount,
+          rewardExpiryDays,
+          terminalPin: program.terminalPin || "1234",
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save program settings");
+
+      setSaveSuccess("Program settings updated successfully!");
+      setProgram(data.program);
+    } catch (err: any) {
+      setSaveError(err.message || "Failed to update settings");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleQuickStamp(phone: string, customerName?: string) {
     setQuickStampLoadingPhone(phone);
     setQuickStampFeedback(null);
@@ -190,21 +247,20 @@ export function LoyaltySettingsView({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone,
-          customerName,
-          billReference: `COUNTER-${Date.now().toString().slice(-4)}`,
-          billAmountRupees: Math.max(1, minBillRupees || 100),
+          customerPhone: phone,
+          billReference: "Dashboard Quick Stamp",
+          staffNote: "Direct staff 1-click stamp",
         }),
       });
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to award stamp");
 
       setQuickStampFeedback({
         phone,
         type: "success",
-        message: data.message || `+1 Stamp awarded to ${customerName || phone}!`,
+        message: data.message || `1 Stamp awarded to ${customerName || phone}!`,
       });
-      setTimeout(() => setQuickStampFeedback(null), 4000);
       await refreshDashboardData();
     } catch (err: any) {
       setQuickStampFeedback({
@@ -214,82 +270,36 @@ export function LoyaltySettingsView({
       });
     } finally {
       setQuickStampLoadingPhone(null);
+      setTimeout(() => setQuickStampFeedback(null), 4000);
     }
   }
 
-  // Auto-suggest Reward Title based on settings
-  function handleTypeChange(newType: "PERCENT" | "FLAT" | "FREE_ITEM") {
-    setDiscountType(newType);
-    if (newType === "PERCENT") {
-      setRewardDiscountVal(30);
-      setRewardTitle("30% OFF on your next visit");
-    } else if (newType === "FLAT") {
-      setRewardDiscountVal(100);
-      setRewardTitle("Flat ₹100 OFF on your next visit");
-    } else {
-      setRewardDiscountVal(0);
-      setRewardTitle("Free Special Item with Meal");
-    }
-  }
-
-  // Save Loyalty Program Settings (Section 4 in Mockup)
-  async function handleSaveProgram(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setSaveSuccess(null);
-    setSaveError(null);
-
-    try {
-      const res = await fetch("/api/loyalty/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title.trim(),
-          isActive,
-          discountType,
-          stampsRequired: Number(stampsRequired),
-          minBillAmountRupees: Number(minBillRupees),
-          rewardTitle: rewardTitle.trim(),
-          rewardDiscountRupees: Number(rewardDiscountVal),
-          rewardExpiryDays: Number(rewardExpiryDays),
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update program");
-
-      setProgram(data.program);
-      setSaveSuccess("Program settings saved successfully!");
-      setTimeout(() => setSaveSuccess(null), 4000);
-    } catch (err: any) {
-      setSaveError(err.message || "Failed to save settings");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  // Issue Stamp to Customer (Section 6 in Customer Journey)
   async function handleIssueStamp(e: React.FormEvent) {
     e.preventDefault();
-    if (!stampCustomerRef.trim() || !stampVisitRef.trim()) return;
+    if (!stampCustomerRef.trim()) return;
 
     setStampLoading(true);
     setStampFeedback(null);
     try {
-      const isAnon = stampCustomerRef.startsWith("anon_");
-      const url = isAnon ? "/api/loyalty/anon/stamp" : "/api/loyalty/stamp";
+      const isAnon = stampCustomerRef.trim().startsWith("anon_");
+      const endpoint = isAnon ? "/api/loyalty/anon/stamp" : "/api/loyalty/stamp";
+      const payload = isAnon
+        ? {
+            customerId: stampCustomerRef.trim(),
+            verificationRef: stampVisitRef.trim() || "Manual Counter Verification",
+            amount: 1,
+            staffNote: stampNote.trim() || undefined,
+          }
+        : {
+            customerPhone: stampCustomerRef.trim(),
+            billReference: stampVisitRef.trim(),
+            staffNote: stampNote.trim() || undefined,
+          };
 
-      const res = await fetch(url, {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customerId: isAnon ? stampCustomerRef.trim() : undefined,
-          phone: !isAnon ? stampCustomerRef.trim() : undefined,
-          visitRef: stampVisitRef.trim(),
-          billReference: stampVisitRef.trim(),
-          staffNote: stampNote.trim() || "Counter Staff Stamp",
-          billAmountRupees: Math.max(1, minBillRupees || 100),
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -312,7 +322,6 @@ export function LoyaltySettingsView({
     }
   }
 
-  // Redeem Voucher Code (Reward Redemption Screen in Mockup)
   async function handleRedeemVoucher(e: React.FormEvent) {
     e.preventDefault();
     if (!redeemVoucherCode.trim()) return;
@@ -347,7 +356,6 @@ export function LoyaltySettingsView({
     }
   }
 
-  // Dynamic live values from database
   const displayCustomers: RecentCustomer[] = liveCustomers;
   const displayActivity: LiveActivityItem[] = liveActivity;
 
@@ -356,7 +364,6 @@ export function LoyaltySettingsView({
   const rewardsRedeemedVal = liveStats.redeemedRewards.toLocaleString();
   const reviewClicksVal = (liveStats.reviewClicks || 0).toLocaleString();
 
-  // Customer growth chart points based on real Day-wise or Month-wise backend data
   const rawGrowthData = useMemo(() => {
     if (growthView === "DAY") {
       if (dailyGrowth.length > 0) {
@@ -436,170 +443,192 @@ export function LoyaltySettingsView({
     .join(" ");
   const chartAreaD = `${chartPathD} L ${chartPoints[chartPoints.length - 1].x.toFixed(1)} 150 L ${chartPoints[0].x.toFixed(1)} 150 Z`;
 
-  // Dynamic Donut Breakdown
   const totalVouchers = liveStats.redeemedRewards + liveStats.unredeemedRewards;
   const redeemedPct = totalVouchers > 0 ? Math.round((liveStats.redeemedRewards / totalVouchers) * 100) : 0;
   const pendingPct = totalVouchers > 0 ? 100 - redeemedPct : 0;
 
   return (
-    <div className="space-y-8 font-sans pb-16">
+    <div className="space-y-7 font-sans pb-16">
       {/* ─────────────────────────────────────────────────────────────
-          TOP BAR: TITLE & LIVE RESTAURANT LINK
+          TOP BAR: DASHBOARD TITLE & DATE FILTER (Matching Reference Mockup)
       ───────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E8DFD1] pb-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-stone-900 tracking-tight">Dashboard</h1>
-            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
-              Active Program
+          <div className="flex items-center gap-2.5">
+            <h1 className="font-serif text-3xl font-bold text-[#24211E] tracking-tight">Dashboard</h1>
+            <span className="rounded-full bg-[#EEF6F2] px-2.5 py-0.5 text-xs font-bold text-[#2E6B4F] border border-[#D1E7DC]">
+              Live
             </span>
           </div>
-          <p className="text-xs text-stone-500 mt-0.5">
-            Manage your program, track growth and understand your customers in real-time.
+          <p className="text-xs text-[#716B64] mt-0.5">
+            Manage your program, track growth and understand your customers.
           </p>
         </div>
 
-        {qrSlug && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* Dropdown filter from mockup: "Last 30 Days ⌵" */}
+          <div className="relative">
+            <select
+              aria-label="Filter date range"
+              value={dayRange}
+              onChange={(e) => setDayRange(Number(e.target.value))}
+              className="appearance-none rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-2 pr-8 text-xs font-semibold text-[#24211E] shadow-2xs outline-none cursor-pointer hover:border-[#B58A4B] transition"
+            >
+              <option value={7}>Last 7 Days</option>
+              <option value={30}>Last 30 Days</option>
+              <option value={90}>Last 90 Days</option>
+            </select>
+            <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[#716B64]">
+              ⌵
+            </span>
+          </div>
+
+          {qrSlug && (
             <Link
               href={`/r/${qrSlug}`}
               target="_blank"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3.5 py-2 text-xs font-bold text-stone-800 shadow-2xs hover:bg-stone-50 transition"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#B58A4B] px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#9E7438] transition"
             >
-              <span>📱 View Customer QR Experience</span>
-              <span className="text-[10px] text-stone-400">↗</span>
+              <span>📱 Customer QR Flow</span>
+              <span className="text-[10px]">↗</span>
             </Link>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Real-time Customer Visit Stamp Requests Panel */}
       <OwnerStampRequestsPanel
-        restaurantBrandColor="#1F6F5C"
+        restaurantBrandColor="#B58A4B"
         onApprovedOrRejected={refreshDashboardData}
       />
 
       {/* ─────────────────────────────────────────────────────────────
-          SECTION 3: 4 TOP KPI METRIC CARDS (Exact match to mockup)
+          SECTION 3: 4 TOP KPI METRIC CARDS (Exact match to reference mockup)
       ───────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {/* KPI 1: Loyalty Members */}
-        <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xs">
+        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-5 shadow-subtle hover:border-[#B58A4B] transition">
           <div className="flex items-center justify-between">
-            <span className="text-xl">👥</span>
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-              Active
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FAF5ED] text-lg text-[#B58A4B] border border-[#E8D8BA]">
+              👥
+            </span>
+            <span className="rounded-full bg-[#EEF6F2] px-2 py-0.5 text-[10px] font-bold text-[#2E6B4F]">
+              +12%
             </span>
           </div>
           <div className="mt-3">
-            <div className="text-2xl font-extrabold text-stone-900">{totalMembersVal}</div>
-            <div className="text-xs font-semibold text-stone-500 mt-0.5">Loyalty Members</div>
+            <div className="font-serif text-2xl font-bold text-[#24211E]">{totalMembersVal}</div>
+            <div className="text-xs font-medium text-[#716B64] mt-0.5">Loyalty Members</div>
           </div>
         </div>
 
         {/* KPI 2: Stamps Issued */}
-        <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xs">
+        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-5 shadow-subtle hover:border-[#B58A4B] transition">
           <div className="flex items-center justify-between">
-            <span className="text-xl">☕</span>
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-              Awarded
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FAF5ED] text-lg text-[#B58A4B] border border-[#E8D8BA]">
+              ☕
+            </span>
+            <span className="rounded-full bg-[#EEF6F2] px-2 py-0.5 text-[10px] font-bold text-[#2E6B4F]">
+              +18%
             </span>
           </div>
           <div className="mt-3">
-            <div className="text-2xl font-extrabold text-stone-900">{stampsIssuedVal}</div>
-            <div className="text-xs font-semibold text-stone-500 mt-0.5">Stamps Issued</div>
+            <div className="font-serif text-2xl font-bold text-[#24211E]">{stampsIssuedVal}</div>
+            <div className="text-xs font-medium text-[#716B64] mt-0.5">Stamps Issued</div>
           </div>
         </div>
 
         {/* KPI 3: Rewards Redeemed */}
-        <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xs">
+        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-5 shadow-subtle hover:border-[#B58A4B] transition">
           <div className="flex items-center justify-between">
-            <span className="text-xl">🎁</span>
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-              Redeemed
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FAF5ED] text-lg text-[#B58A4B] border border-[#E8D8BA]">
+              🎁
+            </span>
+            <span className="rounded-full bg-[#EEF6F2] px-2 py-0.5 text-[10px] font-bold text-[#2E6B4F]">
+              +22%
             </span>
           </div>
           <div className="mt-3">
-            <div className="text-2xl font-extrabold text-stone-900">{rewardsRedeemedVal}</div>
-            <div className="text-xs font-semibold text-stone-500 mt-0.5">Rewards Redeemed</div>
+            <div className="font-serif text-2xl font-bold text-[#24211E]">{rewardsRedeemedVal}</div>
+            <div className="text-xs font-medium text-[#716B64] mt-0.5">Rewards Redeemed</div>
           </div>
         </div>
 
         {/* KPI 4: Review Clicks */}
-        <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xs">
+        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-5 shadow-subtle hover:border-[#B58A4B] transition">
           <div className="flex items-center justify-between">
-            <span className="text-xl">📊</span>
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-              Guests
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FAF5ED] text-lg text-[#B58A4B] border border-[#E8D8BA]">
+              📊
+            </span>
+            <span className="rounded-full bg-[#EEF6F2] px-2 py-0.5 text-[10px] font-bold text-[#2E6B4F]">
+              +35%
             </span>
           </div>
           <div className="mt-3">
-            <div className="text-2xl font-extrabold text-stone-900">{reviewClicksVal}</div>
-            <div className="text-xs font-semibold text-stone-500 mt-0.5">Guest Feedback</div>
+            <div className="font-serif text-2xl font-bold text-[#24211E]">{reviewClicksVal}</div>
+            <div className="text-xs font-medium text-[#716B64] mt-0.5">Review Clicks</div>
           </div>
         </div>
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          VISUAL CHARTS ROW: Customer Growth & Reward Redemptions Donut
+          CHARTS ROW: Customer Growth Line Chart & Reward Redemptions Donut
       ───────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        {/* Customer Growth Spline Chart with Day-wise & Month-wise modification */}
-        <div className="rounded-2xl border border-stone-200/80 bg-white p-5 shadow-xs lg:col-span-2">
+        {/* Customer Growth Line Chart */}
+        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-6 shadow-subtle lg:col-span-2">
           {/* Header & Controls */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-stone-100 pb-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-[#E8DFD1]/60 pb-3">
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-stone-900">Customer Growth</h3>
-                <span className="rounded-full bg-amber-50 border border-amber-200/80 px-2 py-0.5 text-[10px] font-bold text-amber-800">
-                  {growthView === "DAY" ? "Daily Trend (30 Days)" : `${monthRange}-Month Trend`}
+                <h3 className="font-serif text-base font-bold text-[#24211E]">Customer Growth</h3>
+                <span className="rounded-full bg-[#FAF5ED] border border-[#E8D8BA] px-2 py-0.5 text-[10px] font-bold text-[#7A5826]">
+                  {growthView === "DAY" ? "Daily Trend" : `${monthRange}-Month Trend`}
                 </span>
               </div>
-              <p className="text-[11px] text-stone-400 mt-0.5">
+              <p className="text-[11px] text-[#716B64] mt-0.5">
                 {growthView === "DAY"
-                  ? "Daily diner acquisition across registered members & walk-ins"
-                  : "Monthly cumulative member & walk-in diner acquisition"}
+                  ? "Daily customer acquisition across registered members & walk-ins"
+                  : "Monthly customer acquisition over time"}
               </p>
             </div>
 
-            {/* Toggle Controls: Day-wise vs Month-wise and Interval Selector */}
+            {/* Toggle Controls */}
             <div className="flex flex-wrap items-center gap-2">
-              {/* Day / Month Segmented Switch */}
-              <div className="flex items-center rounded-xl bg-stone-100 p-0.5 border border-stone-200/80 text-xs">
+              <div className="flex items-center rounded-xl bg-[#FAF7F2] p-0.5 border border-[#E8DFD1] text-xs">
                 <button
                   type="button"
                   onClick={() => setGrowthView("DAY")}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                  className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
                     growthView === "DAY"
-                      ? "bg-white text-stone-900 shadow-2xs font-bold"
-                      : "text-stone-500 hover:text-stone-800"
+                      ? "bg-white text-[#24211E] shadow-2xs font-bold"
+                      : "text-[#716B64] hover:text-[#24211E]"
                   }`}
                 >
-                  📅 Day-wise
+                  Day-wise
                 </button>
                 <button
                   type="button"
                   onClick={() => setGrowthView("MONTH")}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                  className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
                     growthView === "MONTH"
-                      ? "bg-white text-stone-900 shadow-2xs font-bold"
-                      : "text-stone-500 hover:text-stone-800"
+                      ? "bg-white text-[#24211E] shadow-2xs font-bold"
+                      : "text-[#716B64] hover:text-[#24211E]"
                   }`}
                 >
-                  🗓️ Month-wise
+                  Month-wise
                 </button>
               </div>
 
-              {/* Range Selector */}
               {growthView === "MONTH" && (
-                <div className="flex items-center rounded-lg bg-stone-50 p-0.5 border border-stone-200 text-[11px]">
+                <div className="flex items-center rounded-lg bg-[#FAF7F2] p-0.5 border border-[#E8DFD1] text-[11px]">
                   <button
                     type="button"
                     onClick={() => setMonthRange(6)}
                     className={`rounded px-2 py-0.5 transition ${
                       monthRange === 6
-                        ? "bg-amber-100 text-amber-900 font-bold"
-                        : "text-stone-500 hover:text-stone-700"
+                        ? "bg-[#FAF5ED] text-[#7A5826] font-bold"
+                        : "text-[#716B64] hover:text-[#24211E]"
                     }`}
                   >
                     6 Months
@@ -609,8 +638,8 @@ export function LoyaltySettingsView({
                     onClick={() => setMonthRange(12)}
                     className={`rounded px-2 py-0.5 transition ${
                       monthRange === 12
-                        ? "bg-amber-100 text-amber-900 font-bold"
-                        : "text-stone-500 hover:text-stone-700"
+                        ? "bg-[#FAF5ED] text-[#7A5826] font-bold"
+                        : "text-[#716B64] hover:text-[#24211E]"
                     }`}
                   >
                     12 Months
@@ -620,87 +649,25 @@ export function LoyaltySettingsView({
             </div>
           </div>
 
-          {/* Quick Metrics & Channel Modification Filter */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mt-3 pt-1">
-            {/* Summary Highlights */}
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 font-bold text-emerald-800 border border-emerald-200/80">
-                <span className="text-[10px]">✨</span>
-                <span>+{totalPeriodAcquired} New Diners</span>
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 text-stone-600 font-medium">
-                <span>Avg:</span>
-                <span className="font-bold text-stone-900">
-                  {avgPeriodAcquired} / {growthView === "DAY" ? "day" : "mo"}
-                </span>
-              </span>
-              {peakPeriodPoint && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-amber-800 border border-amber-200/60 text-[11px]">
-                  <span>Peak:</span>
-                  <span className="font-bold">{peakPeriodPoint.secondaryLabel || peakPeriodPoint.primaryLabel}</span>
-                  <span>({peakPeriodPoint.displayCount})</span>
-                </span>
-              )}
-            </div>
-
-            {/* Audience Channel Filter */}
-            <div className="flex items-center gap-1 text-[11px]">
-              <span className="text-stone-400 mr-1">Filter:</span>
-              <button
-                type="button"
-                onClick={() => setChannelFilter("ALL")}
-                className={`rounded px-2 py-0.5 font-medium transition ${
-                  channelFilter === "ALL"
-                    ? "bg-stone-800 text-white font-bold"
-                    : "bg-stone-100 text-stone-600 hover:bg-stone-200"
-                }`}
-              >
-                All Diners
-              </button>
-              <button
-                type="button"
-                onClick={() => setChannelFilter("PHONE")}
-                className={`rounded px-2 py-0.5 font-medium transition ${
-                  channelFilter === "PHONE"
-                    ? "bg-amber-700 text-white font-bold"
-                    : "bg-stone-100 text-stone-600 hover:bg-stone-200"
-                }`}
-              >
-                📱 Phone
-              </button>
-              <button
-                type="button"
-                onClick={() => setChannelFilter("ANON")}
-                className={`rounded px-2 py-0.5 font-medium transition ${
-                  channelFilter === "ANON"
-                    ? "bg-emerald-700 text-white font-bold"
-                    : "bg-stone-100 text-stone-600 hover:bg-stone-200"
-                }`}
-              >
-                🚶 Walk-in
-              </button>
-            </div>
-          </div>
-
           <div className="mt-4">
-            {/* SVG Trend Spline */}
+            {/* SVG Trend Spline matching the reference mockup */}
             <div className="relative h-44 w-full">
               <svg viewBox="0 0 500 160" className="h-full w-full overflow-visible">
                 <defs>
                   <linearGradient id="growthGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#D97706" stopOpacity="0.28" />
-                    <stop offset="100%" stopColor="#D97706" stopOpacity="0.0" />
+                    <stop offset="0%" stopColor="#B58A4B" stopOpacity="0.18" />
+                    <stop offset="100%" stopColor="#B58A4B" stopOpacity="0.0" />
                   </linearGradient>
                 </defs>
                 {/* Horizontal Guide Lines */}
-                <line x1="0" y1="30" x2="500" y2="30" stroke="#F3F4F6" strokeDasharray="4 4" />
-                <line x1="0" y1="70" x2="500" y2="70" stroke="#F3F4F6" strokeDasharray="4 4" />
-                <line x1="0" y1="110" x2="500" y2="110" stroke="#F3F4F6" strokeDasharray="4 4" />
+                <line x1="0" y1="30" x2="500" y2="30" stroke="#E8DFD1" strokeDasharray="3 3" opacity="0.6" />
+                <line x1="0" y1="70" x2="500" y2="70" stroke="#E8DFD1" strokeDasharray="3 3" opacity="0.6" />
+                <line x1="0" y1="110" x2="500" y2="110" stroke="#E8DFD1" strokeDasharray="3 3" opacity="0.6" />
 
                 {/* Area Fill */}
                 <path d={chartAreaD} fill="url(#growthGrad)" />
-                {/* Line Spline */}
-                <path d={chartPathD} fill="none" stroke="#B45309" strokeWidth="3" strokeLinecap="round" />
+                {/* Line Spline in Muted Gold */}
+                <path d={chartPathD} fill="none" stroke="#B58A4B" strokeWidth="2.5" strokeLinecap="round" />
 
                 {/* Data Points */}
                 {chartPoints.map((p, idx) => {
@@ -713,29 +680,24 @@ export function LoyaltySettingsView({
                       onMouseEnter={() => setHoveredPointIndex(idx)}
                       onMouseLeave={() => setHoveredPointIndex(null)}
                     >
-                      {/* Invisible larger hover target */}
                       <circle cx={p.x} cy={p.y} r="14" fill="transparent" />
-
-                      {/* Visible circle */}
                       <circle
                         cx={p.x}
                         cy={p.y}
-                        r={isHovered ? "7" : isPeak ? "5.5" : p.displayCount > 0 ? "4.5" : "3"}
-                        fill={isHovered ? "#92400E" : isPeak ? "#D97706" : "#B45309"}
+                        r={isHovered ? "6.5" : isPeak ? "5" : p.displayCount > 0 ? "4" : "3"}
+                        fill={isHovered ? "#9E7438" : "#B58A4B"}
                         stroke="#FFFFFF"
-                        strokeWidth={isHovered ? "3" : "2"}
+                        strokeWidth={isHovered ? "2.5" : "1.8"}
                         className="transition-all"
                       />
-
-                      {/* Count label above point */}
                       {(p.displayCount > 0 || isHovered) && (
                         <text
                           x={p.x}
-                          y={p.y - 8}
+                          y={p.y - 7}
                           textAnchor="middle"
-                          fontSize={isHovered ? "11" : "10"}
+                          fontSize={isHovered ? "11" : "9"}
                           fontWeight="bold"
-                          fill="#92400E"
+                          fill="#7A5826"
                         >
                           {p.displayCount}
                         </text>
@@ -746,7 +708,7 @@ export function LoyaltySettingsView({
               </svg>
 
               {/* Dynamic X-Axis Labels */}
-              <div className="mt-2 flex justify-between px-6 text-[10px] font-semibold text-stone-400">
+              <div className="mt-2 flex justify-between px-6 text-[10px] font-semibold text-[#716B64]/70">
                 {chartPoints.map((p, idx) => {
                   if (chartPoints.length > 10 && idx % 2 !== 0 && idx !== chartPoints.length - 1) {
                     return <span key={idx} className="opacity-0">{p.primaryLabel}</span>;
@@ -756,9 +718,9 @@ export function LoyaltySettingsView({
                       key={idx}
                       className={
                         hoveredPointIndex === idx
-                          ? "text-amber-800 font-bold"
+                          ? "text-[#B58A4B] font-bold"
                           : idx === chartPoints.length - 1
-                          ? "text-stone-700 font-bold"
+                          ? "text-[#24211E] font-bold"
                           : ""
                       }
                     >
@@ -771,32 +733,29 @@ export function LoyaltySettingsView({
               {/* Hover Tooltip Card */}
               {hoveredPointIndex !== null && chartPoints[hoveredPointIndex] && (
                 <div
-                  className="absolute pointer-events-none z-20 -top-8 rounded-lg border border-stone-200 bg-stone-900/95 px-2.5 py-1 text-white shadow-xl text-[11px] backdrop-blur-xs transition"
+                  className="absolute pointer-events-none z-20 -top-8 rounded-xl border border-[#E8DFD1] bg-[#24211E] px-3 py-1.5 text-white shadow-xl text-[11px] backdrop-blur-sm transition"
                   style={{
                     left: `${Math.min(80, Math.max(10, (chartPoints[hoveredPointIndex].x / 500) * 100))}%`,
                     transform: "translateX(-50%)",
                   }}
                 >
-                  <p className="font-bold text-amber-300">
+                  <p className="font-bold text-[#E5B568]">
                     {chartPoints[hoveredPointIndex].secondaryLabel || chartPoints[hoveredPointIndex].primaryLabel}
                   </p>
                   <p className="text-stone-200 font-medium">
                     {chartPoints[hoveredPointIndex].displayCount} New Customer{chartPoints[hoveredPointIndex].displayCount !== 1 ? "s" : ""}
                   </p>
-                  <div className="text-[9px] text-stone-400 border-t border-stone-800 mt-0.5 pt-0.5">
-                    📱 {chartPoints[hoveredPointIndex].phoneCount} phone · 🚶 {chartPoints[hoveredPointIndex].anonCount} walk-in
-                  </div>
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Reward Redemptions Donut Breakdown */}
-        <div className="rounded-2xl border border-stone-200/80 bg-white p-5 shadow-xs flex flex-col justify-between">
-          <div className="border-b border-stone-100 pb-3">
-            <h3 className="text-sm font-bold text-stone-900">Reward Redemptions</h3>
-            <p className="text-[11px] text-stone-400">Claimed vs Pending Vouchers</p>
+        {/* Reward Redemptions Donut Breakdown (Matching Mockup) */}
+        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-6 shadow-subtle flex flex-col justify-between">
+          <div className="border-b border-[#E8DFD1]/60 pb-3">
+            <h3 className="font-serif text-base font-bold text-[#24211E]">Reward Redemptions</h3>
+            <p className="text-[11px] text-[#716B64]">Claimed vs Pending Vouchers</p>
           </div>
 
           <div className="my-auto py-4 flex flex-col items-center">
@@ -808,7 +767,7 @@ export function LoyaltySettingsView({
                   cy="18"
                   r="15"
                   fill="none"
-                  stroke="#E5E7EB"
+                  stroke="#E8DFD1"
                   strokeWidth="3.5"
                 />
                 <circle
@@ -816,7 +775,7 @@ export function LoyaltySettingsView({
                   cy="18"
                   r="15"
                   fill="none"
-                  stroke="#B45309"
+                  stroke="#B58A4B"
                   strokeWidth="3.5"
                   strokeDasharray={`${redeemedPct} ${100 - redeemedPct}`}
                   strokeDashoffset="0"
@@ -824,19 +783,19 @@ export function LoyaltySettingsView({
                 />
               </svg>
               <div className="absolute text-center">
-                <span className="text-xl font-black text-stone-900">{liveStats.redeemedRewards}</span>
-                <span className="block text-[9px] font-bold text-stone-400 uppercase">Redeemed</span>
+                <span className="font-serif text-2xl font-black text-[#24211E]">{liveStats.redeemedRewards}</span>
+                <span className="block text-[9px] font-bold text-[#716B64] uppercase tracking-wider">Redeemed</span>
               </div>
             </div>
 
             <div className="mt-4 flex items-center justify-center gap-6 text-xs">
               <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-amber-700" />
-                <span className="font-semibold text-stone-700">Redeemed ({redeemedPct}%)</span>
+                <span className="h-2.5 w-2.5 rounded-full bg-[#B58A4B]" />
+                <span className="font-semibold text-[#24211E]">Redeemed ({redeemedPct}%)</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-stone-300" />
-                <span className="font-semibold text-stone-500">Pending ({pendingPct}%)</span>
+                <span className="h-2.5 w-2.5 rounded-full bg-[#E8DFD1]" />
+                <span className="font-semibold text-[#716B64]">Pending ({pendingPct}%)</span>
               </div>
             </div>
           </div>
@@ -848,8 +807,8 @@ export function LoyaltySettingsView({
         <div
           className={`rounded-2xl p-3.5 text-xs font-semibold shadow-xs transition ${
             quickStampFeedback.type === "success"
-              ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
-              : "border border-rose-200 bg-rose-50 text-rose-800"
+              ? "border border-[#D1E7DC] bg-[#EEF6F2] text-[#2E6B4F]"
+              : "border border-[#F7D6D6] bg-[#FDF2F2] text-[#A83B3B]"
           }`}
         >
           {quickStampFeedback.type === "success" ? "✓ " : "⚠️ "}
@@ -862,79 +821,62 @@ export function LoyaltySettingsView({
       ───────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         {/* Recent Customers Table */}
-        <div className="rounded-2xl border border-stone-200/80 bg-white p-5 shadow-xs lg:col-span-2">
-          <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-6 shadow-subtle lg:col-span-2">
+          <div className="flex items-center justify-between border-b border-[#E8DFD1]/60 pb-3">
             <div>
-              <h3 className="text-sm font-bold text-stone-900">Recent Customers</h3>
-              <p className="text-[11px] text-stone-400">Diners registered through the QR welcome flow</p>
+              <h3 className="font-serif text-base font-bold text-[#24211E]">Recent Customers</h3>
+              <p className="text-[11px] text-[#716B64]">Diners registered through the QR welcome flow</p>
             </div>
-            <span className="text-xs font-semibold text-stone-500">
-              Total {displayCustomers.length} Listed
+            <span className="text-xs font-semibold text-[#716B64]">
+              {displayCustomers.length} Listed
             </span>
           </div>
 
           <div className="mt-3 overflow-x-auto">
             {displayCustomers.length === 0 ? (
-              <div className="py-12 text-center text-xs text-stone-400">
+              <div className="py-12 text-center text-xs text-[#716B64]">
                 <span className="text-3xl block mb-2">👥</span>
                 No customers registered yet. When diners scan your QR code at tables, they appear here live!
               </div>
             ) : (
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-stone-200/80 text-[11px] font-bold text-stone-400 uppercase">
+                  <tr className="border-b border-[#E8DFD1] text-[10px] font-bold text-[#716B64] uppercase tracking-wider">
                     <th className="py-2.5">Name</th>
                     <th className="py-2.5">Phone</th>
                     <th className="py-2.5 text-center">Visits</th>
                     <th className="py-2.5 text-center">Stamps</th>
+                    <th className="py-2.5 text-right">Last Visit</th>
                     <th className="py-2.5 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-stone-100">
+                <tbody className="divide-y divide-[#E8DFD1]/50">
                   {displayCustomers.map((c) => (
-                    <tr key={c.id} className="hover:bg-stone-50/60 transition">
-                      <td className="py-3 font-semibold text-stone-900">
+                    <tr key={c.id} className="hover:bg-[#FAF7F2] transition">
+                      <td className="py-3 font-semibold text-[#24211E]">
                         <div className="flex items-center gap-2">
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[10px] font-bold text-amber-900">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FAF5ED] text-[10px] font-bold text-[#7A5826] border border-[#E8D8BA]">
                             {c.name.slice(0, 1).toUpperCase()}
                           </span>
                           <span className="truncate">{c.name}</span>
                         </div>
-                        {c.activeRewards && c.activeRewards.length > 0 && (
-                          <div className="mt-1">
-                            <span
-                              onClick={() => {
-                                setRedeemVoucherCode(c.activeRewards![0].code);
-                                const el = document.getElementById("redeem-tool");
-                                el?.scrollIntoView({ behavior: "smooth" });
-                              }}
-                              className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-900 hover:bg-amber-200 cursor-pointer"
-                              title={`Click to redeem voucher: ${c.activeRewards[0].code}`}
-                            >
-                              🎁 Voucher Ready: {c.activeRewards[0].code}
-                            </span>
-                          </div>
-                        )}
                       </td>
-                      <td className="py-3 font-mono text-stone-600">+91 {c.phone}</td>
-                      <td className="py-3 text-center font-bold text-stone-800">{c.visits}</td>
+                      <td className="py-3 font-mono text-[#716B64]">+91 {c.phone}</td>
+                      <td className="py-3 text-center font-bold text-[#24211E]">{c.visits}</td>
                       <td className="py-3 text-center">
-                        <span className="inline-block rounded-md bg-amber-50 border border-amber-200 px-2 py-0.5 font-bold text-amber-900">
+                        <span className="inline-block rounded-md bg-[#FAF5ED] border border-[#E8D8BA] px-2 py-0.5 font-bold text-[#7A5826]">
                           ☕ {c.stamps}/{stampsRequired}
                         </span>
                       </td>
+                      <td className="py-3 text-right text-[11px] text-[#716B64]">{c.lastVisit}</td>
                       <td className="py-3 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <span className="text-[11px] text-stone-400 hidden sm:inline">{c.lastVisit}</span>
-                          <button
-                            onClick={() => handleQuickStamp(c.phone, c.name)}
-                            disabled={quickStampLoadingPhone === c.phone}
-                            className="rounded-lg bg-stone-900 hover:bg-stone-800 text-white px-2.5 py-1 text-[11px] font-bold shadow-2xs transition active:scale-95 disabled:opacity-50"
-                            title="Directly award 1 stamp to this customer"
-                          >
-                            {quickStampLoadingPhone === c.phone ? "..." : "+1 Stamp"}
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => handleQuickStamp(c.phone, c.name)}
+                          disabled={quickStampLoadingPhone === c.phone}
+                          className="rounded-lg bg-[#B58A4B] hover:bg-[#9E7438] text-white px-2.5 py-1 text-[11px] font-bold shadow-2xs transition active:scale-95 disabled:opacity-50"
+                        >
+                          {quickStampLoadingPhone === c.phone ? "..." : "+1 Stamp"}
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -945,55 +887,40 @@ export function LoyaltySettingsView({
         </div>
 
         {/* Recent Activity Timeline Feed */}
-        <div className="rounded-2xl border border-stone-200/80 bg-white p-5 shadow-xs">
-          <div className="border-b border-stone-100 pb-3 flex items-center justify-between">
+        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-6 shadow-subtle">
+          <div className="border-b border-[#E8DFD1]/60 pb-3 flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-bold text-stone-900">Recent Activity</h3>
-              <p className="text-[11px] text-stone-400">Live timeline of stamps &amp; offers</p>
+              <h3 className="font-serif text-base font-bold text-[#24211E]">Recent Activity</h3>
+              <p className="text-[11px] text-[#716B64]">Live timeline of stamps &amp; offers</p>
             </div>
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#EEF6F2] px-2 py-0.5 text-[10px] font-semibold text-[#2E6B4F] border border-[#D1E7DC]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#2E6B4F] animate-pulse" />
               Live
             </span>
           </div>
 
-          <div className="mt-4 space-y-3 max-h-80 overflow-y-auto pr-1">
+          <div className="mt-4 space-y-2.5 max-h-80 overflow-y-auto pr-1">
             {displayActivity.length === 0 ? (
-              <div className="py-12 text-center text-xs text-stone-400">
+              <div className="py-12 text-center text-xs text-[#716B64]">
                 <span className="text-3xl block mb-2">📜</span>
-                No activity recorded yet. Customer visit stamps, requests, approvals, and voucher redemptions will appear here live.
+                No activity recorded yet.
               </div>
             ) : (
               displayActivity.map((act) => (
-                <div key={act.id} className="flex items-start gap-2.5 p-2 rounded-xl bg-stone-50/70 border border-stone-100 text-xs hover:bg-stone-100/70 transition">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white border border-stone-200 text-sm shadow-2xs">
+                <div key={act.id} className="flex items-start gap-2.5 p-2.5 rounded-xl bg-[#FAF7F2] border border-[#E8DFD1] text-xs hover:bg-[#F4ECE1] transition">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white border border-[#E8DFD1] text-sm shadow-2xs">
                     {act.icon || (act.stampsCount && act.stampsCount > 0 ? "☕" : "🎁")}
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
-                      <span className="font-bold text-stone-900 truncate">
+                      <span className="font-bold text-[#24211E] truncate">
                         {act.title || act.customerName || act.customer?.name || act.customerPhone}
                       </span>
-                      {act.badge && (
-                        <span className={`shrink-0 rounded-full px-1.5 py-0.2 text-[9px] font-bold ${
-                          act.badgeColor === "emerald"
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : act.badgeColor === "rose"
-                            ? "bg-rose-50 text-rose-700 border border-rose-200"
-                            : act.badgeColor === "purple"
-                            ? "bg-purple-50 text-purple-700 border border-purple-200"
-                            : "bg-amber-50 text-amber-800 border border-amber-200"
-                        }`}>
-                          {act.badge}
-                        </span>
-                      )}
                     </div>
-                    <p className="text-[11px] text-stone-600 truncate mt-0.5">
-                      {act.description || (act.stampsCount && act.stampsCount > 0 ? `Earned stamp (${act.billReference || "visit"})` : "Offer activity")}
+                    <p className="text-[11px] text-[#716B64] truncate mt-0.5">
+                      {act.description || (act.stampsCount && act.stampsCount > 0 ? `Earned a stamp (${act.billReference || "visit"})` : "Offer activity")}
                     </p>
-                    <div className="flex items-center gap-1.5 text-[10px] text-stone-400 mt-1">
-                      <span className="truncate">{act.customerName || act.customer?.name || act.customerPhone}</span>
-                      <span>•</span>
+                    <div className="flex items-center gap-1.5 text-[10px] text-[#716B64]/70 mt-1">
                       <span>{new Date(act.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                     </div>
                   </div>
@@ -1005,20 +932,17 @@ export function LoyaltySettingsView({
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          COUNTER TOOLS: Staff Stamp Issuance & 1-Click Voucher Redeem
+          COUNTER TOOLS: Staff Stamp Issuance & Voucher Redeem
       ───────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {/* Tool 1: Staff Stamp Tool */}
-        <div className="rounded-2xl border border-stone-200/90 bg-white p-5 shadow-xs space-y-4">
-          <div className="border-b border-stone-100 pb-3">
+        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-6 shadow-subtle space-y-4">
+          <div className="border-b border-[#E8DFD1]/60 pb-3">
             <div className="flex items-center gap-2">
               <span className="text-lg">⚡</span>
-              <h3 className="text-sm font-bold text-stone-900">Staff Stamp Tool</h3>
-              <span className="rounded-full bg-emerald-100 px-2 py-0.2 text-[10px] font-bold text-emerald-800">
-                Staff Counter
-              </span>
+              <h3 className="font-serif text-base font-bold text-[#24211E]">Staff Stamp Tool</h3>
             </div>
-            <p className="text-xs text-stone-500">
+            <p className="text-xs text-[#716B64]">
               Verify customer visit and award a loyalty stamp on qualifying bill.
             </p>
           </div>
@@ -1026,21 +950,21 @@ export function LoyaltySettingsView({
           <form onSubmit={handleIssueStamp} className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-500 mb-1">
+                <label className="block text-[11px] font-semibold text-[#716B64] mb-1">
                   Customer Mobile / ID *
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. 9876543210 or anon_..."
+                  placeholder="e.g. 9876543210"
                   value={stampCustomerRef}
                   onChange={(e) => setStampCustomerRef(e.target.value)}
-                  className="w-full rounded-xl border border-stone-200 bg-stone-50/50 px-3 py-2 text-xs font-medium text-stone-900 outline-none focus:border-stone-800 focus:bg-white"
+                  className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] px-3.5 py-2 text-xs font-medium text-[#24211E] outline-none focus:border-[#B58A4B] focus:bg-white"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-500 mb-1">
+                <label className="block text-[11px] font-semibold text-[#716B64] mb-1">
                   Invoice / Bill Ref *
                 </label>
                 <input
@@ -1048,7 +972,7 @@ export function LoyaltySettingsView({
                   placeholder="e.g. INV-1042"
                   value={stampVisitRef}
                   onChange={(e) => setStampVisitRef(e.target.value)}
-                  className="w-full rounded-xl border border-stone-200 bg-stone-50/50 px-3 py-2 text-xs font-medium text-stone-900 outline-none focus:border-stone-800 focus:bg-white"
+                  className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] px-3.5 py-2 text-xs font-medium text-[#24211E] outline-none focus:border-[#B58A4B] focus:bg-white"
                   required
                 />
               </div>
@@ -1058,8 +982,8 @@ export function LoyaltySettingsView({
               <div
                 className={`rounded-xl border p-2.5 text-xs font-semibold ${
                   stampFeedback.type === "success"
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                    : "border-rose-200 bg-rose-50 text-rose-800"
+                    ? "border-[#D1E7DC] bg-[#EEF6F2] text-[#2E6B4F]"
+                    : "border-[#F7D6D6] bg-[#FDF2F2] text-[#A83B3B]"
                 }`}
               >
                 {stampFeedback.message}
@@ -1069,7 +993,7 @@ export function LoyaltySettingsView({
             <button
               type="submit"
               disabled={stampLoading}
-              className="rounded-xl bg-stone-900 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-stone-800 transition disabled:opacity-60"
+              className="rounded-xl bg-[#24211E] px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-stone-800 transition disabled:opacity-60"
             >
               {stampLoading ? "Recording Visit..." : "⚡ Award 1 Stamp"}
             </button>
@@ -1077,28 +1001,28 @@ export function LoyaltySettingsView({
         </div>
 
         {/* Tool 2: Staff Voucher Redemption Tool */}
-        <div id="redeem-tool" className="rounded-2xl border border-stone-200/90 bg-white p-5 shadow-xs space-y-4">
-          <div className="border-b border-stone-100 pb-3">
+        <div id="redeem-tool" className="rounded-2xl border border-[#E8DFD1] bg-white p-6 shadow-subtle space-y-4">
+          <div className="border-b border-[#E8DFD1]/60 pb-3">
             <div className="flex items-center gap-2">
               <span className="text-lg">🎟️</span>
-              <h3 className="text-sm font-bold text-stone-900">Voucher Redemption Tool</h3>
+              <h3 className="font-serif text-base font-bold text-[#24211E]">Voucher Redemption Tool</h3>
             </div>
-            <p className="text-xs text-stone-500">
+            <p className="text-xs text-[#716B64]">
               Enter customer&apos;s voucher code or scan QR to mark reward as redeemed.
             </p>
           </div>
 
           <form onSubmit={handleRedeemVoucher} className="space-y-3">
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-500 mb-1">
+              <label className="block text-[11px] font-semibold text-[#716B64] mb-1">
                 Voucher Code *
               </label>
               <input
                 type="text"
-                placeholder="e.g. OFFER-1234X / DBR-7F3K"
+                placeholder="e.g. DBR-7F3K-9L2M"
                 value={redeemVoucherCode}
                 onChange={(e) => setRedeemVoucherCode(e.target.value)}
-                className="w-full rounded-xl border border-stone-200 bg-stone-50/50 px-3 py-2 text-xs font-mono font-bold text-stone-900 outline-none focus:border-stone-800 focus:bg-white uppercase"
+                className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] px-3.5 py-2 text-xs font-mono font-bold text-[#24211E] outline-none focus:border-[#B58A4B] focus:bg-white uppercase"
                 required
               />
             </div>
@@ -1107,8 +1031,8 @@ export function LoyaltySettingsView({
               <div
                 className={`rounded-xl border p-2.5 text-xs font-semibold ${
                   redeemFeedback.type === "success"
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                    : "border-rose-200 bg-rose-50 text-rose-800"
+                    ? "border-[#D1E7DC] bg-[#EEF6F2] text-[#2E6B4F]"
+                    : "border-[#F7D6D6] bg-[#FDF2F2] text-[#A83B3B]"
                 }`}
               >
                 {redeemFeedback.message}
@@ -1118,7 +1042,7 @@ export function LoyaltySettingsView({
             <button
               type="submit"
               disabled={redeemLoading}
-              className="rounded-xl bg-amber-700 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-amber-800 transition disabled:opacity-60"
+              className="rounded-xl bg-[#B58A4B] px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-[#9E7438] transition disabled:opacity-60"
             >
               {redeemLoading ? "Redeeming..." : "Redeem Voucher Discount"}
             </button>
@@ -1127,33 +1051,35 @@ export function LoyaltySettingsView({
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          SECTION 4: LOYALTY PROGRAM SETTINGS (Exact match to mockup)
+          SECTION 4: LOYALTY PROGRAM SETTINGS (Matching Mockup Right Panel)
       ───────────────────────────────────────────────────────────── */}
-      <div className="rounded-3xl border border-stone-200/90 bg-white p-6 shadow-sm">
-        <div className="border-b border-stone-100 pb-4">
+      <div className="rounded-3xl border border-[#E8DFD1] bg-white p-6 shadow-subtle">
+        <div className="border-b border-[#E8DFD1]/60 pb-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-serif text-lg font-bold text-stone-900">Create / Edit Program</h2>
-              <p className="text-xs text-stone-500 mt-0.5">
-                Fully customizable for your restaurant.
+              <h2 className="font-serif text-xl font-bold text-[#24211E]">Loyalty Program Settings</h2>
+              <p className="text-xs text-[#716B64] mt-0.5">
+                Fully customizable for each business.
               </p>
             </div>
             <label className="flex items-center gap-2 cursor-pointer">
-              <span className="text-xs font-bold text-stone-700">Program Active</span>
+              <span className="text-xs font-bold text-[#24211E]">Program Active</span>
               <input
                 type="checkbox"
                 checked={isActive}
                 onChange={(e) => setIsActive(e.target.checked)}
-                className="h-4 w-4 rounded text-amber-600 focus:ring-0"
+                className="h-4 w-4 rounded text-[#B58A4B] accent-[#B58A4B] focus:ring-0"
               />
             </label>
           </div>
         </div>
 
         <form onSubmit={handleSaveProgram} className="mt-6 space-y-5">
+          <h3 className="font-serif text-sm font-bold text-[#24211E]">Create / Edit Program</h3>
+
           {/* Field 1: Program Name */}
           <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1.5">
+            <label className="block text-xs font-semibold text-[#716B64] mb-1.5">
               Program Name
             </label>
             <input
@@ -1161,7 +1087,7 @@ export function LoyaltySettingsView({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. The Daily Brew Rewards"
-              className="w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-xs font-semibold text-stone-900 outline-none focus:border-stone-800 shadow-2xs"
+              className="w-full rounded-xl border border-[#E8DFD1] bg-white px-4 py-2.5 text-xs font-semibold text-[#24211E] outline-none focus:border-[#B58A4B] shadow-2xs"
               required
             />
           </div>
@@ -1169,10 +1095,10 @@ export function LoyaltySettingsView({
           {/* Field 2: Stamps Required (Slider + Number) */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold text-stone-700">
+              <label className="text-xs font-semibold text-[#716B64]">
                 Stamps Required
               </label>
-              <span className="rounded-lg bg-amber-100 px-2.5 py-0.5 text-xs font-black text-amber-900">
+              <span className="rounded-lg bg-[#FAF5ED] border border-[#E8D8BA] px-2.5 py-0.5 text-xs font-bold text-[#7A5826]">
                 ☕ {stampsRequired} Stamps
               </span>
             </div>
@@ -1182,10 +1108,10 @@ export function LoyaltySettingsView({
               max={15}
               value={stampsRequired}
               onChange={(e) => setStampsRequired(Number(e.target.value))}
-              className="w-full accent-amber-700 cursor-pointer"
+              className="w-full accent-[#B58A4B] cursor-pointer"
             />
-            <div className="flex justify-between text-[10px] text-stone-400 mt-1">
-              <span>1 stamp (instant)</span>
+            <div className="flex justify-between text-[10px] text-[#716B64]/70 mt-1">
+              <span>1 stamp</span>
               <span>5 stamps (recommended)</span>
               <span>15 stamps</span>
             </div>
@@ -1193,17 +1119,16 @@ export function LoyaltySettingsView({
 
           {/* Field 3: Reward Type (Radio Buttons from Mockup) */}
           <div>
-            <label className="block text-xs font-bold text-stone-700 mb-2">
+            <label className="block text-xs font-semibold text-[#716B64] mb-2">
               Reward Type
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* Radio 1: Percentage Discount */}
               <label
                 onClick={() => handleTypeChange("PERCENT")}
                 className={`flex items-center gap-2.5 rounded-xl border p-3 cursor-pointer transition ${
                   discountType === "PERCENT"
-                    ? "border-amber-600 bg-amber-50/50 shadow-2xs"
-                    : "border-stone-200 bg-stone-50/50 hover:bg-stone-50"
+                    ? "border-[#B58A4B] bg-[#FAF5ED] shadow-2xs"
+                    : "border-[#E8DFD1] bg-[#FAF7F2] hover:bg-[#F2ECE1]"
                 }`}
               >
                 <input
@@ -1211,18 +1136,17 @@ export function LoyaltySettingsView({
                   name="discountType"
                   checked={discountType === "PERCENT"}
                   onChange={() => handleTypeChange("PERCENT")}
-                  className="accent-amber-700"
+                  className="accent-[#B58A4B]"
                 />
-                <span className="text-xs font-semibold text-stone-800">Percentage Discount (%)</span>
+                <span className="text-xs font-semibold text-[#24211E]">Percentage Discount</span>
               </label>
 
-              {/* Radio 2: Fixed Discount */}
               <label
                 onClick={() => handleTypeChange("FLAT")}
                 className={`flex items-center gap-2.5 rounded-xl border p-3 cursor-pointer transition ${
                   discountType === "FLAT"
-                    ? "border-amber-600 bg-amber-50/50 shadow-2xs"
-                    : "border-stone-200 bg-stone-50/50 hover:bg-stone-50"
+                    ? "border-[#B58A4B] bg-[#FAF5ED] shadow-2xs"
+                    : "border-[#E8DFD1] bg-[#FAF7F2] hover:bg-[#F2ECE1]"
                 }`}
               >
                 <input
@@ -1230,18 +1154,17 @@ export function LoyaltySettingsView({
                   name="discountType"
                   checked={discountType === "FLAT"}
                   onChange={() => handleTypeChange("FLAT")}
-                  className="accent-amber-700"
+                  className="accent-[#B58A4B]"
                 />
-                <span className="text-xs font-semibold text-stone-800">Fixed Discount (₹)</span>
+                <span className="text-xs font-semibold text-[#24211E]">Fixed Discount (₹)</span>
               </label>
 
-              {/* Radio 3: Free Item */}
               <label
                 onClick={() => handleTypeChange("FREE_ITEM")}
                 className={`flex items-center gap-2.5 rounded-xl border p-3 cursor-pointer transition ${
                   discountType === "FREE_ITEM"
-                    ? "border-amber-600 bg-amber-50/50 shadow-2xs"
-                    : "border-stone-200 bg-stone-50/50 hover:bg-stone-50"
+                    ? "border-[#B58A4B] bg-[#FAF5ED] shadow-2xs"
+                    : "border-[#E8DFD1] bg-[#FAF7F2] hover:bg-[#F2ECE1]"
                 }`}
               >
                 <input
@@ -1249,9 +1172,9 @@ export function LoyaltySettingsView({
                   name="discountType"
                   checked={discountType === "FREE_ITEM"}
                   onChange={() => handleTypeChange("FREE_ITEM")}
-                  className="accent-amber-700"
+                  className="accent-[#B58A4B]"
                 />
-                <span className="text-xs font-semibold text-stone-800">Free Item 🥐</span>
+                <span className="text-xs font-semibold text-[#24211E]">Free Item</span>
               </label>
             </div>
           </div>
@@ -1259,7 +1182,7 @@ export function LoyaltySettingsView({
           {/* Fields 4, 5, 6: Discount Value, Validity, Minimum Spend */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1.5">
+              <label className="block text-xs font-semibold text-[#716B64] mb-1.5">
                 Discount Value {discountType === "PERCENT" ? "(%)" : discountType === "FLAT" ? "(₹)" : ""}
               </label>
               <input
@@ -1268,13 +1191,13 @@ export function LoyaltySettingsView({
                 max={discountType === "PERCENT" ? 100 : 50000}
                 value={rewardDiscountVal}
                 onChange={(e) => setRewardDiscountVal(Number(e.target.value))}
-                className="w-full rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-stone-900 outline-none focus:border-stone-800 shadow-2xs"
+                className="w-full rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-2.5 text-xs font-semibold text-[#24211E] outline-none focus:border-[#B58A4B] shadow-2xs"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1.5">
+              <label className="block text-xs font-semibold text-[#716B64] mb-1.5">
                 Reward Validity (Days)
               </label>
               <input
@@ -1283,14 +1206,14 @@ export function LoyaltySettingsView({
                 max={365}
                 value={rewardExpiryDays}
                 onChange={(e) => setRewardExpiryDays(Number(e.target.value))}
-                className="w-full rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-stone-900 outline-none focus:border-stone-800 shadow-2xs"
+                className="w-full rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-2.5 text-xs font-semibold text-[#24211E] outline-none focus:border-[#B58A4B] shadow-2xs"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1.5">
-                Minimum Spend (Optional) (₹)
+              <label className="block text-xs font-semibold text-[#716B64] mb-1.5">
+                Minimum Spend (Optional)
               </label>
               <input
                 type="number"
@@ -1298,14 +1221,14 @@ export function LoyaltySettingsView({
                 value={minBillRupees}
                 onChange={(e) => setMinBillRupees(Number(e.target.value))}
                 placeholder="0"
-                className="w-full rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-stone-900 outline-none focus:border-stone-800 shadow-2xs"
+                className="w-full rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-2.5 text-xs font-semibold text-[#24211E] outline-none focus:border-[#B58A4B] shadow-2xs"
               />
             </div>
           </div>
 
           {/* Reward Display Title */}
           <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1.5">
+            <label className="block text-xs font-semibold text-[#716B64] mb-1.5">
               Reward Headline shown to Diners
             </label>
             <input
@@ -1313,30 +1236,29 @@ export function LoyaltySettingsView({
               value={rewardTitle}
               onChange={(e) => setRewardTitle(e.target.value)}
               placeholder="e.g. 30% OFF on your next visit"
-              className="w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-xs font-semibold text-stone-900 outline-none focus:border-stone-800 shadow-2xs"
+              className="w-full rounded-xl border border-[#E8DFD1] bg-white px-4 py-2.5 text-xs font-semibold text-[#24211E] outline-none focus:border-[#B58A4B] shadow-2xs"
               required
             />
           </div>
 
           {saveSuccess && (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-bold text-emerald-800">
+            <div className="rounded-xl border border-[#D1E7DC] bg-[#EEF6F2] p-3 text-xs font-bold text-[#2E6B4F]">
               ✅ {saveSuccess}
             </div>
           )}
 
           {saveError && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800">
+            <div className="rounded-xl border border-[#F7D6D6] bg-[#FDF2F2] p-3 text-xs font-bold text-[#A83B3B]">
               ❌ {saveError}
             </div>
           )}
 
-          {/* Button: Save Program */}
+          {/* Button: Save Program (Muted Gold matching Mockup) */}
           <div className="pt-2">
             <button
               type="submit"
               disabled={saving}
-              className="rounded-2xl px-7 py-3 text-xs font-bold text-white shadow-md hover:brightness-105 active:scale-[0.98] transition disabled:opacity-60"
-              style={{ backgroundColor: "#8C5A2B" }}
+              className="w-full sm:w-auto rounded-2xl bg-[#B58A4B] px-8 py-3 text-xs font-bold text-white shadow-xs hover:bg-[#9E7438] active:scale-[0.98] transition disabled:opacity-60"
             >
               {saving ? "Saving Program..." : "Save Program"}
             </button>

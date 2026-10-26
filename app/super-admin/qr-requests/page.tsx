@@ -50,35 +50,37 @@ export default async function SuperAdminQrRequestsPage({
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold text-ink flex items-center gap-3">
+          <h1 className="font-serif text-3xl font-bold tracking-tight text-[#24211E] flex items-center gap-3">
             QR Requests
             {pendingCount > 0 && (
-              <span className="inline-flex h-6 px-2.5 items-center justify-center rounded-full bg-amber-500 text-white text-xs font-bold">
+              <span className="inline-flex h-6 px-2.5 items-center justify-center rounded-full bg-[#B58A4B] text-white text-xs font-bold">
                 {pendingCount} Pending
               </span>
             )}
           </h1>
-          <p className="mt-1 text-sm text-ink/70">
+          <p className="mt-1 text-sm text-[#716B64]">
             Review restaurant QR requests. QR codes are created only after payment is confirmed.
           </p>
         </div>
         <div className="flex gap-2 text-xs">
-          <div className="rounded-lg border border-line bg-white px-3 py-1.5 text-center">
-            <span className="text-ink/60 block">Total</span>
-            <span className="font-semibold text-ink">{qrRequests.length}</span>
+          <div className="rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-1.5 text-center shadow-xs">
+            <span className="text-[#716B64] block">Total</span>
+            <span className="font-bold text-[#24211E]">{qrRequests.length}</span>
           </div>
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-center">
-            <span className="text-amber-800/70 block">Pending</span>
-            <span className="font-semibold text-amber-900">{pendingCount}</span>
+          <div className="rounded-xl border border-[#E8DFD1] bg-[#FAF5ED] px-3.5 py-1.5 text-center shadow-xs">
+            <span className="text-[#B58A4B] block font-medium">Pending</span>
+            <span className="font-bold text-[#B58A4B]">{pendingCount}</span>
           </div>
-          <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-center">
-            <span className="text-blue-800/70 block">Approved</span>
-            <span className="font-semibold text-blue-900">{approvedCount}</span>
+          <div className="rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-1.5 text-center shadow-xs">
+            <span className="text-[#716B64] block">Approved</span>
+            <span className="font-semibold text-[#24211E]">{approvedCount}</span>
           </div>
-          <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-center">
-            <span className="text-rose-800/70 block">Rejected</span>
-            <span className="font-semibold text-rose-900">{rejectedCount}</span>
-          </div>
+          {rejectedCount > 0 && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-1.5 text-center shadow-xs">
+              <span className="text-rose-800/70 block">Rejected</span>
+              <span className="font-semibold text-rose-900">{rejectedCount}</span>
+            </div>
+          )}
         </div>
       </div>
 

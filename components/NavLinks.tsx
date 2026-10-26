@@ -20,15 +20,15 @@ export function NavLinks({ links }: { links: NavItem[] }) {
           <Link
             key={href}
             href={href}
-            className={`flex items-center justify-between whitespace-nowrap rounded-lg px-3 py-2 text-sm transition ${
+            className={`flex items-center justify-between whitespace-nowrap rounded-xl px-3.5 py-2.5 text-sm font-medium transition ${
               isActive
-                ? "bg-leaf/10 font-semibold text-leaf"
-                : "text-ink/80 hover:bg-paper hover:text-ink"
+                ? "bg-[#B58A4B] text-white shadow-xs font-semibold"
+                : "text-stone-300 hover:bg-stone-800 hover:text-white"
             }`}
           >
             <span>{label}</span>
             {badge != null && Number(badge) > 0 && (
-              <span className="ml-1.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-bold text-white shadow-sm">
+              <span className="ml-1.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#B58A4B] px-1.5 text-[11px] font-bold text-white shadow-2xs">
                 {badge}
               </span>
             )}

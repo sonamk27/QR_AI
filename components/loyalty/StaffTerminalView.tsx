@@ -14,7 +14,6 @@ export type TerminalProgramInfo = {
 };
 
 export function StaffTerminalView({
-  restaurant,
   slug,
 }: {
   restaurant: {
@@ -26,27 +25,26 @@ export function StaffTerminalView({
   initialProgram?: TerminalProgramInfo;
 }) {
   return (
-    <div className="mx-auto max-w-md p-6 text-center bg-white rounded-3xl border border-stone-200 shadow-sm space-y-4">
+    <div className="mx-auto max-w-md p-6 text-center bg-white rounded-3xl border border-[#E8DFD1] shadow-sm space-y-4">
       <div className="text-4xl">⚡</div>
-      <h2 className="text-lg font-bold text-stone-900">
+      <h2 className="text-lg font-serif font-bold text-[#24211E]">
         Staff Terminal Retired
       </h2>
-      <p className="text-xs text-stone-600 leading-relaxed">
+      <p className="text-xs text-[#716B64] leading-relaxed">
         Staff terminal login and counter PIN have been replaced with direct dynamic offers. Diners receive dynamic discounts automatically on qualifying bill amounts without requiring staff counter login.
       </p>
       <div className="pt-2 flex flex-col gap-2">
         {slug && (
           <Link
             href={`/r/${slug}/loyalty`}
-            className="w-full rounded-xl py-2.5 text-xs font-bold text-white shadow-xs"
-            style={{ backgroundColor: restaurant.brandColor || "#1F6F5C" }}
+            className="w-full rounded-xl py-2.5 text-xs font-bold text-white shadow-xs bg-[#B58A4B] hover:bg-[#9E7438] transition"
           >
             Open Customer Offer Card →
           </Link>
         )}
         <Link
           href="/dashboard/loyalty"
-          className="w-full rounded-xl border border-stone-200 bg-stone-50 py-2.5 text-xs font-bold text-stone-700 hover:bg-stone-100"
+          className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF5ED] py-2.5 text-xs font-bold text-[#24211E] hover:bg-[#F4ECDD] transition"
         >
           Manage Dynamic Offers in Dashboard →
         </Link>

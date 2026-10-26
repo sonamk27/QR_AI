@@ -2,16 +2,70 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
-body { @apply bg-paper text-ink font-sans antialiased; }
-h1, h2, h3 { @apply font-display; }
-:focus-visible { outline: 2px solid #1F6F5C; outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+:root {
+  color-scheme: light;
+  --bg-ivory: #F7F2E9;
+  --text-charcoal: #24211E;
+  --accent-gold: #B58A4B;
+  --border-warm: #E8DFD1;
+}
 
-.btn { @apply inline-flex items-center justify-center rounded-lg bg-ink px-4 py-2.5 text-sm font-medium text-white transition hover:bg-leaf disabled:opacity-50; }
-.btn-ghost { @apply inline-flex items-center justify-center rounded-lg border border-line bg-white px-4 py-2.5 text-sm font-medium text-ink transition hover:border-ink disabled:opacity-50; }
-.input { @apply w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-leaf; }
-.label { @apply mb-1 block text-sm font-medium; }
-.panel { @apply rounded-xl border border-line bg-white; }
-.th { @apply px-4 py-2.5 text-left text-xs font-medium text-ink/60; }
-.td { @apply px-4 py-3 text-sm; }
+body {
+  background-color: #F7F2E9;
+  color: #24211E;
+  font-family: var(--font-body), "DM Sans", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, .font-serif {
+  font-family: var(--font-display), "Playfair Display", Georgia, serif;
+}
+
+:focus-visible {
+  outline: 2px solid #B58A4B;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Primary Button: Muted Gold with high-contrast readable white text */
+.btn {
+  @apply inline-flex items-center justify-center rounded-xl bg-gold px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-gold-600 active:scale-[0.98] disabled:opacity-50;
+}
+
+/* Secondary / Ghost Button: White or Ivory with subtle warm border */
+.btn-ghost, .btn-secondary {
+  @apply inline-flex items-center justify-center rounded-xl border border-warmBorder bg-white px-4 py-2.5 text-sm font-medium text-charcoal shadow-sm transition hover:bg-ivory-50 hover:border-gold-300 active:scale-[0.98] disabled:opacity-50;
+}
+
+/* Dark Charcoal Button */
+.btn-dark {
+  @apply inline-flex items-center justify-center rounded-xl bg-charcoal px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-charcoal-800 active:scale-[0.98] disabled:opacity-50;
+}
+
+/* Form inputs: Warm beige border, white surface, accessible gold focus ring */
+.input {
+  @apply w-full rounded-xl border border-warmBorder bg-white px-3.5 py-2.5 text-sm text-charcoal outline-none transition placeholder:text-warmGray/60 focus:border-gold focus:ring-1 focus:ring-gold;
+}
+
+.label {
+  @apply mb-1.5 block text-xs font-semibold uppercase tracking-wider text-warmGray;
+}
+
+/* Cards and panels: White background, subtle warm beige border, soft shadow */
+.panel {
+  @apply rounded-2xl border border-warmBorder bg-white shadow-subtle;
+}
+
+.th {
+  @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-warmGray;
+}
+
+.td {
+  @apply px-4 py-3.5 text-sm text-charcoal;
+}

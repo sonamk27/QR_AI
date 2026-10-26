@@ -15,12 +15,12 @@ export function SuperAdminLayoutShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-slate-50/50 md:grid md:grid-cols-[240px_1fr]">
+    <div className="min-h-screen bg-[#F7F2E9] md:grid md:grid-cols-[250px_1fr]">
       <SuperAdminSidebar
         admin={admin}
         pendingRequestsCount={pendingRequestsCount}
       />
-      <main className="mx-auto w-full max-w-7xl p-5 md:p-8">
+      <main className="mx-auto w-full max-w-7xl p-5 md:p-8 text-[#24211E]">
         {children}
       </main>
     </div>
