@@ -67,28 +67,6 @@ type CustomerData = {
   transactions: TransactionItem[];
 };
 
-function questionsForRating(rating: number) {
-  if (rating <= 2) {
-    return [
-      { question: "What affected your visit most?", options: ["Food", "Service", "Wait time", "Cleanliness", "Value"] },
-      { question: "What could be improved first?", options: ["Food", "Service", "Speed", "Atmosphere", "Value"] },
-      { question: "Would you visit again?", options: ["Yes, after changes", "Maybe", "Not likely"] },
-    ];
-  }
-  if (rating === 3) {
-    return [
-      { question: "What stood out during your visit?", options: ["Food", "Staff", "Atmosphere", "Speed", "Value"] },
-      { question: "What could be better?", options: ["Food", "Service", "Wait time", "Atmosphere", "Value"] },
-      { question: "What would make you return?", options: ["Better food", "Faster service", "Better value", "More choice"] },
-    ];
-  }
-  return [
-    { question: "What did you enjoy most?", options: ["Food", "Drinks", "Friendly staff", "Atmosphere", "Quick service"] },
-    { question: "What made the visit memorable?", options: ["A great meal", "Warm welcome", "Lovely setting", "Quick service", "Good value"] },
-    { question: "Who would you recommend it to?", options: ["Friends", "Family", "A date", "Food lovers"] },
-  ];
-}
-
 export function CustomerJourneyView({
   slug,
   restaurant,
@@ -125,8 +103,7 @@ export function CustomerJourneyView({
   const collectLockRef = useRef(false);
 
   // Review & AI Assist State (Step 7: Share Your Experience)
-  const [starRating, setStarRating] = useState<number>(0);
-  const [reviewAnswers, setReviewAnswers] = useState<string[]>([]);
+  const [reviewRatings, setReviewRatings] = useState<[number, number, number]>([0, 0, 0]);
   const [aiDraft, setAiDraft] = useState("");
   const [generatingAi, setGeneratingAi] = useState(false);
   const [reviewGenerationError, setReviewGenerationError] = useState("");
@@ -413,6 +390,8 @@ export function CustomerJourneyView({
 
   // Step 7 Handler: AI Review Generator
   async function handleGenerateAiReview() {
+    const [foodRating, serviceRating, atmosphereRating] = reviewRatings;
+    const starRating = Math.round((foodRating + serviceRating + atmosphereRating) / 3);
     if (starRating < 1 || starRating > 5) return;
     setGeneratingAi(true);
     setReviewGenerationError("");
@@ -428,7 +407,9 @@ export function CustomerJourneyView({
           // first-time review generation to fail schema validation (400).
           sessionId: reviewSessionId || undefined,
           overall: starRating,
-          chips: reviewAnswers,
+          food: foodRating,
+          service: serviceRating,
+          chips: [`Atmosphere rating: ${atmosphereRating}/5`],
           variant,
           variationId: typeof crypto !== "undefined" && "randomUUID" in crypto
             ? crypto.randomUUID()
@@ -1188,66 +1169,36 @@ export function CustomerJourneyView({
             </p>
 
             <div className="my-5">
-              <p className="mb-2 text-sm font-semibold text-[#24211E]">How was your overall experience?</p>
-              <Stars
-                value={starRating}
-                onChange={(rating) => {
-                  setStarRating(rating);
-                  setReviewAnswers([]);
-                  setAiGenerated(false);
-                  setAiDraft("");
-                  setReviewGenerationError("");
-                }}
-                label="Rate your overall experience from 1 to 5 stars"
-              />
-              <p className="mt-1.5 text-[11px] text-[#716B64]" aria-live="polite">
-                {starRating === 0 ? "Choose 1 to 5 stars to continue." : `Your rating: ${starRating} out of 5`}
+              <p className="mb-3 text-sm font-semibold text-[#24211E]">Rate these parts of your visit</p>
+              <div className="space-y-2.5 text-left">
+                {(["How was the food?", "How was the service?", "How was the atmosphere?"] as const).map((question, index) => (
+                  <div key={question} className="flex min-h-14 items-center justify-between gap-2 rounded-xl border border-[#E8DFD1] bg-white px-3 py-2">
+                    <span className="min-w-0 text-xs font-semibold text-[#24211E]">{question}</span>
+                    <Stars
+                      size={28}
+                      value={reviewRatings[index]}
+                      onChange={(rating) => {
+                        setReviewRatings((current) => {
+                          const next: [number, number, number] = [...current];
+                          next[index] = rating;
+                          return next;
+                        });
+                        setAiGenerated(false);
+                        setAiDraft("");
+                        setReviewGenerationError("");
+                      }}
+                      label={question}
+                    />
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-[11px] text-[#716B64]" aria-live="polite">
+                Choose 1 to 5 stars for each question to continue.
               </p>
             </div>
           </div>
 
           <div className="space-y-4 rounded-3xl border border-[#E8DFD1] bg-white p-5 shadow-subtle">
-            {starRating > 0 && (
-              <div className="space-y-4">
-                <p className="text-center text-sm font-semibold text-[#24211E]">
-                  A few quick questions help make your review personal.
-                </p>
-                {questionsForRating(starRating).map((item, index) => (
-                  <fieldset key={`${starRating}-${item.question}`} className="space-y-2">
-                    <legend className="mb-2 text-xs font-semibold text-[#716B64]">
-                      {index + 1}. {item.question}
-                    </legend>
-                    <div className="flex flex-wrap gap-2">
-                      {item.options.map((option) => {
-                        const selected = reviewAnswers[index] === option;
-                        return (
-                          <button
-                            key={option}
-                            type="button"
-                            aria-pressed={selected}
-                            onClick={() => {
-                              setReviewAnswers((current) => {
-                                const next = [...current];
-                                next[index] = option;
-                                return next;
-                              });
-                              setAiGenerated(false);
-                              setReviewGenerationError("");
-                            }}
-                            className={`min-h-10 rounded-full border px-3 py-2 text-xs font-semibold transition ${selected
-                              ? "border-[#24211E] bg-[#24211E] text-white"
-                              : "border-[#E8DFD1] bg-[#FAF7F2] text-[#716B64] hover:bg-[#F2ECE1]"
-                            }`}
-                          >
-                            {option}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </fieldset>
-                ))}
-              </div>
-            )}
             {aiGenerated && (
               <div>
                 <label htmlFor="generated-review" className="mb-2 block text-xs font-semibold text-[#716B64]">
@@ -1266,7 +1217,7 @@ export function CustomerJourneyView({
             {/* Button: Generate Review with AI */}
             <button
               onClick={handleGenerateAiReview}
-              disabled={generatingAi || starRating === 0 || !reviewAnswers[0] || !reviewAnswers[1] || !reviewAnswers[2]}
+              disabled={generatingAi || reviewRatings.some((rating) => rating === 0)}
               className="sticky bottom-3 z-20 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/40 bg-[#B58A4B] py-3 text-sm font-bold text-white shadow-lg transition hover:bg-[#9E7438] active:scale-[0.98] disabled:opacity-60"
               aria-live="polite"
             >
@@ -1276,9 +1227,7 @@ export function CustomerJourneyView({
                   ? "Crafting Review with AI..."
                   : aiGenerated
                     ? "Generate another draft"
-                    : !reviewAnswers[0] || !reviewAnswers[1] || !reviewAnswers[2]
-                      ? "Answer all 3 questions to continue"
-                      : "Generate Review with AI"}
+                    : "Continue"}
               </span>
             </button>
 
@@ -1288,18 +1237,6 @@ export function CustomerJourneyView({
               </p>
             )}
 
-            {restaurant.googleReviewUrl && (
-              <div className="pt-0.5 text-center">
-                <a
-                  href={restaurant.googleReviewUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] font-semibold text-[#716B64] hover:text-[#24211E] underline"
-                >
-                  Or open Google Reviews directly without AI draft ↗
-                </a>
-              </div>
-            )}
             {aiGenerated && (
               <div className="space-y-3 border-t border-[#E8DFD1] pt-4">
                 <button
@@ -1307,7 +1244,7 @@ export function CustomerJourneyView({
                   className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1A73E8] py-3.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#1557B0] active:scale-[0.98]"
                 >
                   <span className="text-sm font-black">G</span>
-                  <span>{copiedReview ? "Review Copied! Opening Google..." : "Copy & Review on Google"}</span>
+                  <span>{copiedReview ? "Review copied — opening Google..." : "Continue to Google Reviews"}</span>
                 </button>
 
                 {reviewSubmitted && (
