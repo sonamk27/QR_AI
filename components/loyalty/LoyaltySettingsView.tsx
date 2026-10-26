@@ -201,27 +201,25 @@ export function LoyaltySettingsView({
     setSaveSuccess(null);
     setSaveError(null);
 
-    const numericDiscount =
+    const rewardDiscountRupees =
       discountType === "PERCENT"
         ? Math.min(100, Math.max(1, rewardDiscountVal))
         : discountType === "FREE_ITEM"
         ? 0
-        : Math.round(rewardDiscountVal * 100);
-
-    const minBillPaise = Math.round(minBillRupees * 100);
+        : rewardDiscountVal;
 
     try {
       const res = await fetch("/api/loyalty/settings", {
-        method: "POST",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
           isActive,
           discountType,
           stampsRequired,
-          minBillAmount: minBillPaise,
+          minBillAmountRupees: minBillRupees,
           rewardTitle,
-          rewardDiscount: numericDiscount,
+          rewardDiscountRupees,
           rewardExpiryDays,
           terminalPin: program.terminalPin || "1234",
         }),
@@ -448,14 +446,14 @@ export function LoyaltySettingsView({
   const pendingPct = totalVouchers > 0 ? 100 - redeemedPct : 0;
 
   return (
-    <div className="space-y-7 font-sans pb-16">
+    <div className="min-w-0 space-y-6 pb-12 font-sans sm:space-y-7 sm:pb-16">
       {/* ─────────────────────────────────────────────────────────────
           TOP BAR: DASHBOARD TITLE & DATE FILTER (Matching Reference Mockup)
       ───────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E8DFD1] pb-4">
+      <div className="flex flex-col gap-4 border-b border-[#E8DFD1] pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="font-serif text-3xl font-bold text-[#24211E] tracking-tight">Dashboard</h1>
+            <h1 className="font-serif text-2xl font-bold tracking-tight text-[#24211E] sm:text-3xl">Dashboard</h1>
             <span className="rounded-full bg-[#EEF6F2] px-2.5 py-0.5 text-xs font-bold text-[#2E6B4F] border border-[#D1E7DC]">
               Live
             </span>
@@ -465,14 +463,14 @@ export function LoyaltySettingsView({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
           {/* Dropdown filter from mockup: "Last 30 Days ⌵" */}
           <div className="relative">
             <select
               aria-label="Filter date range"
               value={dayRange}
               onChange={(e) => setDayRange(Number(e.target.value))}
-              className="appearance-none rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-2 pr-8 text-xs font-semibold text-[#24211E] shadow-2xs outline-none cursor-pointer hover:border-[#B58A4B] transition"
+              className="min-h-11 w-full appearance-none rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-2 pr-8 text-sm font-semibold text-[#24211E] shadow-2xs outline-none transition hover:border-[#B58A4B] sm:min-h-10 sm:w-auto sm:text-xs"
             >
               <option value={7}>Last 7 Days</option>
               <option value={30}>Last 30 Days</option>
@@ -487,7 +485,7 @@ export function LoyaltySettingsView({
             <Link
               href={`/r/${qrSlug}`}
               target="_blank"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[#B58A4B] px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#9E7438] transition"
+              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-[#B58A4B] px-3.5 py-2 text-sm font-bold text-white shadow-xs transition hover:bg-[#9E7438] sm:min-h-10 sm:text-xs"
             >
               <span>📱 Customer QR Flow</span>
               <span className="text-[10px]">↗</span>
@@ -505,9 +503,9 @@ export function LoyaltySettingsView({
       {/* ─────────────────────────────────────────────────────────────
           SECTION 3: 4 TOP KPI METRIC CARDS (Exact match to reference mockup)
       ───────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {/* KPI 1: Loyalty Members */}
-        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-5 shadow-subtle hover:border-[#B58A4B] transition">
+        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-3 shadow-subtle transition hover:border-[#B58A4B] sm:p-5">
           <div className="flex items-center justify-between">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FAF5ED] text-lg text-[#B58A4B] border border-[#E8D8BA]">
               👥
@@ -523,7 +521,7 @@ export function LoyaltySettingsView({
         </div>
 
         {/* KPI 2: Stamps Issued */}
-        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-5 shadow-subtle hover:border-[#B58A4B] transition">
+        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-3 shadow-subtle transition hover:border-[#B58A4B] sm:p-5">
           <div className="flex items-center justify-between">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FAF5ED] text-lg text-[#B58A4B] border border-[#E8D8BA]">
               ☕
@@ -539,7 +537,7 @@ export function LoyaltySettingsView({
         </div>
 
         {/* KPI 3: Rewards Redeemed */}
-        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-5 shadow-subtle hover:border-[#B58A4B] transition">
+        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-3 shadow-subtle transition hover:border-[#B58A4B] sm:p-5">
           <div className="flex items-center justify-between">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FAF5ED] text-lg text-[#B58A4B] border border-[#E8D8BA]">
               🎁
@@ -555,7 +553,7 @@ export function LoyaltySettingsView({
         </div>
 
         {/* KPI 4: Review Clicks */}
-        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-5 shadow-subtle hover:border-[#B58A4B] transition">
+        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-3 shadow-subtle transition hover:border-[#B58A4B] sm:p-5">
           <div className="flex items-center justify-between">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FAF5ED] text-lg text-[#B58A4B] border border-[#E8D8BA]">
               📊
@@ -576,7 +574,7 @@ export function LoyaltySettingsView({
       ───────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         {/* Customer Growth Line Chart */}
-        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-6 shadow-subtle lg:col-span-2">
+        <div className="min-w-0 rounded-2xl border border-[#E8DFD1] bg-white p-4 shadow-subtle sm:p-6 lg:col-span-2">
           {/* Header & Controls */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-[#E8DFD1]/60 pb-3">
             <div>
@@ -832,7 +830,45 @@ export function LoyaltySettingsView({
             </span>
           </div>
 
-          <div className="mt-3 overflow-x-auto">
+          <div className="mt-3 lg:hidden">
+            {displayCustomers.length === 0 ? (
+              <div className="py-10 text-center text-sm text-[#716B64]">
+                <span className="mb-2 block text-3xl">👥</span>
+                No customers yet. New diners will appear here after they join through your QR code.
+              </div>
+            ) : (
+              <ul className="space-y-3">
+                {displayCustomers.map((c) => (
+                  <li key={c.id} className="rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] p-3">
+                    <div className="flex min-w-0 items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#E8D8BA] bg-[#FAF5ED] text-sm font-bold text-[#7A5826]">
+                          {c.name.slice(0, 1).toUpperCase()}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-[#24211E]">{c.name}</p>
+                          <p className="text-xs text-[#716B64]">+91 {c.phone}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleQuickStamp(c.phone, c.name)}
+                        disabled={quickStampLoadingPhone === c.phone}
+                        className="min-h-10 shrink-0 rounded-lg bg-[#B58A4B] px-3 text-xs font-bold text-white shadow-2xs transition hover:bg-[#9E7438] disabled:opacity-50"
+                      >
+                        {quickStampLoadingPhone === c.phone ? "Adding…" : "+1 Stamp"}
+                      </button>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-[#E8DFD1] pt-2 text-xs text-[#716B64]">
+                      <span><strong className="text-[#24211E]">{c.visits}</strong> visits</span>
+                      <span><strong className="text-[#24211E]">{c.stamps}/{stampsRequired}</strong> stamps</span>
+                      <span>Last visit: {c.lastVisit}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="mt-3 hidden overflow-x-auto lg:block">
             {displayCustomers.length === 0 ? (
               <div className="py-12 text-center text-xs text-[#716B64]">
                 <span className="text-3xl block mb-2">👥</span>
@@ -887,7 +923,7 @@ export function LoyaltySettingsView({
         </div>
 
         {/* Recent Activity Timeline Feed */}
-        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-6 shadow-subtle">
+        <div className="min-w-0 rounded-2xl border border-[#E8DFD1] bg-white p-4 shadow-subtle sm:p-6">
           <div className="border-b border-[#E8DFD1]/60 pb-3 flex items-center justify-between">
             <div>
               <h3 className="font-serif text-base font-bold text-[#24211E]">Recent Activity</h3>
@@ -936,7 +972,7 @@ export function LoyaltySettingsView({
       ───────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {/* Tool 1: Staff Stamp Tool */}
-        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-6 shadow-subtle space-y-4">
+        <div className="rounded-2xl border border-[#E8DFD1] bg-white p-4 shadow-subtle sm:p-6 sm:space-y-4">
           <div className="border-b border-[#E8DFD1]/60 pb-3">
             <div className="flex items-center gap-2">
               <span className="text-lg">⚡</span>
@@ -1001,7 +1037,7 @@ export function LoyaltySettingsView({
         </div>
 
         {/* Tool 2: Staff Voucher Redemption Tool */}
-        <div id="redeem-tool" className="rounded-2xl border border-[#E8DFD1] bg-white p-6 shadow-subtle space-y-4">
+        <div id="redeem-tool" className="rounded-2xl border border-[#E8DFD1] bg-white p-4 shadow-subtle sm:p-6 sm:space-y-4">
           <div className="border-b border-[#E8DFD1]/60 pb-3">
             <div className="flex items-center gap-2">
               <span className="text-lg">🎟️</span>
@@ -1022,7 +1058,7 @@ export function LoyaltySettingsView({
                 placeholder="e.g. DBR-7F3K-9L2M"
                 value={redeemVoucherCode}
                 onChange={(e) => setRedeemVoucherCode(e.target.value)}
-                className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] px-3.5 py-2 text-xs font-mono font-bold text-[#24211E] outline-none focus:border-[#B58A4B] focus:bg-white uppercase"
+                className="min-h-11 w-full rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] px-3.5 py-2 text-base font-mono font-bold text-[#24211E] outline-none uppercase focus:border-[#B58A4B] focus:bg-white sm:min-h-10 sm:text-sm"
                 required
               />
             </div>
@@ -1053,16 +1089,16 @@ export function LoyaltySettingsView({
       {/* ─────────────────────────────────────────────────────────────
           SECTION 4: LOYALTY PROGRAM SETTINGS (Matching Mockup Right Panel)
       ───────────────────────────────────────────────────────────── */}
-      <div className="rounded-3xl border border-[#E8DFD1] bg-white p-6 shadow-subtle">
+      <div className="rounded-3xl border border-[#E8DFD1] bg-white p-4 shadow-subtle sm:p-6">
         <div className="border-b border-[#E8DFD1]/60 pb-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-serif text-xl font-bold text-[#24211E]">Loyalty Program Settings</h2>
               <p className="text-xs text-[#716B64] mt-0.5">
                 Fully customizable for each business.
               </p>
             </div>
-            <label className="flex items-center gap-2 cursor-pointer">
+            <label className="flex min-h-11 items-center justify-between gap-3 rounded-xl bg-[#FAF7F2] px-3 cursor-pointer sm:min-h-0 sm:justify-start sm:bg-transparent sm:px-0">
               <span className="text-xs font-bold text-[#24211E]">Program Active</span>
               <input
                 type="checkbox"
@@ -1087,7 +1123,7 @@ export function LoyaltySettingsView({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. The Daily Brew Rewards"
-              className="w-full rounded-xl border border-[#E8DFD1] bg-white px-4 py-2.5 text-xs font-semibold text-[#24211E] outline-none focus:border-[#B58A4B] shadow-2xs"
+              className="min-h-11 w-full rounded-xl border border-[#E8DFD1] bg-white px-4 py-2.5 text-base font-semibold text-[#24211E] outline-none shadow-2xs focus:border-[#B58A4B] sm:min-h-10 sm:text-sm"
               required
             />
           </div>
@@ -1108,7 +1144,7 @@ export function LoyaltySettingsView({
               max={15}
               value={stampsRequired}
               onChange={(e) => setStampsRequired(Number(e.target.value))}
-              className="w-full accent-[#B58A4B] cursor-pointer"
+              className="h-6 w-full accent-[#B58A4B] cursor-pointer"
             />
             <div className="flex justify-between text-[10px] text-[#716B64]/70 mt-1">
               <span>1 stamp</span>
@@ -1125,7 +1161,7 @@ export function LoyaltySettingsView({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <label
                 onClick={() => handleTypeChange("PERCENT")}
-                className={`flex items-center gap-2.5 rounded-xl border p-3 cursor-pointer transition ${
+                className={`flex min-h-12 items-center gap-2.5 rounded-xl border p-3 cursor-pointer transition ${
                   discountType === "PERCENT"
                     ? "border-[#B58A4B] bg-[#FAF5ED] shadow-2xs"
                     : "border-[#E8DFD1] bg-[#FAF7F2] hover:bg-[#F2ECE1]"
@@ -1143,7 +1179,7 @@ export function LoyaltySettingsView({
 
               <label
                 onClick={() => handleTypeChange("FLAT")}
-                className={`flex items-center gap-2.5 rounded-xl border p-3 cursor-pointer transition ${
+                className={`flex min-h-12 items-center gap-2.5 rounded-xl border p-3 cursor-pointer transition ${
                   discountType === "FLAT"
                     ? "border-[#B58A4B] bg-[#FAF5ED] shadow-2xs"
                     : "border-[#E8DFD1] bg-[#FAF7F2] hover:bg-[#F2ECE1]"
@@ -1161,7 +1197,7 @@ export function LoyaltySettingsView({
 
               <label
                 onClick={() => handleTypeChange("FREE_ITEM")}
-                className={`flex items-center gap-2.5 rounded-xl border p-3 cursor-pointer transition ${
+                className={`flex min-h-12 items-center gap-2.5 rounded-xl border p-3 cursor-pointer transition ${
                   discountType === "FREE_ITEM"
                     ? "border-[#B58A4B] bg-[#FAF5ED] shadow-2xs"
                     : "border-[#E8DFD1] bg-[#FAF7F2] hover:bg-[#F2ECE1]"
@@ -1180,7 +1216,7 @@ export function LoyaltySettingsView({
           </div>
 
           {/* Fields 4, 5, 6: Discount Value, Validity, Minimum Spend */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <label className="block text-xs font-semibold text-[#716B64] mb-1.5">
                 Discount Value {discountType === "PERCENT" ? "(%)" : discountType === "FLAT" ? "(₹)" : ""}
@@ -1191,7 +1227,7 @@ export function LoyaltySettingsView({
                 max={discountType === "PERCENT" ? 100 : 50000}
                 value={rewardDiscountVal}
                 onChange={(e) => setRewardDiscountVal(Number(e.target.value))}
-                className="w-full rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-2.5 text-xs font-semibold text-[#24211E] outline-none focus:border-[#B58A4B] shadow-2xs"
+                className="min-h-11 w-full rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-2.5 text-base font-semibold text-[#24211E] outline-none shadow-2xs focus:border-[#B58A4B] sm:min-h-10 sm:text-sm"
                 required
               />
             </div>
@@ -1206,7 +1242,7 @@ export function LoyaltySettingsView({
                 max={365}
                 value={rewardExpiryDays}
                 onChange={(e) => setRewardExpiryDays(Number(e.target.value))}
-                className="w-full rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-2.5 text-xs font-semibold text-[#24211E] outline-none focus:border-[#B58A4B] shadow-2xs"
+                className="min-h-11 w-full rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-2.5 text-base font-semibold text-[#24211E] outline-none shadow-2xs focus:border-[#B58A4B] sm:min-h-10 sm:text-sm"
                 required
               />
             </div>
@@ -1221,7 +1257,7 @@ export function LoyaltySettingsView({
                 value={minBillRupees}
                 onChange={(e) => setMinBillRupees(Number(e.target.value))}
                 placeholder="0"
-                className="w-full rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-2.5 text-xs font-semibold text-[#24211E] outline-none focus:border-[#B58A4B] shadow-2xs"
+                className="min-h-11 w-full rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-2.5 text-base font-semibold text-[#24211E] outline-none shadow-2xs focus:border-[#B58A4B] sm:min-h-10 sm:text-sm"
               />
             </div>
           </div>
@@ -1236,7 +1272,7 @@ export function LoyaltySettingsView({
               value={rewardTitle}
               onChange={(e) => setRewardTitle(e.target.value)}
               placeholder="e.g. 30% OFF on your next visit"
-              className="w-full rounded-xl border border-[#E8DFD1] bg-white px-4 py-2.5 text-xs font-semibold text-[#24211E] outline-none focus:border-[#B58A4B] shadow-2xs"
+              className="min-h-11 w-full rounded-xl border border-[#E8DFD1] bg-white px-4 py-2.5 text-base font-semibold text-[#24211E] outline-none shadow-2xs focus:border-[#B58A4B] sm:min-h-10 sm:text-sm"
               required
             />
           </div>
