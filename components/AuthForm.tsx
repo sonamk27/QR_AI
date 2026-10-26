@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
@@ -18,6 +18,10 @@ export function AuthForm({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (mode === "signup") formRef.current?.reset();
+  }, [mode]);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -103,7 +107,13 @@ export function AuthForm({
     }
   }
 
-  const field = (name: string, label: string, type = "text", required = true) => (
+  const field = (
+    name: string,
+    label: string,
+    type = "text",
+    required = true,
+    autoComplete = "off",
+  ) => (
     <div>
       <label className="mb-1.5 block text-xs font-semibold text-[#716B64]" htmlFor={name}>
         {label}
@@ -113,6 +123,9 @@ export function AuthForm({
         name={name}
         type={type}
         required={required}
+        autoComplete={autoComplete}
+        autoCapitalize={type === "email" ? "none" : undefined}
+        spellCheck={type === "email" ? false : undefined}
         className="w-full rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-2.5 text-sm text-[#24211E] outline-none transition focus:border-[#B58A4B] focus:ring-1 focus:ring-[#B58A4B]"
         minLength={type === "password" ? 8 : undefined}
       />
@@ -134,12 +147,12 @@ export function AuthForm({
               : "Sign in"
           : "Create your restaurant account"}
       </h1>
-      <form ref={formRef} onSubmit={submit} className="mt-6 space-y-4">
-        {mode === "signup" && field("name", "Your name")}
-        {mode === "signup" && field("restaurantName", "Restaurant name")}
-        {mode === "signup" && field("city", "City", "text", false)}
-        {field("email", "Email", "email")}
-        {field("password", mode === "signup" ? "Password (8+ characters)" : "Password", "password")}
+      <form ref={formRef} onSubmit={submit} autoComplete={mode === "signup" ? "off" : "on"} className="mt-6 space-y-4">
+        {mode === "signup" && field("name", "Your name", "text", true, "name")}
+        {mode === "signup" && field("restaurantName", "Restaurant name", "text", true, "organization")}
+        {mode === "signup" && field("city", "City", "text", false, "address-level2")}
+        {field("email", "Email", "email", true, mode === "signup" ? "off" : "username")}
+        {field("password", mode === "signup" ? "Password (8+ characters)" : "Password", "password", true, mode === "signup" ? "new-password" : "current-password")}
         {mode === "signup" && field("refCode", "Referral code (optional)", "text", false)}
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
         <button className="btn w-full" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>

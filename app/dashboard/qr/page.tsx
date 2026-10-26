@@ -153,7 +153,7 @@ export default async function QrPage() {
                               location={q.location}
                               tableNo={q.tableNo}
                               restaurantName={restaurant.name}
-                              logoUrl={restaurant.logoUrl}
+                              logoUrl={restaurant.logoUrl || "/logo.png"}
                               brandColor={restaurant.brandColor}
                               googleReviewUrl={restaurant.googleReviewUrl}
                               instagramUrl={restaurant.instagramUrl}

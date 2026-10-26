@@ -64,14 +64,12 @@ export default async function PrintableTableTentPage({
 
           {/* Restaurant Header */}
           <div className="pt-2">
-            {r.logoUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={r.logoUrl}
-                alt=""
-                className="mx-auto mb-2 h-16 w-16 rounded-full border-2 border-white object-cover shadow-sm"
-              />
-            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={r.logoUrl || "/logo.png"}
+              alt={`${r.name} logo`}
+              className="mx-auto mb-2 h-14 w-28 rounded-lg border border-zinc-200 bg-[#F7F2E9] p-1 object-contain shadow-sm"
+            />
             <h1 className="text-2xl font-bold tracking-tight text-ink">{r.name}</h1>
             {r.city && <p className="text-xs text-ink/60">{r.city}</p>}
 
@@ -86,7 +84,7 @@ export default async function PrintableTableTentPage({
           <div className="my-5 border-y border-dashed border-zinc-200 py-3">
             <p className="text-sm font-semibold text-ink">Enjoyed your experience?</p>
             <p className="text-xs text-ink/60 mt-0.5">
-              Scan below to rate your visit &amp; write an AI review in seconds!
+              Scan below to rate your visit and share your review.
             </p>
           </div>
 

@@ -337,7 +337,6 @@ export function QrRequestList({
   if (requests.length === 0) {
     return (
       <div className="rounded-2xl border border-[#E8DFD1] bg-white p-8 text-center shadow-subtle">
-        <p className="text-4xl mb-3">📋</p>
         <p className="font-serif text-lg font-bold text-[#24211E]">No QR requests yet</p>
         <p className="mx-auto mt-1 max-w-sm text-xs text-[#716B64]">
           Submit a request using the button above. Once approved, scan the payment QR.
@@ -401,7 +400,7 @@ export function QrRequestList({
 
               {req.status === "APPROVED_PAYMENT_DUE" && !paidPayment && !recordedPayment && activeQrs.length === 0 && (
                 <div className="rounded-xl bg-[#FAF5ED] border border-[#E8D8BA] p-3 text-xs text-[#7A5826]">
-                  <p className="font-bold">✅ Approved! Payment required</p>
+                  <p className="font-bold">Approved · Payment required</p>
                   <p className="mt-0.5">
                     Scan the payment QR to pay. Your{" "}
                     {req.quantity} QR code{req.quantity > 1 ? "s" : ""} will activate
@@ -413,7 +412,7 @@ export function QrRequestList({
               {activeQrs.length > 0 && (
                 <div className="rounded-xl bg-[#EEF6F2] border border-[#D1E7DC] p-3 text-xs text-[#2E6B4F]">
                   <p className="font-bold">
-                    🎉 {activeQrs.length} QR code{activeQrs.length > 1 ? "s are" : " is"} ready!
+                    {activeQrs.length} QR code{activeQrs.length > 1 ? "s are" : " is"} ready
                   </p>
                   <Link
                     href="/dashboard/qr"

@@ -6,12 +6,12 @@ import { createSessionToken, setSessionCookie } from "@/lib/auth";
 import { rateLimit, clientIp } from "@/lib/ratelimit";
 
 const schema = z.object({
-  name: z.string().min(2).max(80),
-  email: z.string().email().max(120),
+  name: z.string().trim().min(2).max(80),
+  email: z.string().trim().email().max(120),
   password: z.string().min(8).max(100),
-  restaurantName: z.string().min(2).max(100),
-  city: z.string().max(80).optional(),
-  refCode: z.string().max(40).optional(),
+  restaurantName: z.string().trim().min(2).max(100),
+  city: z.string().trim().max(80).optional(),
+  refCode: z.string().trim().max(40).optional(),
 }).strict();
 
 export async function POST(req: Request) {
