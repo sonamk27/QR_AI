@@ -12,7 +12,7 @@ export default async function SuperAdminRestaurantsPage() {
   const restaurants = await db.restaurant.findMany({
     orderBy: { createdAt: "desc" },
     include: {
-      owner: { select: { id: true, name: true, email: true } },
+      owner: { select: { id: true, name: true, email: true, emailVerifiedAt: true } },
       _count: { select: { qrCodes: true } },
     },
   });
@@ -30,7 +30,7 @@ export default async function SuperAdminRestaurantsPage() {
     facebookUrl: (r as unknown as { facebookUrl?: string | null }).facebookUrl ?? null,
     shareCaption: (r as unknown as { shareCaption?: string | null }).shareCaption ?? null,
     createdAt: r.createdAt.toISOString(),
-    owner: r.owner,
+    owner: { ...r.owner, emailVerifiedAt: r.owner.emailVerifiedAt?.toISOString() ?? null },
     _count: r._count,
   }));
 

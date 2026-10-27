@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
-import { createSessionToken, setSessionCookie } from "@/lib/auth";
 import { rateLimit, clientIp } from "@/lib/ratelimit";
+import { issueEmailVerification } from "@/lib/email-verification";
 
 const schema = z.object({
   name: z.string().trim().min(2).max(80),
@@ -30,6 +30,7 @@ export async function POST(req: Request) {
       data: {
         email,
         name: d.name,
+        emailVerifiedAt: null,
         passwordHash: await bcrypt.hash(d.password, 12),
         role: "restaurant_admin",
         restaurants: {
@@ -41,8 +42,12 @@ export async function POST(req: Request) {
         },
       },
     });
-    setSessionCookie(await createSessionToken({ uid: user.id, role: user.role }));
-    return NextResponse.json({ ok: true, redirect: "/dashboard" });
+    try {
+      await issueEmailVerification(user.id, user.email);
+    } catch (mailError) {
+      console.error("Signup verification email could not be sent:", mailError);
+    }
+    return NextResponse.json({ ok: true, emailVerificationRequired: true, redirect: `/verify-email?email=${encodeURIComponent(user.email)}` }, { status: 201 });
   } catch (error: any) {
     console.error("Signup error:", error);
     const isDbError =

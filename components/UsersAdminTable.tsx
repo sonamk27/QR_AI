@@ -7,6 +7,8 @@ type UserItem = {
   id: string;
   name: string;
   email: string;
+  emailVerifiedAt: string | null;
+  phoneNumber: string | null;
   role: "restaurant_admin" | "super_admin";
   createdAt: string;
   restaurants: { id: string; name: string; city: string | null; status: string }[];
@@ -63,7 +65,9 @@ function ResetPasswordModal({
       `🌐 Login: ${typeof window !== "undefined" ? window.location.origin : ""}/login\n` +
       `📧 Email: ${user.email}\n` +
       `🔑 Password: ${successInfo.pass}\n\n` +
-      `You can now log in to your dashboard.`
+      (user.emailVerifiedAt
+        ? "You can now log in to your dashboard."
+        : "Verify your email before signing in. If the link expired, open /verify-email and request a new one.")
     : "";
 
   return (
@@ -159,7 +163,62 @@ function ResetPasswordModal({
   );
 }
 
-export function UsersAdminTable({ users }: { users: UserItem[] }) {
+function EditSuperAdminPhoneButton({ user, onSaved }: { user: UserItem; onSaved: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [phone, setPhone] = useState(user.phoneNumber ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/super-admin/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "update_phone", phoneNumber: phone }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not update mobile number.");
+      setOpen(false);
+      onSaved();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not update mobile number.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <button type="button" onClick={() => { setPhone(user.phoneNumber ?? ""); setError(""); setOpen(true); }} className="btn-ghost !px-2.5 !py-1 text-xs">
+        {user.phoneNumber ? "Edit mobile" : "Add mobile"}
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm">
+          <form onSubmit={submit} className="w-full max-w-md space-y-4 rounded-2xl border border-line bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <div><h3 className="text-lg font-semibold text-ink">Super Admin Mobile Number</h3><p className="text-xs text-ink/60">{user.name}</p></div>
+              <button type="button" onClick={() => setOpen(false)} className="text-ink/50" aria-label="Close">✕</button>
+            </div>
+            {error && <p role="alert" className="rounded bg-rose-50 p-2 text-xs text-rose-700">{error}</p>}
+            <div>
+              <label className="label" htmlFor={`admin-phone-${user.id}`}>Mobile number</label>
+              <input id={`admin-phone-${user.id}`} type="tel" autoComplete="tel" className="input" placeholder="+91 98765 43210" value={phone} onChange={(event) => setPhone(event.target.value)} />
+            </div>
+            <div className="flex justify-end gap-2 border-t border-line pt-3">
+              <button type="button" className="btn-ghost text-xs" onClick={() => setOpen(false)}>Cancel</button>
+              <button type="submit" className="btn text-xs" disabled={busy}>{busy ? "Saving…" : "Save mobile"}</button>
+            </div>
+          </form>
+        </div>
+      )}
+    </>
+  );
+}
+
+export function UsersAdminTable({ users, currentAdminId }: { users: UserItem[]; currentAdminId: string }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
@@ -243,11 +302,12 @@ export function UsersAdminTable({ users }: { users: UserItem[] }) {
 
       {/* Table */}
       <div className="panel overflow-x-auto">
-        <table className="w-full min-w-[760px]">
+        <table className="w-full min-w-[920px]">
           <thead>
             <tr>
               <th className="th">Name</th>
               <th className="th">Email</th>
+              <th className="th">Mobile</th>
               <th className="th">Role</th>
               <th className="th">Associated Restaurants</th>
               <th className="th">Joined</th>
@@ -257,7 +317,7 @@ export function UsersAdminTable({ users }: { users: UserItem[] }) {
           <tbody className="divide-y divide-line">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="td text-center text-ink/60 py-10">
+                <td colSpan={7} className="td text-center text-ink/60 py-10">
                   {users.length === 0 ? "No users registered yet." : "No users match your search."}
                 </td>
               </tr>
@@ -265,7 +325,16 @@ export function UsersAdminTable({ users }: { users: UserItem[] }) {
               filtered.map((u) => (
                 <tr key={u.id} className="hover:bg-paper/40 transition">
                   <td className="td font-semibold text-ink">{u.name}</td>
-                  <td className="td text-ink/80 text-xs font-mono">{u.email}</td>
+                  <td className="td text-xs">
+                    <div className="font-mono text-ink/80">{u.email}</div>
+                    <span className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${u.emailVerifiedAt ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
+                      {u.emailVerifiedAt ? "Verified" : "Unverified"}
+                    </span>
+                  </td>
+                  <td className="td text-xs">
+                    <div className="font-mono text-ink/80">{u.phoneNumber || "—"}</div>
+                    {u.role === "super_admin" && u.id === currentAdminId && <div className="mt-1"><EditSuperAdminPhoneButton user={u} onSaved={() => router.refresh()} /></div>}
+                  </td>
                   <td className="td">
                     <span
                       className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${

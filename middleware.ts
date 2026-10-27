@@ -41,17 +41,6 @@ export async function middleware(req: NextRequest) {
       new URL(role === "restaurant_admin" ? "/admin" : "/super-admin/login", req.url),
     );
   }
-  if (pathname === "/login" && role) {
-    return NextResponse.redirect(
-      new URL(role === "super_admin" ? "/super-admin" : "/dashboard", req.url),
-    );
-  }
-  if (isRestaurantLogin && role === "restaurant_admin") {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
-  }
-  if (isSuperAdminLogin && role === "super_admin") {
-    return NextResponse.redirect(new URL("/super-admin", req.url));
-  }
   if (pathname.startsWith("/admin/") && !isRestaurantLogin) {
     return NextResponse.redirect(new URL("/login", req.url));
   }

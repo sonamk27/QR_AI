@@ -22,6 +22,13 @@ export async function POST(req: Request) {
     if (!user || !(await bcrypt.compare(parsed.data.password, user.passwordHash))) {
       return NextResponse.json({ error: "Email or password is incorrect." }, { status: 401 });
     }
+
+    if (!user.emailVerifiedAt) {
+      return NextResponse.json(
+        { error: "Verify your email before signing in. Check your inbox or request a new verification link." },
+        { status: 403 },
+      );
+    }
     if (parsed.data.portal && user.role !== parsed.data.portal) {
       const expectedPortal =
         user.role === "super_admin" ? "/super-admin/login" : "/admin/login";

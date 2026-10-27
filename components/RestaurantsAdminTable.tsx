@@ -12,7 +12,6 @@ type RestaurantRow = {
   city: string | null;
   brandColor: string;
   status: string;
-  aiEnabled: boolean;
   referredByName: string | null;
   googleReviewUrl: string | null;
   instagramUrl?: string | null;
@@ -23,11 +22,171 @@ type RestaurantRow = {
     id: string;
     name: string;
     email: string;
+    emailVerifiedAt: string | null;
   };
   _count: {
     qrCodes: number;
   };
 };
+
+type RestaurantEditData = {
+  name: string;
+  city: string;
+  logoUrl: string;
+  brandColor: string;
+  googleReviewUrl: string;
+  instagramUrl: string;
+  facebookUrl: string;
+  shareCaption: string;
+  referredByName: string;
+  ownerName: string;
+  ownerEmail: string;
+};
+
+function EditRestaurantButton({ restaurantId }: { restaurantId: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [form, setForm] = useState<RestaurantEditData | null>(null);
+  const [ownerEmailVerified, setOwnerEmailVerified] = useState(false);
+
+  async function openEditor() {
+    setOpen(true);
+    setLoading(true);
+    setError("");
+    setForm(null);
+    try {
+      const response = await fetch(`/api/super-admin/restaurants/${restaurantId}`, { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not load restaurant details.");
+      const r = result.restaurant;
+      setOwnerEmailVerified(Boolean(r.owner?.emailVerifiedAt));
+      setForm({
+        name: r.name ?? "",
+        city: r.city ?? "",
+        logoUrl: r.logoUrl ?? "",
+        brandColor: r.brandColor ?? "#1F6F5C",
+        googleReviewUrl: r.googleReviewUrl ?? "",
+        instagramUrl: r.instagramUrl ?? "",
+        facebookUrl: r.facebookUrl ?? "",
+        shareCaption: r.shareCaption ?? "",
+        referredByName: r.referredByName ?? "",
+        ownerName: r.owner?.name ?? "",
+        ownerEmail: r.owner?.email ?? "",
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load restaurant details.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function update<K extends keyof RestaurantEditData>(key: K, value: RestaurantEditData[K]) {
+    setForm((current) => current ? { ...current, [key]: value } : current);
+  }
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!form) return;
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/super-admin/restaurants/${restaurantId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "update_restaurant", ...form }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not save restaurant details.");
+      setOpen(false);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save restaurant details.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const textField = (key: keyof RestaurantEditData, label: string, type = "text", full = false) => (
+    <div className={full ? "sm:col-span-2" : ""}>
+      <label className="label" htmlFor={`${restaurantId}-${key}`}>{label}</label>
+      <input
+        id={`${restaurantId}-${key}`}
+        type={type}
+        className="input"
+        maxLength={key === "shareCaption" ? 500 : undefined}
+        value={form?.[key] ?? ""}
+        onChange={(event) => update(key, event.target.value)}
+        required={key === "name" || key === "ownerName" || key === "ownerEmail" || key === "brandColor"}
+      />
+    </div>
+  );
+
+  return (
+    <>
+      <button type="button" className="btn-ghost !px-2.5 !py-1.5 text-xs" onClick={openEditor}>Edit restaurant</button>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm">
+          <form onSubmit={submit} className="max-h-[92vh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-2xl border border-line bg-white p-5 shadow-xl sm:p-6">
+            <div className="sticky top-[-20px] z-10 flex items-center justify-between border-b border-line bg-white py-2 sm:top-[-24px]">
+              <div>
+                <h3 className="text-lg font-semibold text-ink">Edit Restaurant</h3>
+                <p className="text-xs text-ink/55">Details are loaded from this restaurant’s profile.</p>
+              </div>
+              <button type="button" onClick={() => setOpen(false)} className="text-ink/50 hover:text-ink" aria-label="Close">✕</button>
+            </div>
+            {error && <p role="alert" className="rounded bg-rose-50 p-2 text-xs text-rose-700">{error}</p>}
+            {loading ? <p className="py-8 text-center text-sm text-ink/60">Loading restaurant profile…</p> : form && (
+              <>
+                <div>
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-ink/55">Restaurant profile</h4>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {textField("name", "Restaurant name")}
+                    {textField("city", "City")}
+                    {textField("logoUrl", "Logo URL", "url", true)}
+                    <div>
+                      <label className="label" htmlFor={`${restaurantId}-brandColor`}>Brand color</label>
+                      <input id={`${restaurantId}-brandColor`} type="color" className="input h-11 p-1" value={form.brandColor} onChange={(e) => update("brandColor", e.target.value)} />
+                    </div>
+                    {textField("referredByName", "Referred by / seller")}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-ink/55">Owner account</h4>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {textField("ownerName", "Owner name")}
+                    {textField("ownerEmail", "Owner email", "email")}
+                  </div>
+                  <p className={`mt-2 text-xs font-medium ${ownerEmailVerified ? "text-emerald-700" : "text-amber-800"}`}>
+                    Saved email: {ownerEmailVerified ? "verified" : "not verified"}. Any email change requires verification before the owner can sign in.
+                  </p>
+                </div>
+                <div>
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-ink/55">Restaurant links and message</h4>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {textField("googleReviewUrl", "Google review URL", "url", true)}
+                    {textField("instagramUrl", "Instagram URL", "url")}
+                    {textField("facebookUrl", "Facebook URL", "url")}
+                    <div className="sm:col-span-2">
+                      <label className="label" htmlFor={`${restaurantId}-shareCaption`}>Guest thank-you caption</label>
+                      <textarea id={`${restaurantId}-shareCaption`} className="input" rows={3} value={form.shareCaption} onChange={(e) => update("shareCaption", e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+            <div className="flex justify-end gap-2 border-t border-line pt-3">
+              <button type="button" className="btn-ghost text-xs" onClick={() => setOpen(false)}>Cancel</button>
+              <button type="submit" className="btn text-xs" disabled={busy || loading || !form}>{busy ? "Saving…" : "Save restaurant"}</button>
+            </div>
+          </form>
+        </div>
+      )}
+    </>
+  );
+}
 
 function EditRestaurantOwnerButton({
   restaurantId,
@@ -458,6 +617,9 @@ export function RestaurantsAdminTable({
                   <td className="td">
                     <p className="font-medium text-ink">{r.owner.name}</p>
                     <p className="text-xs text-ink/60">{r.owner.email}</p>
+                    <span className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${r.owner.emailVerifiedAt ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
+                      {r.owner.emailVerifiedAt ? "Email verified" : "Email not verified"}
+                    </span>
                   </td>
                   <td className="td">
                     <span className="inline-flex items-center rounded-md bg-paper px-2 py-0.5 text-xs font-semibold text-ink border border-line">
@@ -480,7 +642,6 @@ export function RestaurantsAdminTable({
                       ) : (
                         <span className="text-xs text-ink/50">Not submitted</span>
                       )}
-                      <EditRestaurantLinkButton restaurantId={r.id} googleReviewUrl={r.googleReviewUrl} />
                     </div>
                   </td>
                   <td className="td">
@@ -508,13 +669,7 @@ export function RestaurantsAdminTable({
                   </td>
                   <td className="td">
                     <div className="flex items-center gap-2">
-                      <EditRestaurantOwnerButton restaurantId={r.id} owner={r.owner} />
-                      <AdminButton
-                        url={`/api/super-admin/restaurants/${r.id}`}
-                        method="PATCH"
-                        body={{ action: "update_ai", aiEnabled: !r.aiEnabled }}
-                        label={r.aiEnabled ? "AI: On" : "AI: Off"}
-                      />
+                      <EditRestaurantButton restaurantId={r.id} />
                       <AdminButton
                         url={`/api/super-admin/restaurants/${r.id}`}
                         method="PATCH"

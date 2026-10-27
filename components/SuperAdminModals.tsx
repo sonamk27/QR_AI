@@ -21,6 +21,7 @@ export function CreateRestaurantModal() {
     ownerName: string;
     email: string;
     pass: string;
+    verificationEmailSent: boolean;
   } | null>(null);
 
   const [form, setForm] = useState({
@@ -63,6 +64,7 @@ export function CreateRestaurantModal() {
         ownerName: form.ownerName,
         email: data.credentials?.email || form.ownerEmail,
         pass: data.credentials?.password || form.password,
+        verificationEmailSent: Boolean(data.verificationEmailSent),
       });
       router.refresh();
     } catch (err: any) {
@@ -74,10 +76,11 @@ export function CreateRestaurantModal() {
 
   const welcomeMessage = createdInfo
     ? `Hello ${createdInfo.ownerName}! Your ReviewFlow dashboard for ${createdInfo.restaurantName} is active.\n\n` +
+      `🌐 Verify email: ${typeof window !== "undefined" ? window.location.origin : ""}/verify-email?email=${encodeURIComponent(createdInfo.email)}\n` +
       `🌐 Login: ${typeof window !== "undefined" ? window.location.origin : ""}/login\n` +
       `📧 Email: ${createdInfo.email}\n` +
       `🔑 Password: ${createdInfo.pass}\n\n` +
-      `Log in to view customer feedback, AI reviews, and download your printable QR code!`
+      `Verify your email address before signing in. Then log in to open your dashboard.`
     : "";
 
   return (
@@ -100,7 +103,9 @@ export function CreateRestaurantModal() {
                 <div className="rounded-xl bg-emerald-50 p-4 border border-emerald-200">
                   <h3 className="font-semibold text-emerald-900">Restaurant & Owner Created!</h3>
                   <p className="mt-1 text-sm text-emerald-800">
-                    The account is ready. Send the login details to the owner below.
+                    {createdInfo.verificationEmailSent
+                      ? "A verification link was sent to the owner. They must verify this email before signing in."
+                      : "The owner email is unverified and the verification email could not be sent. Ask them to request a link from the Verify Email page before signing in."}
                   </p>
                 </div>
 

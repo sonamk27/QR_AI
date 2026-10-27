@@ -13,6 +13,10 @@ const schema = z.discriminatedUnion("action", [
     action: z.literal("change_role"),
     role: z.enum(["restaurant_admin", "super_admin"]),
   }),
+  z.object({
+    action: z.literal("update_phone"),
+    phoneNumber: z.string().trim().max(20).regex(/^$|^\+?[0-9\s()-]{8,20}$/, "Enter a valid mobile number."),
+  }),
 ]);
 
 export async function PATCH(
@@ -35,6 +39,25 @@ export async function PATCH(
   });
   if (!targetUser) {
     return NextResponse.json({ error: "User not found." }, { status: 404 });
+  }
+
+  if (parsed.data.action === "update_phone") {
+    if (targetUser.id !== admin.id || targetUser.role !== "super_admin") {
+      return NextResponse.json({ error: "You can update the mobile number only on your own Super Admin account." }, { status: 403 });
+    }
+    await db.user.update({
+      where: { id: admin.id },
+      data: { phoneNumber: parsed.data.phoneNumber.trim() || null },
+    });
+    await db.auditLog.create({
+      data: {
+        actorId: admin.id,
+        action: "super_admin.phone_updated",
+        target: admin.email,
+        meta: { phoneNumberUpdated: Boolean(parsed.data.phoneNumber.trim()) },
+      },
+    });
+    return NextResponse.json({ ok: true });
   }
 
   if (parsed.data.action === "reset_password") {

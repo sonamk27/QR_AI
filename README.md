@@ -42,7 +42,8 @@ Multi-tenant SaaS for restaurants: collect guest feedback with smart QR codes. G
    - `AUTH_SECRET` (generate with `openssl rand -base64 32`)
    - Firebase web app settings (`NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, and `NEXT_PUBLIC_FIREBASE_APP_ID`) for Google sign-in
    - `ANTHROPIC_API_KEY` (for rating-based AI feedback suggestions; rule-based suggestions are used if omitted)
-   - `SEED_ADMIN_EMAIL` & `SEED_ADMIN_PASSWORD` (for super admin account)
+   - `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, and optional `SEED_ADMIN_PHONE` (for the super admin account)
+   - `RESEND_API_KEY` and `EMAIL_FROM` (required to deliver new account email verification links)
 3. Apply the checked-in database migrations with `npx prisma migrate deploy`.
 4. `npm run db:seed` (creates the Super Admin user)
 5. `npm run dev` and navigate to `http://localhost:3000`
@@ -55,6 +56,9 @@ to `.env` and configure the app's authorized domains in Firebase Authentication.
 Google sign-in is available for restaurant admins on the login and signup pages;
 Super Admin accounts continue to use password sign-in. Firebase ID tokens are
 verified by the server before a ReviewFlow session is created.
+Password sign-up and email changes require verification through a one-time email
+link before the account can sign in. Configure Resend with a verified sender in
+`EMAIL_FROM` so those links can be delivered.
 Only Firebase web app configuration is used by the browser; do not put any
 Firebase service-account or other private server credentials in `NEXT_PUBLIC_*`
 variables.

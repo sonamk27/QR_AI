@@ -161,7 +161,14 @@ export function AuthForm({
         {field("email", "Email", "email", true, mode === "signup" ? "off" : "username")}
         {field("password", mode === "signup" ? "Password (8+ characters)" : "Password", "password", true, mode === "signup" ? "new-password" : "current-password")}
         {mode === "signup" && field("refCode", "Referral code (optional)", "text", false)}
-        {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+        {error && (
+          <div role="alert" className="space-y-1 text-sm text-red-700">
+            <p>{error}</p>
+            {mode === "login" && error.toLowerCase().includes("verify your email") && (
+              <Link href="/verify-email" className="inline-flex font-semibold underline">Resend verification link</Link>
+            )}
+          </div>
+        )}
         <button className="btn w-full" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>
       </form>
       {mode === "signup" && portal !== "super_admin" && (

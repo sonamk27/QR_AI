@@ -23,6 +23,8 @@ export default async function SuperAdminUsersPage() {
     id: u.id,
     name: u.name,
     email: u.email,
+    emailVerifiedAt: u.emailVerifiedAt?.toISOString() ?? null,
+    phoneNumber: u.phoneNumber,
     role: u.role,
     createdAt: u.createdAt.toISOString(),
     restaurants: u.restaurants,
@@ -37,7 +39,7 @@ export default async function SuperAdminUsersPage() {
         <div>
           <h1 className="font-serif text-3xl font-bold tracking-tight text-[#24211E]">User Management</h1>
           <p className="mt-1 text-sm text-[#716B64]">
-            Manage user accounts and passwords. Super Admin access is provisioned through the seed script.
+            Manage accounts, check email verification, and keep your Super Admin mobile contact up to date.
           </p>
         </div>
         <div className="flex gap-2 text-xs">
@@ -56,7 +58,7 @@ export default async function SuperAdminUsersPage() {
         </div>
       </div>
 
-      <UsersAdminTable users={serialized} />
+      <UsersAdminTable users={serialized} currentAdminId={admin.id} />
     </div>
   );
 }

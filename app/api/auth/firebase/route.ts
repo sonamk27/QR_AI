@@ -75,6 +75,7 @@ export async function POST(req: Request) {
         user = await db.user.create({
           data: {
             email,
+            emailVerifiedAt: new Date(),
             name: parsed.data.name,
             passwordHash: await bcrypt.hash(randomBytes(32).toString("hex"), 12),
             role: "restaurant_admin",
@@ -107,6 +108,10 @@ export async function POST(req: Request) {
       }
       if (parsed.data.portal === "super_admin") {
         return NextResponse.json({ error: "Use your Super Admin email and password to sign in." }, { status: 403 });
+      }
+      if (!user.emailVerifiedAt) {
+        user = await db.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date() } });
+        await db.emailVerificationToken.deleteMany({ where: { userId: user.id } });
       }
     }
 

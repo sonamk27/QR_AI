@@ -20,6 +20,7 @@ export function SuperAdminSidebar({
     name: string;
     email: string;
     role: string;
+    phoneNumber: string | null;
   };
   pendingRequestsCount?: number;
 }) {
@@ -70,9 +71,6 @@ export function SuperAdminSidebar({
                 ReviewFlow
               </span>
             </div>
-            <span className="rounded-full bg-[#B58A4B]/20 px-2.5 py-0.5 text-[10px] font-bold text-[#DDB576] border border-[#B58A4B]/30 uppercase tracking-wider">
-              Super Admin
-            </span>
           </div>
           <div className="mt-2.5 flex items-center justify-between rounded-xl bg-[#2E2A25] px-2.5 py-1.5 text-[11px] text-stone-300 border border-[#3E3831]">
             <span className="flex items-center gap-1.5 font-medium">
@@ -135,6 +133,7 @@ export function SuperAdminSidebar({
           <div className="min-w-0 pr-2">
             <p className="truncate text-xs font-semibold text-white">{admin.name}</p>
             <p className="truncate text-[11px] text-stone-400 font-mono">{admin.email}</p>
+            {admin.phoneNumber && <p className="truncate text-[11px] text-stone-400">{admin.phoneNumber}</p>}
           </div>
           <button
             onClick={handleLogout}

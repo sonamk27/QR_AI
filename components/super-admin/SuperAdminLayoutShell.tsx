@@ -10,6 +10,7 @@ export function SuperAdminLayoutShell({
     name: string;
     email: string;
     role: string;
+    phoneNumber: string | null;
   };
   pendingRequestsCount?: number;
   children: React.ReactNode;
