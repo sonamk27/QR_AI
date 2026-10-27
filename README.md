@@ -2,7 +2,7 @@
 
 Multi-tenant SaaS for restaurants: collect guest feedback with smart QR codes. Guests scan at tables, rate their overall visit, food, and service, optionally add a detail, then receive an editable AI-generated review draft to use if they choose to continue to Google.
 
-**Stack:** Next.js 14 (App Router) · TypeScript · Tailwind CSS · PostgreSQL (Neon / Supabase) · Prisma · Claude 3.5 Haiku · Vercel Cron
+**Stack:** Next.js 15 (App Router) · TypeScript · Tailwind CSS · PostgreSQL (Neon / Supabase) · Prisma · Render Web Service
 
 ---
 
@@ -89,24 +89,31 @@ Existing QR/payment workflow
 ```
 
 For UPI QR payments, set `UPI_VPA` to the receiving UPI ID and optionally set
-`UPI_PAYEE_NAME` to the account name shown to customers. Add both variables to
-the Render service environment as well. Approved QR requests then show a QR
+`UPI_PAYEE_NAME` to the account name shown to customers. Approved QR requests then show a QR
 with the request total prefilled; owners scan it with a UPI app and submit the
 payment reference for admin verification.
 
 ### Render deployment
 
-Deploy this project as a Render **Web Service** (or create it from the checked-in
-`render.yaml` Blueprint), not as a Static Site. The app needs a running Next.js
-server for its API routes, middleware, and authenticated dashboards. The
-Blueprint builds and starts the standalone server and copies the public/static
-assets it needs, so opening the service's root URL (`/`) serves the website.
+Deploy this project as a Render **Web Service**, not as a Static Site. It uses
+Next.js server routes, middleware, and authenticated dashboards. The checked-in
+`render.yaml` defines the Node service, build and start commands, health check,
+and environment-variable names. Connect the GitHub repository
+`sonamk27/QR_AI` and deploy the `main` branch.
 
-Set the prompted `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`, and Firebase web
-app variables in Render. Keep `APP_URL` unset to use Render's automatically
-provided `RENDER_EXTERNAL_URL`, or set it to the service's public HTTPS URL.
-QR downloads and dashboard links use that public origin to build `/r/<slug>`
-scan URLs; production QR generation will not silently embed localhost.
+Set `DATABASE_URL`, `DIRECT_URL`, and a strong `AUTH_SECRET` in the Render
+environment. Add the Firebase web app values for Google sign-in, plus
+`RESEND_API_KEY` and `EMAIL_FROM` for verification email. Optional features use
+`ANTHROPIC_API_KEY`, `CRON_SECRET`, and `UPI_VPA`. Never commit secret values to
+this repository or expose them through `NEXT_PUBLIC_*` variables.
+
+Render provides `RENDER_EXTERNAL_URL`; the app uses it for public QR and email
+links when `APP_URL` is not set. You can set `APP_URL` to the service's public
+HTTPS URL if you prefer.
+
+Render's Free Web Services sleep after 15 minutes without traffic and can take
+about a minute to wake on the next request. Free service hours and bandwidth
+also have monthly limits. See [Render's free service details](https://render.com/docs/free).
 
 For an existing database that already has the legacy schema but no Prisma migration
 history, mark the matching baseline as applied once, then deploy the remaining
@@ -124,7 +131,9 @@ against a database branch before applying them to production.
 
 ## Expiry & Cron
 
-- Daily cron job runs at `/api/cron/expire` (configured in `vercel.json`).
+- Schedule a daily job to call `/api/cron/expire` with
+  `Authorization: Bearer <CRON_SECRET>` using an external scheduler. Render's
+  free Web Service does not run scheduled jobs.
 - Changes status: `ACTIVE` → `GRACE` (7 days) → `EXPIRED`.
 - Scan routes dynamically calculate validity dates in real-time, ensuring customer scans are always accurate even before the cron runs.
 

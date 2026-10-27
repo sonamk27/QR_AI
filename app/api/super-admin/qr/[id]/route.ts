@@ -11,7 +11,8 @@ const schema = z.object({
 
 const DAY = 86_400_000;
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const admin = await getSuperAdmin();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -22,7 +23,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   const { action } = parsed.data;
-  const qr = await db.qrCode.findUnique({ where: { id: params.id }, include: { restaurant: true } });
+  const qr = await db.qrCode.findUnique({ where: { id: id }, include: { restaurant: true } });
   if (!qr) return NextResponse.json({ error: "QR not found." }, { status: 404 });
 
   if (action === "disable") {

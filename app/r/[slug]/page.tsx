@@ -9,11 +9,13 @@ export default async function CustomerPage({
   params,
   searchParams,
 }: {
-  params: { slug: string };
-  searchParams?: { view?: string };
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ view?: string }>;
 }) {
+  const resolvedSearchParams = await searchParams;
+  const { slug } = await params;
   const qr = await db.qrCode.findUnique({
-    where: { slug: params.slug },
+    where: { slug: slug },
     include: { restaurant: true },
   });
 
@@ -34,15 +36,15 @@ export default async function CustomerPage({
   const program = await getOrCreateLoyaltyProgram(qr.restaurant.id);
 
   const initialView =
-    searchParams?.view === "review" || searchParams?.view === "feedback"
+    resolvedSearchParams?.view === "review" || resolvedSearchParams?.view === "feedback"
       ? "review"
-      : searchParams?.view === "card" || searchParams?.view === "loyalty"
+      : resolvedSearchParams?.view === "card" || resolvedSearchParams?.view === "loyalty"
       ? "card"
       : "welcome";
 
   return (
     <CustomerJourneyView
-      slug={params.slug}
+      slug={slug}
       restaurant={{
         id: qr.restaurant.id,
         name: qr.restaurant.name,

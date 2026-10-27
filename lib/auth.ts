@@ -13,8 +13,9 @@ export async function createSessionToken(s: Session) {
     .sign(key());
 }
 
-export function setSessionCookie(token: string) {
-  cookies().set("session", token, {
+export async function setSessionCookie(token: string) {
+  const cookieStore = await cookies();
+  cookieStore.set("session", token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -23,12 +24,14 @@ export function setSessionCookie(token: string) {
   });
 }
 
-export function clearSessionCookie() {
-  cookies().set("session", "", { path: "/", maxAge: 0 });
+export async function clearSessionCookie() {
+  const cookieStore = await cookies();
+  cookieStore.set("session", "", { path: "/", maxAge: 0 });
 }
 
 export async function getSession(): Promise<Session | null> {
-  const token = cookies().get("session")?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get("session")?.value;
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, key());

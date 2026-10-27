@@ -1,5 +1,6 @@
 import { VerifyEmailView } from "@/components/VerifyEmailView";
 
-export default function VerifyEmailPage({ searchParams }: { searchParams?: { token?: string; email?: string } }) {
-  return <VerifyEmailView token={searchParams?.token ?? ""} initialEmail={searchParams?.email ?? ""} />;
+export default async function VerifyEmailPage({ searchParams }: { searchParams: Promise<{ token?: string; email?: string }> }) {
+  const resolvedSearchParams = await searchParams;
+  return <VerifyEmailView token={resolvedSearchParams?.token ?? ""} initialEmail={resolvedSearchParams?.email ?? ""} />;
 }

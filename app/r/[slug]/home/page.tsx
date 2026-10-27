@@ -9,10 +9,11 @@ export const dynamic = "force-dynamic";
 export default async function RestaurantPublicHomePage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
+  const { slug } = await params;
   const qr = await db.qrCode.findUnique({
-    where: { slug: params.slug },
+    where: { slug: slug },
     include: { restaurant: true },
   });
 
@@ -24,7 +25,7 @@ export default async function RestaurantPublicHomePage({
 
   return (
     <RestaurantHomeView
-      slug={params.slug}
+      slug={slug}
       restaurant={{
         id: qr.restaurant.id,
         name: qr.restaurant.name,

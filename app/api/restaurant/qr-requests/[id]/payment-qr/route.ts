@@ -7,14 +7,15 @@ import { buildUpiPaymentUri } from "@/lib/upi-payment";
 
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   const ctx = await getOwnerContext();
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const request = await db.qrRequest.findFirst({
     where: {
-      id: params.id,
+      id: id,
       restaurant: { ownerId: ctx.user.id },
       status: "APPROVED_PAYMENT_DUE",
       payments: { none: { status: { in: ["RECORDED", "PAID"] } } },

@@ -1,9 +1,10 @@
 services:
   - type: web
-    name: reviewflow
+    name: QR_AI
     runtime: node
+    plan: free
     buildCommand: npm ci --include=dev && npm run build
-    startCommand: node .next/standalone/server.js
+    startCommand: npm run start
     healthCheckPath: /
     envVars:
       - key: DATABASE_URL
@@ -19,4 +20,14 @@ services:
       - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
         sync: false
       - key: NEXT_PUBLIC_FIREBASE_APP_ID
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: UPI_VPA
         sync: false

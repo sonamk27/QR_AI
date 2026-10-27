@@ -3,10 +3,11 @@ import { db } from "@/lib/db";
 import { isActive } from "@/lib/qr-status";
 import { rateLimit, clientIp } from "@/lib/ratelimit";
 
-export async function POST(req: Request, { params }: { params: { slug: string } }) {
-  if (!rateLimit(`scan:${clientIp(req)}:${params.slug}`, 20, 600_000)) return NextResponse.json({ ok: true });
+export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  if (!rateLimit(`scan:${clientIp(req)}:${slug}`, 20, 600_000)) return NextResponse.json({ ok: true });
   const qr = await db.qrCode.findUnique({
-    where: { slug: params.slug },
+    where: { slug: slug },
     include: { restaurant: { select: { status: true } } },
   });
   if (qr && isActive(qr) && qr.restaurant.status === "ACTIVE") {

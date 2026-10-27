@@ -21,8 +21,9 @@ const schema = z.discriminatedUnion("action", [
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   const admin = await getSuperAdmin();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -34,7 +35,7 @@ export async function PATCH(
   }
 
   const targetUser = await db.user.findUnique({
-    where: { id: params.id },
+    where: { id: id },
     include: { restaurants: { select: { id: true }, take: 1 } },
   });
   if (!targetUser) {
@@ -63,7 +64,7 @@ export async function PATCH(
   if (parsed.data.action === "reset_password") {
     const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
     await db.user.update({
-      where: { id: params.id },
+      where: { id: id },
       data: { passwordHash },
     });
 
@@ -97,7 +98,7 @@ export async function PATCH(
     }
 
     await db.user.update({
-      where: { id: params.id },
+      where: { id: id },
       data: { role: parsed.data.role },
     });
 

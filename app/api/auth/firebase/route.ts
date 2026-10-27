@@ -119,7 +119,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unable to create or find your account." }, { status: 500 });
     }
 
-    setSessionCookie(await createSessionToken({ uid: user.id, role: user.role }));
+    await setSessionCookie(await createSessionToken({ uid: user.id, role: user.role }));
     return NextResponse.json({ ok: true, redirect: user.role === "super_admin" ? "/super-admin" : "/dashboard" });
   } catch (error) {
     console.error("Firebase authentication error:", error);

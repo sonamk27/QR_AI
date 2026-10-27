@@ -43,7 +43,7 @@ export async function POST(req: Request) {
         { status: 403 },
       );
     }
-    setSessionCookie(await createSessionToken({ uid: user.id, role: user.role }));
+    await setSessionCookie(await createSessionToken({ uid: user.id, role: user.role }));
     const redirect = user.role === "super_admin" ? "/superadmin" : "/dashboard";
     return NextResponse.json({ ok: true, redirect });
   } catch (error: any) {

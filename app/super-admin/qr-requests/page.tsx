@@ -8,12 +8,13 @@ export const dynamic = "force-dynamic";
 export default async function SuperAdminQrRequestsPage({
   searchParams,
 }: {
-  searchParams?: { filter?: "all" | "pending" | "approved" | "rejected" };
+  searchParams?: Promise<{ filter?: "all" | "pending" | "approved" | "rejected" }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const admin = await getSuperAdmin();
   if (!admin) redirect("/login");
 
-  const requestedFilter = searchParams?.filter || "all";
+  const requestedFilter = resolvedSearchParams?.filter || "all";
   const filter =
     requestedFilter === "pending"
       ? "PENDING_APPROVAL"

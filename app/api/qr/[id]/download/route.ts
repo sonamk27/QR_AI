@@ -3,7 +3,8 @@ import { db } from "@/lib/db";
 import { getOwnerContext, getSuperAdmin } from "@/lib/auth";
 import { qrPng, qrSvg } from "@/lib/qr";
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const [ctx, admin] = await Promise.all([getOwnerContext(), getSuperAdmin()]);
   if (!ctx && !admin) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
@@ -11,9 +12,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   // Super admin can download any QR; Owner can only download their restaurant's QR
   const qr = admin
-    ? await db.qrCode.findUnique({ where: { id: params.id } })
+    ? await db.qrCode.findUnique({ where: { id: id } })
     : await db.qrCode.findFirst({
-        where: { id: params.id, restaurantId: ctx!.restaurant.id },
+        where: { id: id, restaurantId: ctx!.restaurant.id },
       });
 
   if (!qr) return NextResponse.json({ error: "QR code not found." }, { status: 404 });

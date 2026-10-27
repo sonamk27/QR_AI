@@ -11,12 +11,12 @@ import { getSuperAdmin } from "@/lib/auth";
  */
 export async function POST(
   _req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const admin = await getSuperAdmin();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { id } = params;
+  const { id } = await params;
 
   const qrRequest = await db.qrRequest.findUnique({ where: { id } });
 

@@ -10,8 +10,9 @@ import {
 
 export async function POST(
   _req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   const admin = await getSuperAdmin();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -27,16 +28,16 @@ export async function POST(
   try {
     result = await db.$transaction(async (tx) => {
       const requestSummary = await tx.qrRequest.findUnique({
-        where: { id: params.id },
+        where: { id: id },
         select: { id: true, restaurantId: true },
       });
       if (!requestSummary) return "NOT_FOUND" as const;
 
-      const locked = await lockRestaurantQrRequest(tx, params.id, requestSummary.restaurantId);
+      const locked = await lockRestaurantQrRequest(tx, id, requestSummary.restaurantId);
       if (locked.length === 0) return "NOT_FOUND" as const;
 
       const qrRequest = await tx.qrRequest.findUniqueOrThrow({
-        where: { id: params.id },
+        where: { id: id },
         include: {
           payments: {
             where: {

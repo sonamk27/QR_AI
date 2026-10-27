@@ -48,25 +48,27 @@ const schema = z.union([
   }),
 ]);
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const admin = await getSuperAdmin();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const restaurant = await db.restaurant.findUnique({
-    where: { id: params.id },
+    where: { id: id },
     include: { owner: { select: { id: true, name: true, email: true, emailVerifiedAt: true } } },
   });
   if (!restaurant) return NextResponse.json({ error: "Restaurant not found." }, { status: 404 });
   return NextResponse.json({ restaurant });
 }
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const admin = await getSuperAdmin();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   const restaurant = await db.restaurant.findUnique({
-    where: { id: params.id },
+    where: { id: id },
     select: { id: true, ownerId: true },
   });
   if (!restaurant) return NextResponse.json({ error: "Restaurant not found." }, { status: 404 });
@@ -85,7 +87,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
     await db.$transaction([
       db.restaurant.update({
-        where: { id: params.id },
+        where: { id: id },
         data: {
           name: d.name,
           city: d.city || null,
@@ -106,8 +108,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         data: {
           actorId: admin.id,
           action: "restaurant.profile_updated",
-          target: params.id,
-          restaurantId: params.id,
+          target: id,
+          restaurantId: id,
           meta: { restaurantName: d.name, ownerEmail: email },
         },
       }),
@@ -142,8 +144,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         data: {
           actorId: admin.id,
           action: "restaurant.owner_updated",
-          target: params.id,
-          restaurantId: params.id,
+          target: id,
+          restaurantId: id,
           meta: { ownerName: parsed.data.ownerName, ownerEmail: email },
         },
       }),
@@ -162,15 +164,15 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const googleReviewUrl = parsed.data.googleReviewUrl || null;
     await db.$transaction([
       db.restaurant.update({
-        where: { id: params.id },
+        where: { id: id },
         data: { googleReviewUrl },
       }),
       db.auditLog.create({
         data: {
           actorId: admin.id,
           action: "restaurant.google_link_updated",
-          target: params.id,
-          restaurantId: params.id,
+          target: id,
+          restaurantId: id,
           meta: { googleReviewUrl },
         },
       }),
@@ -182,7 +184,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const d = parsed.data;
     try {
       await db.restaurant.update({
-        where: { id: params.id },
+        where: { id: id },
         data: {
           instagramUrl: d.instagramUrl || null,
           facebookUrl: d.facebookUrl || null,
@@ -195,15 +197,15 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         SET "instagramUrl" = ${d.instagramUrl || null},
             "facebookUrl" = ${d.facebookUrl || null},
             "shareCaption" = ${d.shareCaption || null}
-        WHERE "id" = ${params.id}
+        WHERE "id" = ${id}
       `;
     }
     await db.auditLog.create({
       data: {
         actorId: admin.id,
         action: "restaurant.social_links_updated",
-        target: params.id,
-        restaurantId: params.id,
+        target: id,
+        restaurantId: id,
         meta: {
           instagramUrl: d.instagramUrl || null,
           facebookUrl: d.facebookUrl || null,
@@ -217,15 +219,15 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if ("action" in parsed.data && parsed.data.action === "update_ai") {
     const d = parsed.data;
     await db.restaurant.update({
-      where: { id: params.id },
+      where: { id: id },
       data: { aiEnabled: d.aiEnabled },
     });
     await db.auditLog.create({
       data: {
         actorId: admin.id,
         action: "restaurant.ai_updated",
-        target: params.id,
-        restaurantId: params.id,
+        target: id,
+        restaurantId: id,
         meta: { aiEnabled: d.aiEnabled },
       },
     }).catch(() => {});
@@ -233,13 +235,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 
   await db.$transaction([
-    db.restaurant.update({ where: { id: params.id }, data: { status: parsed.data.status } }),
+    db.restaurant.update({ where: { id: id }, data: { status: parsed.data.status } }),
     db.auditLog.create({
       data: {
         actorId: admin.id,
         action: `restaurant.${parsed.data.status}`,
-        target: params.id,
-        restaurantId: params.id,
+        target: id,
+        restaurantId: id,
       },
     }),
   ]);
