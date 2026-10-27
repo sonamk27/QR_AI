@@ -20,7 +20,7 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
 export default async function QrPage() {
   const { restaurant } = (await getOwnerContext())!;
   const qrs = await db.qrCode.findMany({
-    where: { restaurantId: restaurant.id, status: { not: "PENDING_PAYMENT" } },
+    where: { restaurantId: restaurant.id },
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { scans: true, sessions: true } } },
   });
@@ -39,7 +39,7 @@ export default async function QrPage() {
         <div>
           <h1 className="font-serif text-3xl font-bold text-[#24211E]">QR Code</h1>
           <p className="mt-1 text-xs text-[#716B64]">
-            Download high-res QR codes and print branded table tent cards for tables, billing counters, and bars.
+            Preview every QR here. New codes stay locked until payment is approved, then become ready to use.
           </p>
         </div>
         <Link
@@ -70,8 +70,8 @@ export default async function QrPage() {
 
       {qrs.length === 0 ? (
         <Empty
-          title="No QR codes assigned yet"
-          body="Submit a QR request and once approved and payment is complete, your QR codes will appear here."
+          title="No QR codes generated yet"
+          body="Submit a QR request to generate your QR. It will appear here locked while approval and payment are pending."
           href="/dashboard/qr-requests"
           cta="Request a QR code"
         />
@@ -89,8 +89,8 @@ export default async function QrPage() {
               return (
                 <article key={q.id} className="overflow-hidden rounded-2xl border border-[#E8DFD1] bg-white shadow-subtle">
                   <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:p-5">
-                    <div className="flex h-52 w-52 shrink-0 items-center justify-center self-center rounded-2xl border border-[#E8DFD1] bg-[#FAF7F2] p-2 sm:h-56 sm:w-56 sm:self-start">
-                      {isActive ? (
+                    <div className="relative flex h-52 w-52 shrink-0 items-center justify-center self-center overflow-hidden rounded-2xl border border-[#E8DFD1] bg-[#FAF7F2] p-2 sm:h-56 sm:w-56 sm:self-start">
+                      {isActive || status === "PENDING_PAYMENT" ? (
                         <img
                           src={`/api/qr/${q.id}/download?format=png&inline=1&size=512`}
                           alt={`QR code for ${q.name}`}
@@ -98,12 +98,18 @@ export default async function QrPage() {
                           height={512}
                           loading="lazy"
                           decoding="async"
-                          className="h-full w-full object-contain"
+                          className={`h-full w-full object-contain ${status === "PENDING_PAYMENT" ? "blur-[2px] opacity-50" : ""}`}
                         />
                       ) : (
                         <p className="px-2 text-center text-xs leading-relaxed text-[#716B64]">
                           QR unavailable while this code is {badge.label.toLowerCase()}.
                         </p>
+                      )}
+                      {status === "PENDING_PAYMENT" && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/45 text-center backdrop-blur-[1px]">
+                          <span className="flex h-12 w-12 items-center justify-center rounded-full border border-[#E8D8BA] bg-white text-2xl shadow-sm" aria-hidden="true">🔒</span>
+                          <span className="mt-2 rounded-full bg-[#24211E]/90 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">Locked · payment pending</span>
+                        </div>
                       )}
                     </div>
 
@@ -135,7 +141,7 @@ export default async function QrPage() {
 
                       <p className={`mt-3 text-xs font-semibold ${status === "EXPIRED" ? "text-[#A83B3B]" : days <= 30 ? "text-[#7A5826]" : "text-[#2E6B4F]"}`}>
                         {status === "DISABLED" || status === "PENDING_PAYMENT"
-                          ? status === "PENDING_PAYMENT" ? "Payment required" : "Disabled"
+                          ? status === "PENDING_PAYMENT" ? "QR generated · locked until payment approval" : "Disabled"
                           : days > 0 ? `${days} days left` : `Expired ${Math.abs(days)} days ago`}
                         {q.validUntil && status !== "DISABLED" && status !== "PENDING_PAYMENT" && (
                           <span className="font-normal text-[#716B64]"> · until {q.validUntil.toLocaleDateString("en-IN", { dateStyle: "medium" })}</span>
@@ -181,7 +187,7 @@ export default async function QrPage() {
                         href="/dashboard/qr-requests"
                         className="inline-flex min-h-9 items-center rounded-xl bg-[#B58A4B] px-3 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[#9E7438]"
                       >
-                        Renew / activate
+                        {status === "PENDING_PAYMENT" ? "Complete payment" : "Renew / activate"}
                       </Link>
                     )}
                   </div>

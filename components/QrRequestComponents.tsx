@@ -206,7 +206,7 @@ export function QrRequestForm() {
                 <p className="text-3xl">✅</p>
                 <p className="mt-2 font-serif font-bold text-[#2E6B4F]">Request submitted!</p>
                 <p className="mt-1 text-xs text-[#2E6B4F]">
-                  Your QR request is pending admin approval. We&apos;ll update you soon.
+                  Your QR has been generated and is locked while we review your request. After approval and payment verification, it will unlock on your QR page.
                 </p>
               </div>
             ) : (
@@ -215,7 +215,7 @@ export function QrRequestForm() {
                   <div>
                     <h3 className="font-serif text-lg font-bold text-[#24211E]">Request QR Code</h3>
                     <p className="text-xs text-[#716B64]">
-                      Submit a request for admin approval. Payment is due after approval.
+                      Your QR is generated in a locked state. Payment is due after approval.
                     </p>
                   </div>
                   <button
@@ -339,8 +339,7 @@ export function QrRequestList({
       <div className="rounded-2xl border border-[#E8DFD1] bg-white p-8 text-center shadow-subtle">
         <p className="font-serif text-lg font-bold text-[#24211E]">No QR requests yet</p>
         <p className="mx-auto mt-1 max-w-sm text-xs text-[#716B64]">
-          Submit a request using the button above. Once approved, scan the payment QR.
-          The administrator will verify your payment and activate your QR.
+          Submit a request using the button above. Your QR will be generated in a locked state, then unlock after approval and payment verification.
         </p>
       </div>
     );
@@ -358,6 +357,7 @@ export function QrRequestList({
             : req.status;
         const statusCfg = STATUS_CONFIG[effectiveStatus] || STATUS_CONFIG.PENDING_APPROVAL;
         const activeQrs = req.qrCodes.filter((q) => q.status === "ACTIVE");
+        const lockedQrs = req.qrCodes.filter((q) => q.status === "PENDING_PAYMENT");
 
         return (
           <div
@@ -398,13 +398,19 @@ export function QrRequestList({
                 </div>
               )}
 
+              {lockedQrs.length > 0 && (
+                <div className="rounded-xl border border-[#E8D8BA] bg-[#FAF5ED] p-3 text-xs text-[#7A5826]">
+                  <p className="font-bold">🔒 Your QR is generated and locked</p>
+                  <p className="mt-0.5">It will unlock and appear ready to use on your QR page as soon as payment is approved.</p>
+                  <Link href="/dashboard/qr" className="mt-1 inline-flex font-bold underline">Preview locked QR →</Link>
+                </div>
+              )}
+
               {req.status === "APPROVED_PAYMENT_DUE" && !paidPayment && !recordedPayment && activeQrs.length === 0 && (
                 <div className="rounded-xl bg-[#FAF5ED] border border-[#E8D8BA] p-3 text-xs text-[#7A5826]">
                   <p className="font-bold">Approved · Payment required</p>
                   <p className="mt-0.5">
-                    Scan the payment QR to pay. Your{" "}
-                    {req.quantity} QR code{req.quantity > 1 ? "s" : ""} will activate
-                    after the administrator verifies your payment.
+                    Scan the payment QR to pay. Your locked QR will unlock after the administrator verifies your payment.
                   </p>
                 </div>
               )}

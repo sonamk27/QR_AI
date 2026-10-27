@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getOwnerContext } from "@/lib/auth";
+import { newSlug } from "@/lib/qr";
 
 const schema = z.object({
   name: z.string().trim().min(1).max(60),
@@ -60,7 +61,7 @@ export async function POST(req: Request) {
     `;
 
     const existingQr = await tx.qrCode.findFirst({
-      where: { restaurantId: ctx.restaurant.id },
+      where: { restaurantId: ctx.restaurant.id, status: { not: "PENDING_PAYMENT" } },
       select: { id: true },
     });
     if (existingQr) return { error: "HAS_QR" as const };
@@ -82,6 +83,18 @@ export async function POST(req: Request) {
         tableNo: tableNo || undefined,
         quantity,
         note: note?.trim() || undefined,
+      },
+    });
+
+    await tx.qrCode.create({
+      data: {
+        restaurantId: ctx.restaurant.id,
+        qrRequestId: request.id,
+        name,
+        location: location || undefined,
+        tableNo: tableNo || undefined,
+        slug: newSlug(),
+        status: "PENDING_PAYMENT",
       },
     });
 

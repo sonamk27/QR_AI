@@ -59,20 +59,35 @@ export async function confirmQrRequestPayment(
   }
 
   const now = Date.now();
-  const qrCount = Math.min(request.quantity, 1);
-  await tx.qrCode.createMany({
-    data: Array.from({ length: qrCount }, () => ({
-      restaurantId: request.restaurantId,
-      qrRequestId: request.id,
-      name: request.name,
-      location: request.location ?? undefined,
-      tableNo: request.tableNo ?? undefined,
-      slug: newSlug(),
-      status: "ACTIVE" as const,
-      validFrom: new Date(now),
-      validUntil: new Date(now + QR_VALID_DAYS * DAY),
-    })),
+  const validity = {
+    status: "ACTIVE" as const,
+    validFrom: new Date(now),
+    validUntil: new Date(now + QR_VALID_DAYS * DAY),
+  };
+  const preGeneratedQrs = await tx.qrCode.findMany({
+    where: { qrRequestId: request.id, status: "PENDING_PAYMENT" },
+    select: { id: true },
   });
+
+  if (preGeneratedQrs.length > 0) {
+    await tx.qrCode.updateMany({
+      where: { qrRequestId: request.id, status: "PENDING_PAYMENT" },
+      data: validity,
+    });
+  } else {
+    const qrCount = Math.min(request.quantity, 1);
+    await tx.qrCode.createMany({
+      data: Array.from({ length: qrCount }, () => ({
+        restaurantId: request.restaurantId,
+        qrRequestId: request.id,
+        name: request.name,
+        location: request.location ?? undefined,
+        tableNo: request.tableNo ?? undefined,
+        slug: newSlug(),
+        ...validity,
+      })),
+    });
+  }
 
   const movedToActive = await tx.qrRequest.updateMany({
     where: { id: request.id, restaurantId: request.restaurantId, status: "PAID" },

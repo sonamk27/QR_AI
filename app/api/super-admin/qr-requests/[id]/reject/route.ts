@@ -47,6 +47,9 @@ export async function POST(
       },
     });
     if (updated.count !== 1) return false;
+    await tx.qrCode.deleteMany({
+      where: { qrRequestId: id, status: "PENDING_PAYMENT" },
+    });
     await tx.auditLog.create({
       data: {
         actorId: admin.id,

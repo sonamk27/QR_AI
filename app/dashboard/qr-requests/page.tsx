@@ -39,8 +39,7 @@ export default async function QrRequestsPage() {
         <div>
           <h1 className="font-serif text-3xl font-bold text-[#24211E]">QR Code Requests</h1>
           <p className="mt-1 text-xs text-[#716B64]">
-            Request new QR codes. After approval, scan the payment QR and our team will
-            verify your payment and activate your QR code.
+            Generate your QR when you submit a request. It stays locked on your QR page until our team approves the request and verifies your payment.
           </p>
         </div>
         <QrRequestForm />
@@ -57,7 +56,7 @@ export default async function QrRequestsPage() {
           {
             step: "1",
             title: "Submit Request",
-            desc: "Add a name and tell us where you plan to place it.",
+            desc: "Your QR is generated immediately and shown as locked on your QR page.",
           },
           {
             step: "2",
@@ -67,7 +66,7 @@ export default async function QrRequestsPage() {
           {
             step: "3",
             title: "Pay by UPI",
-            desc: "Pay by UPI after approval. Your QR activates once payment is verified.",
+            desc: "Pay in person after approval. Your QR unlocks as soon as payment is verified.",
           },
         ].map((item) => (
           <div

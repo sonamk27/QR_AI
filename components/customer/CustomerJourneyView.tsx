@@ -84,6 +84,7 @@ export function CustomerJourneyView({
   const [customer, setCustomer] = useState<CustomerData | null>(null);
   const [program, setProgram] = useState(initialProgram);
   const [loadingCard, setLoadingCard] = useState(false);
+  const [refreshingCard, setRefreshingCard] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
   const [collectingStamp, setCollectingStamp] = useState(false);
   const [stampFeedbackMessage, setStampFeedbackMessage] = useState<string | null>(null);
@@ -195,7 +196,8 @@ export function CustomerJourneyView({
     }
     try {
       const res = await fetch(
-        `/api/loyalty/card?slug=${encodeURIComponent(slug)}&phone=${encodeURIComponent(phoneToFetch)}`
+        `/api/loyalty/card?slug=${encodeURIComponent(slug)}&phone=${encodeURIComponent(phoneToFetch)}`,
+        { cache: "no-store" }
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to load loyalty card");
@@ -227,6 +229,17 @@ export function CustomerJourneyView({
       if (!silent) {
         setLoadingCard(false);
       }
+    }
+  }
+
+  async function handleRefreshCard() {
+    const phoneToFetch = customer?.phone || phoneNumber;
+    if (!phoneToFetch || refreshingCard) return;
+    setRefreshingCard(true);
+    try {
+      await fetchLoyaltyCard(phoneToFetch);
+    } finally {
+      setRefreshingCard(false);
     }
   }
 
@@ -804,11 +817,14 @@ export function CustomerJourneyView({
             </div>
             <div className="flex items-center gap-1.5">
               <button
-                onClick={() => fetchLoyaltyCard(customer?.phone || phoneNumber)}
-                className="rounded-xl border border-[#E8DFD1] bg-white px-2 py-1 text-xs text-[#716B64] hover:bg-[#FAF7F2] transition"
+                type="button"
+                onClick={handleRefreshCard}
+                disabled={refreshingCard}
+                className="rounded-xl border border-[#E8DFD1] bg-white px-2.5 py-1.5 text-xs text-[#716B64] hover:bg-[#FAF7F2] transition disabled:opacity-60"
                 title="Refresh Stamps"
+                aria-label={refreshingCard ? "Refreshing rewards" : "Refresh rewards"}
               >
-                🔄
+                <span className={refreshingCard ? "inline-block animate-spin" : "inline-block"} aria-hidden="true">↻</span>
               </button>
               <button
                 onClick={() => setCurrentView("review")}
@@ -1156,24 +1172,27 @@ export function CustomerJourneyView({
           </div>
 
           <div className="mt-5 text-center">
-            <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-2xl bg-[#F6EFE3] text-lg text-[#B58A4B] border border-[#E8D8BA]">
-              🌿
-            </div>
-            <h3 className="font-serif text-2xl font-bold text-[#24211E]">
-              Share Your Experience
-            </h3>
+            {restaurant.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={restaurant.logoUrl} alt="" className="mx-auto mb-3 h-14 w-14 rounded-full border-2 border-white object-cover shadow-sm" />
+            ) : (
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-[#F6EFE3] font-serif text-xl font-bold text-[#B58A4B] shadow-sm">
+                {restaurant.name.trim().charAt(0).toUpperCase() || "R"}
+              </div>
+            )}
+            <h3 className="font-serif text-2xl font-bold text-[#24211E]">How was your visit to {restaurant.name}?</h3>
             <p className="mx-auto mt-1 max-w-xs text-xs text-[#716B64]">
-              Note others discover great food. We&apos;ll help you write an honest review.
+              {restaurant.shareCaption || `Tell ${restaurant.name} what you enjoyed. Your honest feedback helps the team make every visit better.`}
             </p>
 
             <div className="my-5">
-              <p className="mb-3 text-sm font-semibold text-[#24211E]">Rate these parts of your visit</p>
+              <p className="mb-3 text-sm font-semibold text-[#24211E]">Rate your experience</p>
               <div className="space-y-2.5 text-left">
                 {(["How was the food?", "How was the service?", "How was the atmosphere?"] as const).map((question, index) => (
-                  <div key={question} className="flex min-h-14 items-center justify-between gap-2 rounded-xl border border-[#E8DFD1] bg-white px-3 py-2">
+                  <div key={question} className="flex min-h-[68px] items-center justify-between gap-2 rounded-xl border border-[#E8DFD1] bg-white px-3 py-2">
                     <span className="min-w-0 text-xs font-semibold text-[#24211E]">{question}</span>
                     <Stars
-                      size={28}
+                      size={34}
                       value={reviewRatings[index]}
                       onChange={(rating) => {
                         setReviewRatings((current) => {
@@ -1191,7 +1210,7 @@ export function CustomerJourneyView({
                 ))}
               </div>
               <p className="mt-2 text-[11px] text-[#716B64]" aria-live="polite">
-                Choose 1 to 5 stars for each question to continue.
+                {reviewRatings.filter(Boolean).length === 3 ? "Thanks for rating your visit!" : "Tap 1–5 stars for food, service, and atmosphere."}
               </p>
             </div>
           </div>
@@ -1233,6 +1252,17 @@ export function CustomerJourneyView({
               <p role="alert" className="rounded-xl border border-[#F7D6D6] bg-[#FDF2F2] p-3 text-xs font-semibold text-[#A83B3B]">
                 {reviewGenerationError}
               </p>
+            )}
+
+            {restaurant.instagramUrl && (
+              <a
+                href={restaurant.instagramUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#E8DFD1] bg-white px-4 text-sm font-bold text-[#24211E] transition hover:bg-[#FAF7F2]"
+              >
+                <span aria-hidden="true">◎</span> Follow {restaurant.name} on Instagram
+              </a>
             )}
 
             {aiGenerated && (

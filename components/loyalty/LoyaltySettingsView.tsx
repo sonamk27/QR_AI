@@ -138,6 +138,9 @@ export function LoyaltySettingsView({
   const [redeemVoucherCode, setRedeemVoucherCode] = useState("");
   const [redeemLoading, setRedeemLoading] = useState(false);
   const [redeemFeedback, setRedeemFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [voucherCustomerRef, setVoucherCustomerRef] = useState("");
+  const [issueVoucherLoading, setIssueVoucherLoading] = useState(false);
+  const [issueVoucherFeedback, setIssueVoucherFeedback] = useState<{ type: "success" | "error"; message: string; code?: string } | null>(null);
 
   // Real-time Live State synchronized directly with backend
   const [liveStats, setLiveStats] = useState<Stats>(stats);
@@ -351,6 +354,46 @@ export function LoyaltySettingsView({
       });
     } finally {
       setRedeemLoading(false);
+    }
+  }
+
+  async function handleIssueExtraVoucher(e: React.FormEvent) {
+    e.preventDefault();
+    if (!voucherCustomerRef.trim()) return;
+    setIssueVoucherLoading(true);
+    setIssueVoucherFeedback(null);
+    try {
+      const lookupRes = await fetch("/api/loyalty/customer/adjust", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: voucherCustomerRef.trim(), action: "lookup" }),
+      });
+      const lookup = await lookupRes.json();
+      if (!lookupRes.ok) throw new Error(lookup.error || "Could not find this customer.");
+      if (!lookup.found) throw new Error(lookup.message || "No customer found. Check the phone number or anonymous ID.");
+
+      const issueRes = await fetch("/api/loyalty/customer/adjust", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: voucherCustomerRef.trim(), action: "grant_offer" }),
+      });
+      const result = await issueRes.json();
+      if (!issueRes.ok) throw new Error(result.error || "Could not issue voucher.");
+
+      setIssueVoucherFeedback({
+        type: "success",
+        message: result.message || "Extra voucher issued successfully.",
+        code: result.reward?.code,
+      });
+      setVoucherCustomerRef("");
+      await refreshDashboardData();
+    } catch (err) {
+      setIssueVoucherFeedback({
+        type: "error",
+        message: err instanceof Error ? err.message : "Could not issue voucher.",
+      });
+    } finally {
+      setIssueVoucherLoading(false);
     }
   }
 
@@ -1086,17 +1129,58 @@ export function LoyaltySettingsView({
         </div>
       </div>
 
+      {/* Owner-only extra voucher issuance */}
+      <section className="overflow-hidden rounded-2xl border border-[#E8D8BA] bg-white shadow-subtle">
+        <div className="flex flex-col gap-3 bg-gradient-to-r from-[#FAF5ED] to-white p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#E8D8BA] bg-white text-xl">🎟️</span>
+            <div>
+              <h3 className="font-serif text-base font-bold text-[#24211E]">Issue Extra Voucher</h3>
+              <p className="mt-0.5 max-w-xl text-xs leading-relaxed text-[#716B64]">
+                Send a bonus voucher to a customer outside the regular stamp milestone. It uses your current loyalty reward and validity settings.
+              </p>
+            </div>
+          </div>
+          <span className="rounded-full border border-[#E8D8BA] bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#7A5826]">Owner tool</span>
+        </div>
+        <form onSubmit={handleIssueExtraVoucher} className="grid gap-3 border-t border-[#E8DFD1] p-4 sm:grid-cols-[1fr_auto] sm:items-end sm:p-5">
+          <div>
+            <label htmlFor="extra-voucher-customer" className="mb-1.5 block text-xs font-semibold text-[#716B64]">Customer mobile number or anonymous ID</label>
+            <input
+              id="extra-voucher-customer"
+              value={voucherCustomerRef}
+              onChange={(e) => setVoucherCustomerRef(e.target.value)}
+              placeholder="e.g. 9876543210 or anon_…"
+              className="min-h-11 w-full rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] px-3.5 py-2.5 text-sm font-medium text-[#24211E] outline-none focus:border-[#B58A4B] focus:bg-white"
+              required
+            />
+          </div>
+          <button type="submit" disabled={issueVoucherLoading} className="min-h-11 rounded-xl bg-[#B58A4B] px-5 text-xs font-bold text-white transition hover:bg-[#9E7438] disabled:opacity-60">
+            {issueVoucherLoading ? "Issuing…" : "Issue Extra Voucher"}
+          </button>
+          {issueVoucherFeedback && (
+            <div role={issueVoucherFeedback.type === "error" ? "alert" : "status"} className={`sm:col-span-2 rounded-xl border p-3 text-xs ${issueVoucherFeedback.type === "success" ? "border-[#D1E7DC] bg-[#EEF6F2] text-[#2E6B4F]" : "border-[#F7D6D6] bg-[#FDF2F2] text-[#A83B3B]"}`}>
+              <p className="font-semibold">{issueVoucherFeedback.message}</p>
+              {issueVoucherFeedback.code && <p className="mt-1 font-mono font-bold tracking-wider">Voucher code: {issueVoucherFeedback.code}</p>}
+            </div>
+          )}
+        </form>
+      </section>
+
       {/* ─────────────────────────────────────────────────────────────
           SECTION 4: LOYALTY PROGRAM SETTINGS (Matching Mockup Right Panel)
       ───────────────────────────────────────────────────────────── */}
-      <div className="rounded-3xl border border-[#E8DFD1] bg-white p-4 shadow-subtle sm:p-6">
-        <div className="border-b border-[#E8DFD1]/60 pb-4">
+      <div className="overflow-hidden rounded-3xl border border-[#E8DFD1] bg-white shadow-subtle">
+        <div className="border-b border-[#E8DFD1] bg-gradient-to-r from-[#FAF5ED] via-white to-[#FAF7F2] p-4 sm:p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
+            <div className="flex items-center gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#E8D8BA] bg-white text-xl">☕</span>
+              <div>
               <h2 className="font-serif text-xl font-bold text-[#24211E]">Loyalty Program Settings</h2>
               <p className="text-xs text-[#716B64] mt-0.5">
-                Fully customizable for each business.
+                Set the stamp goal and the reward customers receive when they complete it.
               </p>
+              </div>
             </div>
             <label className="flex min-h-11 items-center justify-between gap-3 rounded-xl bg-[#FAF7F2] px-3 cursor-pointer sm:min-h-0 sm:justify-start sm:bg-transparent sm:px-0">
               <span className="text-xs font-bold text-[#24211E]">Program Active</span>
@@ -1110,8 +1194,8 @@ export function LoyaltySettingsView({
           </div>
         </div>
 
-        <form onSubmit={handleSaveProgram} className="mt-6 space-y-5">
-          <h3 className="font-serif text-sm font-bold text-[#24211E]">Create / Edit Program</h3>
+        <form onSubmit={handleSaveProgram} className="space-y-5 p-4 sm:p-6">
+          <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#9A7441]">Program details and reward</h3>
 
           {/* Field 1: Program Name */}
           <div>
