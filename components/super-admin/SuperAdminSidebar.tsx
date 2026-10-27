@@ -44,7 +44,6 @@ export function SuperAdminSidebar({
       label: "Platform",
       items: [
         { href: "/super-admin/restaurants", label: "Restaurants", icon: "🏢" },
-        { href: "/super-admin/payments", label: "Payments Ledger", icon: "💳" },
         { href: "/super-admin/audit", label: "Audit Log", icon: "📜" },
         { href: "/super-admin/users", label: "User Management", icon: "👥" },
       ],

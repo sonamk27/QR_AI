@@ -5,6 +5,7 @@ import { restaurantStats, buildInsights } from "@/lib/analytics";
 import { getQrPricePaise } from "@/lib/plans";
 import { QrRequestList } from "@/components/QrRequestComponents";
 import { OwnerStampRequestsPanel } from "@/components/loyalty/OwnerStampRequestsPanel";
+import { RefreshDashboardButton } from "@/components/restaurant/RefreshDashboardButton";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,7 @@ export default async function Overview() {
   const max = Math.max(1, ...s.distribution.map((d) => d.count));
 
   return (
-    <div className="space-y-6 sm:space-y-7">
+    <div className="screen-enter space-y-6 sm:space-y-7">
       <header className="flex flex-col gap-4 border-b border-[#E8DFD1] pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9A7441]">Restaurant overview · Last 30 days</p>
@@ -65,6 +66,7 @@ export default async function Overview() {
           <p className="mt-1 text-sm text-[#716B64]">Here’s how {restaurant.name} is doing.</p>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+          <RefreshDashboardButton />
           <Link href="/dashboard/feedback" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#E8DFD1] bg-white px-3.5 text-xs font-semibold text-[#24211E] transition hover:bg-[#FAF7F2]">
             View feedback
           </Link>

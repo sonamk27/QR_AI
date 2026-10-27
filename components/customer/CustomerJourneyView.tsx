@@ -99,6 +99,7 @@ export function CustomerJourneyView({
   const [agreedUpdates, setAgreedUpdates] = useState(true);
   const [registering, setRegistering] = useState(false);
   const [registerError, setRegisterError] = useState("");
+  const [newCustomerReviewRequired, setNewCustomerReviewRequired] = useState(false);
   const registerLockRef = useRef(false);
   const collectLockRef = useRef(false);
 
@@ -283,15 +284,19 @@ export function CustomerJourneyView({
   }, [pendingRequestId, currentView, customer?.phone, phoneNumber, slug, pendingTableNo]);
 
   // Collect Stamp Handler (Customer sends request to owner)
-  async function handleCollectStampClick() {
+  async function handleCollectStampClick(phoneOverride?: string) {
     if (collectLockRef.current) return;
-    const phoneToUse = customer?.phone || phoneNumber;
+    if (newCustomerReviewRequired && !reviewSubmitted) {
+      setCurrentView("review");
+      return;
+    }
+    const phoneToUse = phoneOverride || customer?.phone || phoneNumber;
     if (!phoneToUse) {
       setCurrentView("register");
       return;
     }
 
-    if (hasCollectedStampToday) {
+    if (!phoneOverride && hasCollectedStampToday) {
       setStampFeedbackMessage("You already received a stamp for today's visit!");
       setCurrentView("card");
       return;
@@ -357,29 +362,22 @@ export function CustomerJourneyView({
       localStorage.setItem(`loyalty_phone_${slug}`, finalPhone);
       localStorage.setItem(`loyalty_name_${slug}`, fullName.trim());
 
-      const res = await fetch("/api/loyalty/request-stamp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          slug,
-          name: fullName.trim(),
-          phone: finalPhone,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to register request");
-
-      if (data.alreadyCollected) {
-        setStampFeedbackMessage(data.message || "You already received a stamp for today's visit!");
-        await fetchLoyaltyCard(finalPhone);
-        setCurrentView("card");
+      const lookup = await fetch(`/api/loyalty/customer/exists?slug=${encodeURIComponent(slug)}&phone=${encodeURIComponent(finalPhone)}`, { cache: "no-store" });
+      const lookupData = await lookup.json().catch(() => ({}));
+      if (!lookup.ok) throw new Error(lookupData.error || "Could not check this phone number. Please try again.");
+      if (lookupData.exists) {
+        setNewCustomerReviewRequired(false);
+        await handleCollectStampClick(finalPhone);
         return;
       }
 
-      setPendingRequestId(data.requestId);
-      setPendingTableNo(data.tableNo || null);
-      setCurrentView("request_pending");
+      setPhoneNumber(finalPhone);
+      setNewCustomerReviewRequired(true);
+      setReviewSubmitted(false);
+      setReviewRatings([0, 0, 0]);
+      setAiGenerated(false);
+      setAiDraft("");
+      setCurrentView("review");
     } catch (err: any) {
       setRegisterError(err.message || "Registration failed. Please try again.");
     } finally {
@@ -611,7 +609,7 @@ export function CustomerJourneyView({
           STEP 3: ENTER DETAILS ("Join Our Rewards" — matching Phone 3)
       ───────────────────────────────────────────────────────────── */}
       {currentView === "register" && (
-        <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-between px-5 py-6">
+        <main className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center px-5 py-6">
           <div>
             <button
               onClick={() => setCurrentView("welcome")}
@@ -694,7 +692,7 @@ export function CustomerJourneyView({
                 disabled={registering}
                 className="mt-3 w-full rounded-2xl bg-[#B58A4B] py-3.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#9E7438] active:scale-[0.98] disabled:opacity-60"
               >
-                {registering ? "Loading Your Card..." : "Send OTP"}
+                {registering ? "Creating Your Card..." : "Create Loyalty Card"}
               </button>
             </form>
           </div>
@@ -1255,13 +1253,11 @@ export function CustomerJourneyView({
               Want to collect a loyalty stamp for your visit?
             </p>
             <button
-              onClick={() => {
-                if (customer) setCurrentView("card");
-                else setCurrentView("register");
-              }}
-              className="mt-1.5 text-xs font-bold underline text-[#24211E]"
+              onClick={() => handleCollectStampClick(phoneNumber)}
+              disabled={newCustomerReviewRequired && !reviewSubmitted}
+              className="mt-1.5 text-xs font-bold underline text-[#24211E] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Collect My Stamp Now →
+              {newCustomerReviewRequired && !reviewSubmitted ? "Complete your review to continue" : "Collect My Stamp Now →"}
             </button>
           </div>
         </main>

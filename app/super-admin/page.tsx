@@ -3,7 +3,6 @@ import Link from "next/link";
 import { getSuperAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { platformStats } from "@/lib/analytics";
-import { rupees } from "@/lib/plans";
 import { Stat } from "@/components/Shell";
 import { CreateRestaurantModal } from "@/components/SuperAdminModals";
 
@@ -93,11 +92,6 @@ export default async function SuperAdminOverview() {
           label="Active QR Codes"
           value={stats.qrActive}
           hint={`${stats.qrExpired} in grace or expired`}
-        />
-        <Stat
-          label="Total Revenue"
-          value={rupees(stats.revenue)}
-          hint="Verified direct + gateway payments"
         />
         <Stat
           label="QRs Expiring Soon"
@@ -194,22 +188,6 @@ export default async function SuperAdminOverview() {
           </div>
         </Link>
 
-        <Link
-          href="/super-admin/payments"
-          className="panel p-5 transition hover:border-[#B58A4B] hover:shadow-xs group sm:col-span-2 lg:col-span-1"
-        >
-          <div className="flex items-center justify-between">
-            <h3 className="font-serif font-bold text-[#24211E] group-hover:text-[#B58A4B]">Payment Ledger</h3>
-            <span className="text-xs text-[#B58A4B] font-medium">View ledger →</span>
-          </div>
-          <p className="mt-1 text-xs text-[#716B64]">
-            All direct UPI, Cash, Bank, and Gateway payments with invoice records.
-          </p>
-          <div className="mt-4 flex items-center justify-between border-t border-[#E8DFD1] pt-3 text-xs text-[#716B64]">
-            <span>Verified Total</span>
-            <span className="font-bold text-[#B58A4B]">{rupees(stats.revenue)}</span>
-          </div>
-        </Link>
       </div>
 
       {/* Mini Audit Log Section */}

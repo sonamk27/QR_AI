@@ -134,7 +134,8 @@ export function AuthForm({
   );
 
   return (
-    <main className="mx-auto grid min-h-screen max-w-md content-center px-5 py-10">
+    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-5 py-10">
+      <section className="screen-enter w-full">
       <Link href="/" aria-label="ReviewFlow home" className="inline-flex w-fit items-center gap-3 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#B58A4B]">
         <span className="flex h-12 w-24 items-center justify-center rounded-xl border border-[#E8DFD1] bg-white px-2 shadow-sm">
           <Image src="/logo.png" alt="" width={160} height={80} priority className="h-auto w-full object-contain" />
@@ -198,6 +199,7 @@ export function AuthForm({
           </Link>
         </p>
       ) : null}
+      </section>
     </main>
   );
 }
