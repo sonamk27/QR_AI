@@ -582,7 +582,7 @@ export function CustomerJourneyView({
             {/* Two Clear Options: Collect My Stamp & Share Your Experience */}
             <div className="mt-7 space-y-3">
               <button
-                onClick={handleCollectStampClick}
+                onClick={() => handleCollectStampClick()}
                 disabled={collectingStamp}
                 className="w-full rounded-2xl bg-[#B58A4B] py-3.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#9E7438] active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
               >
@@ -953,7 +953,7 @@ export function CustomerJourneyView({
                     </div>
                   ) : (
                     <button
-                      onClick={pendingRequestId ? () => setCurrentView("request_pending") : handleCollectStampClick}
+                      onClick={pendingRequestId ? () => setCurrentView("request_pending") : () => handleCollectStampClick()}
                       disabled={collectingStamp}
                       className="w-full rounded-2xl bg-[#B58A4B] py-3 text-xs font-bold text-white shadow-xs transition hover:bg-[#9E7438] active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
                     >
