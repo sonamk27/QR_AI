@@ -142,8 +142,9 @@ export function CustomerJourneyView({
       if (savedName) setFullName(savedName);
       if (savedPhone) setPhoneNumber(savedPhone);
 
-      // Always start at register (phone prompt) — user must confirm their number each scan
-      setCurrentView("register");
+      // Keep deep links on their requested view; the normal welcome flow still
+      // asks the customer to confirm their phone number on each scan.
+      setCurrentView(initialView === "welcome" ? "register" : initialView);
     }
 
     init();
@@ -151,7 +152,7 @@ export function CustomerJourneyView({
     return () => {
       cancelled = true;
     };
-  }, [slug, initialPhone, initialName]);
+  }, [slug, initialPhone, initialName, initialView]);
 
   const isMounted = useRef(false);
 
@@ -464,7 +465,10 @@ export function CustomerJourneyView({
 
     navigator.sendBeacon?.(
       "/api/public/google-click",
-      new Blob([JSON.stringify({ editedText: aiDraft })], { type: "application/json" })
+      new Blob(
+        [JSON.stringify({ sessionId: reviewSessionId, editedText: aiDraft })],
+        { type: "application/json" },
+      )
     );
 
     // Fallback: if popup was blocked, navigate in same tab

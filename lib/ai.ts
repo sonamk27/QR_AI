@@ -21,10 +21,6 @@ export type AiOptions = {
   enabled?: boolean;
 };
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
 const SYSTEM = `You help a restaurant customer write their own Google review.
 Rules:
 - Write in the first person, as the customer.
@@ -144,6 +140,11 @@ async function anthropicChat(
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error("ANTHROPIC_API_KEY is not configured");
   }
+
+  // Create the SDK client only when the optional API key is configured.
+  // Constructing it at module load can throw and prevent the route's
+  // database-backed fallback draft from running when no key is set.
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   const response = await anthropic.messages.create({
     model: process.env.ANTHROPIC_MODEL ?? "claude-haiku-4-5-20251001",
