@@ -1,0 +1,137 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function verified() { return signedIn() && request.auth.token.email_verified == true; }
+    function profile() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function superAdmin() { return verified() && profile().role == 'super_admin'; }
+    function ownsRestaurant(restaurantId) {
+      return verified() &&
+        get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.ownerUid == request.auth.uid;
+    }
+    function canManageRestaurant(restaurantId) { return superAdmin() || ownsRestaurant(restaurantId); }
+
+    match /users/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || superAdmin());
+      allow list: if superAdmin();
+      allow create: if signedIn() && request.auth.uid == uid &&
+        request.resource.data.uid == uid &&
+        request.resource.data.email == request.auth.token.email &&
+        request.resource.data.role == 'restaurant_admin' &&
+        request.resource.data.restaurantId is string &&
+        getAfter(/databases/$(database)/documents/restaurants/$(request.resource.data.restaurantId)).data.ownerUid == uid &&
+        request.resource.data.keys().hasOnly(['uid', 'email', 'name', 'role', 'restaurantId', 'phoneNumber', 'createdAt']);
+      allow update: if superAdmin() || (verified() && request.auth.uid == uid &&
+        resource.data.role == 'restaurant_admin' && request.resource.data.role == resource.data.role &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phoneNumber', 'updatedAt']));
+      allow delete: if superAdmin();
+    }
+
+    match /restaurants/{restaurantId} {
+      allow get: if canManageRestaurant(restaurantId);
+      allow list: if superAdmin();
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.status == 'ACTIVE' &&
+        getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.restaurantId == restaurantId;
+      allow update: if canManageRestaurant(restaurantId) &&
+        request.resource.data.ownerUid == resource.data.ownerUid &&
+        (superAdmin() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'ownerUid']));
+      allow delete: if superAdmin();
+    }
+
+    // Public QR records must contain only fields safe to show on a guest scan page.
+    match /qrCodes/{qrId} {
+      allow read: if true;
+      allow create: if superAdmin() && request.resource.data.id == qrId &&
+        request.resource.data.status == 'ACTIVE' &&
+        exists(/databases/$(database)/documents/restaurants/$(request.resource.data.restaurantId)) &&
+        request.resource.data.keys().hasOnly(['id', 'restaurantId', 'restaurantName', 'googleReviewUrl', 'name', 'slug', 'status', 'createdAt']);
+      allow update, delete: if superAdmin();
+    }
+
+    match /feedback/{feedbackId} {
+      allow create: if request.resource.data.keys().hasOnly([
+        'restaurantId', 'qrId', 'overallRating', 'foodRating', 'serviceRating', 'chips', 'freeText', 'createdAt'
+      ]) && request.resource.data.overallRating is int &&
+        request.resource.data.overallRating >= 1 && request.resource.data.overallRating <= 5 &&
+        request.resource.data.chips is list && request.resource.data.chips.size() <= 10 &&
+        request.resource.data.freeText is string && request.resource.data.freeText.size() <= 500 &&
+        exists(/databases/$(database)/documents/qrCodes/$(request.resource.data.qrId)) &&
+        get(/databases/$(database)/documents/qrCodes/$(request.resource.data.qrId)).data.restaurantId == request.resource.data.restaurantId &&
+        get(/databases/$(database)/documents/qrCodes/$(request.resource.data.qrId)).data.status == 'ACTIVE' &&
+        exists(/databases/$(database)/documents/loyaltyCustomers/$(request.resource.data.customerId)) &&
+        get(/databases/$(database)/documents/loyaltyCustomers/$(request.resource.data.customerId)).data.customerUid == request.auth.uid &&
+        get(/databases/$(database)/documents/loyaltyCustomers/$(request.resource.data.customerId)).data.restaurantId == request.resource.data.restaurantId;
+      allow read: if canManageRestaurant(resource.data.restaurantId);
+      allow update, delete: if superAdmin();
+    }
+
+    match /qrRequests/{requestId} {
+      allow create: if verified() && request.resource.data.ownerUid == request.auth.uid &&
+        ownsRestaurant(request.resource.data.restaurantId) && request.resource.data.status == 'PENDING_APPROVAL' &&
+        request.resource.data.quantity is int && request.resource.data.quantity >= 1 && request.resource.data.quantity <= 50 &&
+        request.resource.data.keys().hasOnly(['restaurantId', 'ownerUid', 'restaurantName', 'name', 'quantity', 'note', 'status', 'createdAt']);
+      allow read: if superAdmin() || (verified() && resource.data.ownerUid == request.auth.uid);
+      allow update, delete: if superAdmin();
+    }
+
+    match /payments/{paymentId} {
+      allow read: if superAdmin() || ownsRestaurant(resource.data.restaurantId);
+      allow create, update, delete: if superAdmin();
+    }
+
+    match /loyaltyPrograms/{programId} {
+      allow get: if true;
+      allow list: if verified();
+      allow create: if verified() && ownsRestaurant(request.resource.data.restaurantId);
+      allow update: if verified() && ownsRestaurant(resource.data.restaurantId) &&
+        request.resource.data.restaurantId == resource.data.restaurantId;
+      allow delete: if superAdmin();
+    }
+
+    match /stampRequests/{requestId} {
+      allow create: if signedIn() && request.resource.data.customerUid == request.auth.uid &&
+        request.resource.data.customerId == request.resource.data.restaurantId + '_' + request.auth.uid &&
+        request.resource.data.status == 'PENDING' &&
+        request.resource.data.keys().hasOnly(['customerUid', 'customerId', 'restaurantId', 'programId', 'qrId', 'qrSlug', 'customerName', 'customerPhone', 'status', 'createdAt']) &&
+        exists(/databases/$(database)/documents/qrCodes/$(request.resource.data.qrId)) &&
+        get(/databases/$(database)/documents/qrCodes/$(request.resource.data.qrId)).data.restaurantId == request.resource.data.restaurantId &&
+        get(/databases/$(database)/documents/qrCodes/$(request.resource.data.qrId)).data.status == 'ACTIVE';
+      allow read: if (signedIn() && resource.data.customerUid == request.auth.uid) || canManageRestaurant(resource.data.restaurantId);
+      allow update: if canManageRestaurant(resource.data.restaurantId) &&
+        resource.data.status == 'PENDING' && request.resource.data.status in ['APPROVED', 'REJECTED'] &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedByUid']);
+      allow delete: if superAdmin();
+    }
+
+    match /loyaltyCustomers/{customerId} {
+      allow read: if (signedIn() && resource.data.customerUid == request.auth.uid) || canManageRestaurant(resource.data.restaurantId);
+      allow create: if (signedIn() && request.resource.data.customerUid == request.auth.uid &&
+        request.resource.data.id == customerId && request.resource.data.currentStamps == 0 && request.resource.data.lifetimeStamps == 0 &&
+        request.resource.data.keys().hasOnly(['id', 'customerUid', 'restaurantId', 'name', 'phone', 'currentStamps', 'lifetimeStamps', 'updatedAt'])) ||
+        (verified() && canManageRestaurant(request.resource.data.restaurantId));
+      allow update: if canManageRestaurant(resource.data.restaurantId) || (signedIn() &&
+        resource.data.customerUid == request.auth.uid && request.resource.data.customerUid == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone', 'updatedAt']));
+      allow delete: if superAdmin();
+    }
+    match /loyaltyTransactions/{transactionId} {
+      allow read: if canManageRestaurant(resource.data.restaurantId);
+      allow create: if verified() && canManageRestaurant(request.resource.data.restaurantId);
+      allow update, delete: if superAdmin();
+    }
+    match /loyaltyRewards/{rewardId} {
+      allow read: if (signedIn() && resource.data.customerUid == request.auth.uid) || canManageRestaurant(resource.data.restaurantId);
+      allow create: if verified() && canManageRestaurant(request.resource.data.restaurantId);
+      allow update, delete: if canManageRestaurant(resource.data.restaurantId);
+    }
+    match /socialClicks/{clickId} {
+      allow create: if request.resource.data.keys().hasOnly(['restaurantId', 'platform', 'createdAt']);
+      allow read: if canManageRestaurant(resource.data.restaurantId);
+    }
+    match /auditLogs/{logId} {
+      allow read: if superAdmin() || ownsRestaurant(resource.data.restaurantId);
+      allow create: if superAdmin();
+    }
+  }
+}

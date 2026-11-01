@@ -1,5 +1,8 @@
 node_modules/
 .next/
+.firebase/
+/static-client/.next/
+/static-client/out/
 .env
 .env.local
 .env.*.local

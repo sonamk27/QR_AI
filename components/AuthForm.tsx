@@ -3,8 +3,16 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { getFirebaseAuth } from "@/lib/firebase-client";
+import {
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  sendEmailVerification,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+} from "firebase/auth";
+import { collection, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebase-client";
 
 type Portal = "restaurant_admin" | "super_admin";
 
@@ -20,6 +28,51 @@ export function AuthForm({
   const [busy, setBusy] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
+  async function createRestaurantProfile(
+    user: import("firebase/auth").User,
+    details: { name: string; restaurantName: string; city?: string; refCode?: string },
+  ) {
+    const firestore = getFirebaseDb();
+    const restaurantRef = doc(collection(firestore, "restaurants"));
+    await setDoc(restaurantRef, {
+      id: restaurantRef.id,
+      ownerUid: user.uid,
+      name: details.restaurantName,
+      city: details.city || "",
+      referredByName: details.refCode || "",
+      status: "ACTIVE",
+      brandColor: "#1F6F5C",
+      aiEnabled: true,
+      createdAt: serverTimestamp(),
+    });
+    await setDoc(doc(firestore, "users", user.uid), {
+      uid: user.uid,
+      email: user.email?.toLowerCase() ?? "",
+      name: details.name,
+      role: "restaurant_admin",
+      restaurantId: restaurantRef.id,
+      phoneNumber: "",
+      createdAt: serverTimestamp(),
+    });
+  }
+
+  async function destinationFor(user: import("firebase/auth").User, expectedPortal?: Portal) {
+    const profile = await getDoc(doc(getFirebaseDb(), "users", user.uid));
+    const role = profile.data()?.role as Portal | undefined;
+    if (!profile.exists() || (role !== "restaurant_admin" && role !== "super_admin")) {
+      throw new Error("This account is not set up for ReviewFlow. Ask the platform administrator for access.");
+    }
+    if (expectedPortal && expectedPortal !== role) {
+      throw new Error(expectedPortal === "super_admin" ? "This account does not have Super Admin access." : "Use the Super Admin sign-in page for this account.");
+    }
+    if (!user.emailVerified) {
+      await sendEmailVerification(user);
+      await signOut(getFirebaseAuth());
+      throw new Error("Please verify your email. We sent you a new verification link.");
+    }
+    return role === "super_admin" ? "/super-admin" : "/dashboard";
+  }
+
   useEffect(() => {
     if (mode === "signup") formRef.current?.reset();
   }, [mode]);
@@ -30,21 +83,32 @@ export function AuthForm({
     setError("");
     try {
       const body = Object.fromEntries(new FormData(e.currentTarget).entries());
-      if (mode === "login" && portal) body.portal = portal;
-      const res = await fetch(`/api/auth/${mode}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data.error ?? "Something went wrong. Try again.");
+      const email = String(body.email ?? "").trim().toLowerCase();
+      const password = String(body.password ?? "");
+      const auth = getFirebaseAuth();
+      if (mode === "signup") {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await createRestaurantProfile(userCredential.user, {
+          name: String(body.name ?? "").trim(),
+          restaurantName: String(body.restaurantName ?? "").trim(),
+          city: String(body.city ?? "").trim(),
+          refCode: String(body.refCode ?? "").trim(),
+        });
+        await sendEmailVerification(userCredential.user);
+        await signOut(auth);
+        router.push("/verify-email");
         return;
       }
-      router.push(data.redirect);
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      const redirect = await destinationFor(credential.user, portal);
+      router.push(redirect);
       router.refresh();
-    } catch {
-      setError("Unable to reach the server. Check your connection and try again.");
+    } catch (caught) {
+      const code = typeof caught === "object" && caught && "code" in caught ? String(caught.code) : "";
+      const message = caught instanceof Error ? caught.message : "Something went wrong. Try again.";
+      setError(code === "auth/invalid-credential" ? "Email or password is incorrect." :
+        code === "auth/email-already-in-use" ? "An account with this email already exists. Sign in instead." :
+        code === "auth/weak-password" ? "Choose a password with at least 8 characters." : message);
     } finally {
       setBusy(false);
     }
@@ -72,29 +136,16 @@ export function AuthForm({
         return;
       }
       const credential = await signInWithPopup(auth, new GoogleAuthProvider());
-      const body: Record<string, string> = {
-        idToken: await credential.user.getIdToken(),
-        mode,
-      };
       if (mode === "signup") {
-        body.name = String(formData.get("name") ?? "");
-        body.restaurantName = String(formData.get("restaurantName") ?? "");
-        body.city = String(formData.get("city") ?? "");
-        body.refCode = String(formData.get("refCode") ?? "");
+        await createRestaurantProfile(credential.user, {
+          name: String(formData.get("name") ?? "").trim() || credential.user.displayName || "Restaurant owner",
+          restaurantName: String(formData.get("restaurantName") ?? "").trim(),
+          city: String(formData.get("city") ?? "").trim(),
+          refCode: String(formData.get("refCode") ?? "").trim(),
+        });
       }
-      if (portal) body.portal = portal;
-
-      const response = await fetch("/api/auth/firebase", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        setError(data.error ?? "Google sign-in failed. Please try again.");
-        return;
-      }
-      router.push(data.redirect);
+      const redirect = await destinationFor(credential.user, portal);
+      router.push(redirect);
       router.refresh();
     } catch (caught) {
       const err = caught instanceof Error ? caught.message : "Google sign-in failed.";
