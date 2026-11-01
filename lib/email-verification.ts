@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 
 function appOrigin() {
-  const configured = process.env.APP_URL?.trim();
+  const configured = process.env.APP_URL?.trim() || process.env.RENDER_EXTERNAL_URL?.trim();
   if (configured) return new URL(configured).origin;
   if (process.env.NODE_ENV !== "production") return "http://localhost:3000";
   throw new Error("Email verification is not configured on this server.");

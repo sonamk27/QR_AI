@@ -4,7 +4,8 @@ import { randomBytes } from "crypto";
 export const newSlug = () => randomBytes(16).toString("base64url");
 
 export function appBaseUrl() {
-  const configuredUrl = process.env.APP_URL?.trim();
+  const configuredUrl =
+    process.env.APP_URL?.trim() || process.env.RENDER_EXTERNAL_URL?.trim();
   const value =
     configuredUrl || (process.env.NODE_ENV === "production" ? "" : "http://localhost:3000");
 

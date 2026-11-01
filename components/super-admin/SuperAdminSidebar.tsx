@@ -3,8 +3,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { signOut } from "firebase/auth";
-import { getFirebaseAuth } from "@/lib/firebase-client";
 
 export type SuperAdminNavItem = {
   href: string;
@@ -54,7 +52,7 @@ export function SuperAdminSidebar({
   ];
 
   async function handleLogout() {
-    await signOut(getFirebaseAuth());
+    await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
     router.refresh();
   }

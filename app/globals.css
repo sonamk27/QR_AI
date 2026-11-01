@@ -1,3 +1,80 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
-:root{--paper:#f7f2e9;--ink:#24211e;--muted:#716b64;--gold:#b58a4b;--line:#e8dfd1}*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);font-family:"DM Sans",Arial,sans-serif}a{color:inherit}button,input,textarea{font:inherit}button:disabled{opacity:.55}.site-header{height:78px;padding:0 max(20px,calc((100vw - 1120px)/2));display:flex;align-items:center;justify-content:space-between;background:#faf7f2;border-bottom:1px solid var(--line)}.site-header nav{display:flex;align-items:center;gap:16px}.site-header nav a{font-size:13px;font-weight:700;text-decoration:none}.brand{display:flex;align-items:center;gap:12px;text-decoration:none}.brand img{width:48px;height:48px;object-fit:cover;border-radius:11px}.brand b{font:700 22px "Playfair Display",serif}.brand small,.dash-nav small{display:block;color:var(--muted);font-size:10px;letter-spacing:.1em;text-transform:uppercase}.wrap{width:min(1120px,calc(100% - 40px));margin:auto}.hero{display:grid;grid-template-columns:1.1fr .9fr;align-items:center;gap:56px;padding:76px 0 65px}.eyebrow{display:inline-block;padding:8px 13px;border:1px solid #e8d8ba;background:#faf5ed;border-radius:999px;color:#7a5826;font-size:12px;font-weight:700}.hero h1{font:700 clamp(42px,5vw,64px)/1.08 "Playfair Display",serif;margin:20px 0 16px}.hero p,.muted{color:var(--muted);font-size:14px;line-height:1.7}.button{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:10px 15px;border:0;border-radius:11px;background:var(--ink);color:white;text-decoration:none;font-size:13px;font-weight:700;cursor:pointer}.button.primary{background:var(--gold)}.button.light{background:#fff;color:var(--ink);border:1px solid var(--line)}.button.danger{background:#a4382d}.button.small{min-height:36px;padding:8px 12px;font-size:12px}.link-button{border:0;background:none;font-weight:700;cursor:pointer}.preview,.panel{border:1px solid var(--line);border-radius:22px;background:white;padding:26px;box-shadow:0 16px 48px #3b2c1712}.preview{text-align:center;transform:rotate(1deg)}.preview small{color:var(--muted);letter-spacing:.12em}.preview h2,.panel h1{font:700 25px "Playfair Display",serif}.coffee{font-size:32px}.stars{color:var(--gold);font-size:22px;letter-spacing:3px}.preview blockquote,.draft{margin:18px 0;padding:14px;border:1px solid #e8d8ba;border-radius:13px;background:#faf5ed;font-size:13px;line-height:1.65}.feature-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;border-top:1px solid var(--line);padding:40px 0 60px}.feature-grid article,.metric,.qr-card{border:1px solid var(--line);border-radius:16px;background:#fff;padding:18px}.feature-grid article>span{font-size:22px}.feature-grid h2{font:700 17px "Playfair Display",serif}.feature-grid p{color:var(--muted);font-size:13px;line-height:1.6}.center{min-height:calc(100vh - 150px);display:grid;place-items:center;padding:30px 18px}.center>.panel{width:min(500px,100%)}.auth-panel{width:min(420px,100%)}.auth-panel h1{margin-bottom:4px}.form{display:grid;gap:14px;margin-top:20px}.field{display:grid;gap:6px;color:var(--muted);font-size:12px;font-weight:600}.field input,.field textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px;background:white;color:var(--ink);font-size:14px}.field input:focus,.field textarea:focus{outline:2px solid #d2b57e}.divider{margin:18px 0;text-align:center;color:#999;font-size:12px}.error{color:#a52218;font-size:13px}.small-text{font-size:12px}.site-footer{padding:24px;text-align:center;color:var(--muted);font-size:12px}.dashboard{display:grid;grid-template-columns:230px 1fr;gap:28px;padding:28px 0 60px;min-height:calc(100vh - 140px)}.dash-nav{display:flex;flex-direction:column;gap:9px;height:max-content;padding:17px;border-radius:16px;background:#24211e;color:#fff}.dash-nav>button{padding:10px;border:0;border-radius:9px;background:transparent;color:#eee;text-align:left;cursor:pointer}.dash-nav>button.selected,.dash-nav>button:hover{background:#3a342d}.dash-nav small{color:#b8b1a9}.dash-content h1{margin:5px 0 20px;font:700 30px "Playfair Display",serif}.dash-content h2{font:700 19px "Playfair Display",serif;margin:25px 0 12px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.metric small{display:block;color:var(--muted);font-size:11px;text-transform:uppercase}.metric b{display:block;margin-top:8px;font:700 27px "Playfair Display",serif}.qr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}.qr-card{display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;font-size:13px}.qr-card img{width:120px;height:120px}.qr-card small,.qr-card a{font-size:11px;color:var(--muted)}.feedback-list{display:grid;gap:12px}.feedback-list small{color:var(--muted)}.empty{padding:20px;border:1px dashed var(--line);border-radius:14px;color:var(--muted)}.notice{padding:12px;border:1px solid #d9c9a7;border-radius:10px;background:#fff8e9;font-size:13px}.inline-form{max-width:600px}.request{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:10px 0}.request p{font-size:13px}.request small{color:var(--muted)}.actions{display:flex;gap:8px}.guest-panel{text-align:center;width:min(500px,100%)}.guest-panel .form{text-align:left}.rating{display:flex;justify-content:center;gap:8px}.rating button{border:0;background:none;color:var(--gold);font-size:35px;cursor:pointer}.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{padding:8px 10px;border:1px solid var(--line);border-radius:999px;background:white;font-size:12px;cursor:pointer}.chip.active{background:var(--ink);color:white}
-@media(max-width:780px){.hero{grid-template-columns:1fr;gap:30px;padding:48px 0}.feature-grid{grid-template-columns:repeat(2,1fr)}.dashboard{grid-template-columns:1fr}.dash-nav{display:grid;grid-template-columns:repeat(2,1fr)}.dash-nav>b,.dash-nav>small{grid-column:1/-1}.stats{grid-template-columns:1fr}.site-header{padding:0 16px}.site-header nav{gap:9px}}@media(max-width:500px){.wrap{width:calc(100% - 28px)}.brand small{font-size:8px}.brand b{font-size:19px}.feature-grid{grid-template-columns:1fr}.hero h1{font-size:42px}.request{align-items:flex-start;flex-direction:column}}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --bg-ivory: #F7F2E9;
+  --text-charcoal: #24211E;
+  --accent-gold: #B58A4B;
+  --border-warm: #E8DFD1;
+}
+
+body {
+  background-color: #F7F2E9;
+  color: #24211E;
+  font-family: var(--font-body), "DM Sans", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, .font-serif {
+  font-family: var(--font-display), "Playfair Display", Georgia, serif;
+}
+
+@keyframes screen-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.screen-enter {
+  animation: screen-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+:focus-visible {
+  outline: 2px solid #B58A4B;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Primary Button: Muted Gold with high-contrast readable white text */
+.btn {
+  @apply inline-flex items-center justify-center rounded-xl bg-gold px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-gold-600 active:scale-[0.98] disabled:opacity-50;
+}
+
+/* Secondary / Ghost Button: White or Ivory with subtle warm border */
+.btn-ghost, .btn-secondary {
+  @apply inline-flex items-center justify-center rounded-xl border border-warmBorder bg-white px-4 py-2.5 text-sm font-medium text-charcoal shadow-sm transition hover:bg-ivory-50 hover:border-gold-300 active:scale-[0.98] disabled:opacity-50;
+}
+
+/* Dark Charcoal Button */
+.btn-dark {
+  @apply inline-flex items-center justify-center rounded-xl bg-charcoal px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-charcoal-800 active:scale-[0.98] disabled:opacity-50;
+}
+
+/* Form inputs: Warm beige border, white surface, accessible gold focus ring */
+.input {
+  @apply w-full rounded-xl border border-warmBorder bg-white px-3.5 py-2.5 text-sm text-charcoal outline-none transition placeholder:text-warmGray/60 focus:border-gold focus:ring-1 focus:ring-gold;
+}
+
+.label {
+  @apply mb-1.5 block text-xs font-semibold uppercase tracking-wider text-warmGray;
+}
+
+/* Cards and panels: White background, subtle warm beige border, soft shadow */
+.panel {
+  @apply rounded-2xl border border-warmBorder bg-white shadow-subtle;
+}
+
+.th {
+  @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-warmGray;
+}
+
+.td {
+  @apply px-4 py-3.5 text-sm text-charcoal;
+}

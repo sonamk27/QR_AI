@@ -2,27 +2,21 @@
 
 import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
 
-function getFirebaseApp() {
+export function getFirebaseAuth() {
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
   const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
 
   if (!apiKey || !authDomain || !projectId || !appId) {
-    throw new Error("Firebase is not configured. Add the Firebase web app settings to the environment.");
+    throw new Error("Google sign-in is not configured. Add the Firebase web app settings to the environment.");
   }
 
-  return getApps().length > 0
-    ? getApp()
-    : initializeApp({ apiKey, authDomain, projectId, appId });
-}
+  const app =
+    getApps().length > 0
+      ? getApp()
+      : initializeApp({ apiKey, authDomain, projectId, appId });
 
-export function getFirebaseAuth() {
-  return getAuth(getFirebaseApp());
-}
-
-export function getFirebaseDb() {
-  return getFirestore(getFirebaseApp());
+  return getAuth(app);
 }
