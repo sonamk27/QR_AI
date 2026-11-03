@@ -48,20 +48,24 @@ Multi-tenant SaaS for restaurants: collect guest feedback with smart QR codes. G
 4. `npm run db:seed` (creates the Super Admin user)
 5. `npm run dev` and navigate to `http://localhost:3000`
 
-### Google sign-in
+### Firebase Authentication
 
-Create a Firebase project and register a web app, then enable the Google provider
-under **Authentication → Sign-in method**. Add the web app settings listed above
-to `.env` and configure the app's authorized domains in Firebase Authentication.
-Google sign-in is available for restaurant admins on the login and signup pages;
-Super Admin accounts continue to use password sign-in. Firebase ID tokens are
-verified by the server before a ReviewFlow session is created.
-Password sign-up and email changes require verification through a one-time email
-link before the account can sign in. Configure Resend with a verified sender in
-`EMAIL_FROM` so those links can be delivered.
-Only Firebase web app configuration is used by the browser; do not put any
-Firebase service-account or other private server credentials in `NEXT_PUBLIC_*`
-variables.
+Create a Firebase project, register a web app, and enable **Email/Password** and
+**Google** under **Authentication → Sign-in method**. Add the web app settings
+listed above to `.env` and configure the app's authorized domains in Firebase
+Authentication. Email/password registration and Google sign-in are handled by
+Firebase Authentication. The server verifies Firebase ID tokens, then looks up
+the user's existing ReviewFlow role and restaurant in PostgreSQL before creating
+the app session.
+
+Existing ReviewFlow users must create a Firebase Auth account using their current
+email address (choose **Create account**); this links them to their existing
+database record. Their old password hash cannot be imported to Firebase, so they
+must choose a new Firebase password or use Google with the same email. Firebase
+sends the verification email. Provision the Super Admin identity in Firebase
+Authentication with the same email as its existing ReviewFlow user record, and
+verify the email before signing in. Do not expose private Firebase credentials
+in `NEXT_PUBLIC_*` variables.
 
 ### Google Business Profile URL
 

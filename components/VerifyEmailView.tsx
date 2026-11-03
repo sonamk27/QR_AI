@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { sendEmailVerification } from "firebase/auth";
+import { getFirebaseAuth } from "@/lib/firebase-client";
 
 export function VerifyEmailView({ token, initialEmail }: { token: string; initialEmail: string }) {
   const [email, setEmail] = useState(initialEmail);
@@ -35,15 +37,14 @@ export function VerifyEmailView({ token, initialEmail }: { token: string; initia
     setBusy(true);
     setMessage("");
     try {
-      const response = await fetch("/api/auth/resend-verification", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Could not send a new link.");
+      const auth = getFirebaseAuth();
+      const currentUser = auth.currentUser;
+      if (!currentUser || currentUser.email?.toLowerCase() !== email.trim().toLowerCase()) {
+        throw new Error("Sign in with this account first, then request another verification email.");
+      }
+      await sendEmailVerification(currentUser);
       setState("waiting");
-      setMessage(data.message);
+      setMessage("A Firebase verification link has been sent. Check your inbox, verify your email, then sign in.");
     } catch (error) {
       setState("error");
       setMessage(error instanceof Error ? error.message : "Could not send a new link.");

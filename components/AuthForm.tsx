@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { createUserWithEmailAndPassword, GoogleAuthProvider, sendEmailVerification, signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase-client";
 
 type Portal = "restaurant_admin" | "super_admin";
@@ -30,21 +30,36 @@ export function AuthForm({
     setError("");
     try {
       const body = Object.fromEntries(new FormData(e.currentTarget).entries());
-      if (mode === "login" && portal) body.portal = portal;
-      const res = await fetch(`/api/auth/${mode}`, {
+      const auth = getFirebaseAuth();
+      const credential = mode === "signup"
+        ? await createUserWithEmailAndPassword(auth, String(body.email), String(body.password))
+        : await signInWithEmailAndPassword(auth, String(body.email), String(body.password));
+      if (mode === "signup") await sendEmailVerification(credential.user);
+      const response = await fetch("/api/auth/firebase", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          idToken: await credential.user.getIdToken(true), mode, portal,
+          name: body.name, restaurantName: body.restaurantName, city: body.city, refCode: body.refCode,
+        }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data.error ?? "Something went wrong. Try again.");
-        return;
-      }
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error ?? "Something went wrong. Try again.");
       router.push(data.redirect);
       router.refresh();
-    } catch {
-      setError("Unable to reach the server. Check your connection and try again.");
+    } catch (caught) {
+      const code = caught && typeof caught === "object" && "code" in caught ? String(caught.code) : "";
+      const firebaseErrors: Record<string, string> = {
+        "auth/email-already-in-use": "An account with this email already exists. Sign in instead.",
+        "auth/invalid-credential": "Email or password is incorrect.",
+        "auth/user-not-found": "No Firebase account was found. Create an account first.",
+        "auth/wrong-password": "Email or password is incorrect.",
+        "auth/weak-password": "Choose a stronger password (at least 8 characters).",
+        "auth/invalid-email": "Enter a valid email address.",
+        "auth/too-many-requests": "Too many attempts. Wait a little and try again.",
+      };
+      const message = caught instanceof Error ? caught.message : "";
+      setError(firebaseErrors[code] ?? (message || "Unable to reach the server. Check your connection and try again."));
     } finally {
       setBusy(false);
     }
@@ -68,7 +83,7 @@ export function AuthForm({
       try {
         auth = getFirebaseAuth();
       } catch {
-        setError("Google sign-in is not available right now. Please use email and password instead.");
+        setError("Firebase Authentication is not configured. Add the Firebase web app settings and try again.");
         return;
       }
       const credential = await signInWithPopup(auth, new GoogleAuthProvider());
@@ -91,7 +106,7 @@ export function AuthForm({
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(data.error ?? "Google sign-in failed. Please try again.");
+        setError(data.error ?? "Firebase sign-in failed. Please try again.");
         return;
       }
       router.push(data.redirect);
@@ -102,7 +117,7 @@ export function AuthForm({
       if (err.includes("popup-closed-by-user") || err.includes("cancelled-popup-request")) {
         return;
       }
-      setError(err.includes("not configured") ? "Google sign-in is not available. Please use email and password." : err);
+      setError(err.includes("not configured") ? "Firebase Authentication is not configured yet." : err);
     } finally {
       setBusy(false);
     }
@@ -171,7 +186,7 @@ export function AuthForm({
         )}
         <button className="btn w-full" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>
       </form>
-      {mode === "signup" && portal !== "super_admin" && (
+      {portal !== "super_admin" && (
         <>
           <div className="my-5 flex items-center gap-3 text-xs text-ink/45">
             <span className="h-px flex-1 bg-line" />

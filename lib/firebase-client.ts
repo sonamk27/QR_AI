@@ -10,7 +10,7 @@ export function getFirebaseAuth() {
   const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
 
   if (!apiKey || !authDomain || !projectId || !appId) {
-    throw new Error("Google sign-in is not configured. Add the Firebase web app settings to the environment.");
+    throw new Error("Firebase Authentication is not configured. Add the Firebase web app settings to the environment.");
   }
 
   const app =
