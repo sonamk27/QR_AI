@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import QRCode from "qrcode";
+import { BUSINESS_TYPE_LABELS, BUSINESS_TYPES, type BusinessType } from "@/lib/business-type";
 
 type RestaurantItem = {
   id: string;
@@ -18,6 +20,7 @@ export function CreateRestaurantModal() {
   const [error, setError] = useState("");
   const [createdInfo, setCreatedInfo] = useState<{
     restaurantName: string;
+    businessType: BusinessType;
     ownerName: string;
     email: string;
     pass: string;
@@ -26,6 +29,7 @@ export function CreateRestaurantModal() {
 
   const [form, setForm] = useState({
     name: "",
+    businessType: "" as BusinessType | "",
     city: "",
     googleReviewUrl: "",
     instagramUrl: "",
@@ -51,16 +55,19 @@ export function CreateRestaurantModal() {
     setError("");
 
     try {
+      if (!form.businessType) throw new Error("Select a business type.");
+
       const res = await fetch("/api/super-admin/restaurants", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create restaurant.");
+      if (!res.ok) throw new Error(data.error || "Failed to create business.");
 
       setCreatedInfo({
         restaurantName: form.name,
+        businessType: form.businessType,
         ownerName: form.ownerName,
         email: data.credentials?.email || form.ownerEmail,
         pass: data.credentials?.password || form.password,
@@ -75,7 +82,8 @@ export function CreateRestaurantModal() {
   }
 
   const welcomeMessage = createdInfo
-    ? `Hello ${createdInfo.ownerName}! Your ReviewFlow dashboard for ${createdInfo.restaurantName} is active.\n\n` +
+    ? `Hello ${createdInfo.ownerName}! Your ReviewFlow dashboard for ${createdInfo.restaurantName} is active.\n` +
+      `Business type: ${BUSINESS_TYPE_LABELS[createdInfo.businessType]}\n\n` +
       `🌐 Verify email: ${typeof window !== "undefined" ? window.location.origin : ""}/verify-email?email=${encodeURIComponent(createdInfo.email)}\n` +
       `🌐 Login: ${typeof window !== "undefined" ? window.location.origin : ""}/login\n` +
       `📧 Email: ${createdInfo.email}\n` +
@@ -92,7 +100,7 @@ export function CreateRestaurantModal() {
         }}
         className="btn"
       >
-        + Add Restaurant & Owner
+        + Add Business & Owner
       </button>
 
       {open && (
@@ -101,7 +109,10 @@ export function CreateRestaurantModal() {
             {createdInfo ? (
               <div className="space-y-4">
                 <div className="rounded-xl bg-emerald-50 p-4 border border-emerald-200">
-                  <h3 className="font-semibold text-emerald-900">Restaurant & Owner Created!</h3>
+                  <h3 className="font-semibold text-emerald-900">Business & Owner Created!</h3>
+                  <p className="mt-1 text-sm font-medium text-emerald-900">
+                    {createdInfo.restaurantName} · {BUSINESS_TYPE_LABELS[createdInfo.businessType]}
+                  </p>
                   <p className="mt-1 text-sm text-emerald-800">
                     {createdInfo.verificationEmailSent
                       ? "A verification link was sent to the owner. They must verify this email before signing in."
@@ -145,7 +156,7 @@ export function CreateRestaurantModal() {
             ) : (
               <form onSubmit={submit} className="space-y-4">
                 <div className="flex items-center justify-between border-b border-line pb-3">
-                  <h3 className="text-lg font-semibold text-ink">New Restaurant & Owner</h3>
+                  <h3 className="text-lg font-semibold text-ink">New Business & Owner</h3>
                   <button
                     type="button"
                     onClick={() => setOpen(false)}
@@ -159,7 +170,23 @@ export function CreateRestaurantModal() {
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="sm:col-span-2">
-                    <label className="label">Restaurant Name *</label>
+                    <label className="label" htmlFor="business-type">Business Type *</label>
+                    <select
+                      id="business-type"
+                      required
+                      className="input"
+                      value={form.businessType}
+                      onChange={(e) => setForm({ ...form, businessType: e.target.value as BusinessType | "" })}
+                    >
+                      <option value="" disabled>Select a business type</option>
+                      {BUSINESS_TYPES.map((type) => (
+                        <option key={type} value={type}>{BUSINESS_TYPE_LABELS[type]}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="label">Business Name *</label>
                     <input
                       required
                       className="input"
@@ -249,7 +276,7 @@ export function CreateRestaurantModal() {
                     <div>
                       <label className="label" htmlFor="ai-enabled">AI Review Generator</label>
                       <p className="mt-1 text-xs text-ink/60">
-                        Enable AI-generated review drafts for this restaurant&apos;s guests. Turn off to use rating-based suggestions only.
+                        Enable AI-generated review drafts for this business&apos;s guests. Turn off to use rating-based suggestions only.
                       </p>
                     </div>
                   </div>
@@ -670,6 +697,7 @@ export function QrRowActions({
   restaurantName,
   status,
   appUrl,
+  firebaseActions,
 }: {
   qrId: string;
   slug: string;
@@ -677,18 +705,28 @@ export function QrRowActions({
   restaurantName: string;
   status: string;
   appUrl: string;
+  firebaseActions?: { disable: (id: string) => Promise<void>; extend: (id: string) => Promise<void>; onChanged: () => void };
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [pngUrl, setPngUrl] = useState("");
+  const [svgUrl, setSvgUrl] = useState("");
   const targetUrl = `${appUrl}/r/${slug}`;
   const downloadUrl = `${appUrl}/api/qr/${qrId}/download?format=png`;
+  useEffect(() => {
+    if (!firebaseActions) return;
+    void Promise.all([QRCode.toDataURL(targetUrl, { width: 720, margin: 2 }), QRCode.toString(targetUrl, { type: "svg", width: 720, margin: 2 })])
+      .then(([png, svg]) => { setPngUrl(png); setSvgUrl(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`); })
+      .catch((error) => setActionError(error instanceof Error ? error.message : "Could not prepare QR downloads."));
+  }, [firebaseActions, targetUrl]);
 
   async function toggleStatus() {
     if (!confirm("Are you sure you want to disable this QR code?")) return;
     setBusy(true);
     setActionError("");
     try {
+      if (firebaseActions) { await firebaseActions.disable(qrId); firebaseActions.onChanged(); return; }
       const response = await fetch(`/api/super-admin/qr/${qrId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -705,8 +743,7 @@ export function QrRowActions({
   }
 
   const shareText = `Hi! Here is your active QR code for ${name} at ${restaurantName}.\n\n` +
-    `Scan & Test: ${targetUrl}\n` +
-    `Download PNG: ${downloadUrl}`;
+    `Scan & Test: ${targetUrl}` + (firebaseActions ? "" : `\nDownload PNG: ${downloadUrl}`);
   const canExtend = status === "ACTIVE";
 
   return (
@@ -718,6 +755,7 @@ export function QrRowActions({
             setBusy(true);
             setActionError("");
             try {
+              if (firebaseActions) { await firebaseActions.extend(qrId); firebaseActions.onChanged(); return; }
               const response = await fetch(`/api/super-admin/qr/${qrId}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -752,18 +790,20 @@ export function QrRowActions({
       )}
 
       <a
-        href={`/api/qr/${qrId}/download?format=png`}
+        href={firebaseActions ? pngUrl || undefined : `/api/qr/${qrId}/download?format=png`}
         className="btn-ghost !px-2.5 !py-1 text-xs"
         download
+        aria-disabled={firebaseActions && !pngUrl}
         title="Download PNG"
       >
         PNG
       </a>
 
       <a
-        href={`/api/qr/${qrId}/download?format=svg`}
+        href={firebaseActions ? svgUrl || undefined : `/api/qr/${qrId}/download?format=svg`}
         className="btn-ghost !px-2.5 !py-1 text-xs"
         download
+        aria-disabled={firebaseActions && !svgUrl}
         title="Download Vector SVG"
       >
         SVG

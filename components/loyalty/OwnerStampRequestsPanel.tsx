@@ -22,12 +22,20 @@ export type PendingStampRequest = {
   } | null;
 };
 
+export type FirebaseStampActions = {
+  load: () => Promise<{ pending: PendingStampRequest[]; recent: PendingStampRequest[] }>;
+  approve: (requestId: string) => Promise<{ message?: string; currentStamps?: number; isAnon?: boolean }>;
+  reject: (requestId: string) => Promise<void>;
+};
+
 export function OwnerStampRequestsPanel({
   restaurantBrandColor = "#B58A4B",
   onApprovedOrRejected,
+  firebaseActions,
 }: {
   restaurantBrandColor?: string;
   onApprovedOrRejected?: () => void;
+  firebaseActions?: FirebaseStampActions;
 }) {
   const [pendingRequests, setPendingRequests] = useState<PendingStampRequest[]>([]);
   const [recentRequests, setRecentRequests] = useState<PendingStampRequest[]>([]);
@@ -47,6 +55,12 @@ export function OwnerStampRequestsPanel({
   async function fetchRequests(silent = false) {
     if (!silent) setLoading(true);
     try {
+      if (firebaseActions) {
+        const data = await firebaseActions.load();
+        setPendingRequests(data.pending);
+        setRecentRequests(data.recent);
+        return;
+      }
       const res = await fetch("/api/loyalty/requests");
       const data = await res.json();
       if (res.ok) {
@@ -60,19 +74,36 @@ export function OwnerStampRequestsPanel({
     }
   }
 
-  // Initial fetch and 5s auto-polling
+  // Keep Firebase reads light on the free tier.
   useEffect(() => {
     fetchRequests();
     const interval = setInterval(() => {
       fetchRequests(true);
-    }, 5000);
+    }, firebaseActions ? 30_000 : 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [firebaseActions]);
 
   async function handleApprove(requestId: string, customerName: string | null) {
     setActionLoadingId(requestId);
     setActionMessage(null);
     try {
+      const req = pendingRequests.find((r) => r.id === requestId);
+      if (firebaseActions) {
+        const result = await firebaseActions.approve(requestId);
+        setCollectedStamp({
+          requestId,
+          customerName: req?.customerName ?? customerName ?? null,
+          customerPhone: req?.customerPhone ?? null,
+          tableNo: req?.tableNo ?? null,
+          currentStamps: result.currentStamps ?? req?.customer?.currentStamps ?? req?.anonCustomer?.currentStamps ?? null,
+          isAnon: Boolean(result.isAnon ?? req?.anonCustomerId),
+        });
+        setActionMessage({ type: "success", text: result.message || `1 Stamp awarded to ${customerName || "customer"}!` });
+        setTimeout(() => setActionMessage(null), 5000);
+        await fetchRequests(true);
+        onApprovedOrRejected?.();
+        return;
+      }
       const res = await fetch("/api/loyalty/requests/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -81,8 +112,6 @@ export function OwnerStampRequestsPanel({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to approve stamp");
 
-      // Find the request details for the confirmation screen
-      const req = pendingRequests.find((r) => r.id === requestId);
       setCollectedStamp({
         requestId,
         customerName: req?.customerName ?? customerName ?? null,
@@ -117,6 +146,14 @@ export function OwnerStampRequestsPanel({
     setActionLoadingId(requestId);
     setActionMessage(null);
     try {
+      if (firebaseActions) {
+        await firebaseActions.reject(requestId);
+        setActionMessage({ type: "success", text: "Stamp request declined." });
+        setTimeout(() => setActionMessage(null), 4000);
+        await fetchRequests(true);
+        onApprovedOrRejected?.();
+        return;
+      }
       const res = await fetch("/api/loyalty/requests/reject", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

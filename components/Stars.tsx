@@ -5,11 +5,15 @@ export function Stars({
   onChange,
   size = 44,
   label = "Rating",
+  activeColor = "#B58A4B",
+  inactiveColor = "#D8CBB6",
 }: {
   value: number;
   onChange: (n: number) => void;
   size?: number;
   label?: string;
+  activeColor?: string;
+  inactiveColor?: string;
 }) {
   return (
     <div className="flex justify-center gap-2" role="radiogroup" aria-label={label}>
@@ -28,8 +32,8 @@ export function Stars({
             viewBox="0 0 24 24"
             width={size - 8}
             height={size - 8}
-            fill={n <= value ? "#B58A4B" : "none"}
-            stroke={n <= value ? "#B58A4B" : "#D8CBB6"}
+            fill={n <= value ? activeColor : "none"}
+            stroke={n <= value ? activeColor : inactiveColor}
             strokeWidth="1.6"
           >
             <path

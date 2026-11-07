@@ -168,6 +168,6 @@
 			"command": "npm run typecheck",
 			"isBackground": false,
 			"problemMatcher": []
-		}
+		},
 	]
 }

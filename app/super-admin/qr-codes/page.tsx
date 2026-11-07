@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { resolveStatus } from "@/lib/qr-status";
 import { appBaseUrl } from "@/lib/qr";
 import { QrCodesAdminTable } from "@/components/QrCodesAdminTable";
+import { getBusinessType } from "@/lib/business-type";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export default async function SuperAdminQrCodesPage() {
           select: {
             id: true,
             name: true,
+            businessType: true,
             city: true,
             owner: { select: { name: true, email: true } },
           },
@@ -31,6 +33,7 @@ export default async function SuperAdminQrCodesPage() {
       select: {
         id: true,
         name: true,
+        businessType: true,
         city: true,
         owner: { select: { name: true, email: true } },
       },
@@ -49,10 +52,17 @@ export default async function SuperAdminQrCodesPage() {
     resolvedStatus: resolveStatus(q),
     validUntil: q.validUntil ? q.validUntil.toISOString() : null,
     createdAt: q.createdAt.toISOString(),
-    restaurant: q.restaurant,
+    restaurant: {
+      ...q.restaurant,
+      businessType: getBusinessType(q.restaurant.businessType),
+    },
     _count: q._count,
   }));
 
+  const serializedRestaurants = restaurants.map((restaurant) => ({
+    ...restaurant,
+    businessType: getBusinessType(restaurant.businessType),
+  }));
   const activeCount = serialized.filter((q) => q.resolvedStatus === "ACTIVE").length;
   const graceCount = serialized.filter((q) => q.resolvedStatus === "GRACE").length;
   const expiredCount = serialized.filter((q) => q.resolvedStatus === "EXPIRED").length;
@@ -90,7 +100,7 @@ export default async function SuperAdminQrCodesPage() {
         </div>
       </div>
 
-      <QrCodesAdminTable qrCodes={serialized} restaurants={restaurants} appUrl={appUrl} />
+      <QrCodesAdminTable qrCodes={serialized} restaurants={serializedRestaurants} appUrl={appUrl} />
     </div>
   );
 }

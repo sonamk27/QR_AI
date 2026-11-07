@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { CreateRestaurantModal } from "@/components/SuperAdminModals";
 import { AdminButton } from "@/components/AdminActions";
 import { isGoogleBusinessUrl } from "@/lib/google-business-url";
+import { BUSINESS_TYPE_LABELS, BUSINESS_TYPES, getBusinessType, type BusinessType } from "@/lib/business-type";
 
 type RestaurantRow = {
   id: string;
   name: string;
+  businessType: BusinessType;
   city: string | null;
   brandColor: string;
   status: string;
@@ -31,6 +33,7 @@ type RestaurantRow = {
 
 type RestaurantEditData = {
   name: string;
+  businessType: BusinessType;
   city: string;
   logoUrl: string;
   brandColor: string;
@@ -65,6 +68,7 @@ function EditRestaurantButton({ restaurantId }: { restaurantId: string }) {
       setOwnerEmailVerified(Boolean(r.owner?.emailVerifiedAt));
       setForm({
         name: r.name ?? "",
+        businessType: getBusinessType(r.businessType),
         city: r.city ?? "",
         logoUrl: r.logoUrl ?? "",
         brandColor: r.brandColor ?? "#1F6F5C",
@@ -126,14 +130,14 @@ function EditRestaurantButton({ restaurantId }: { restaurantId: string }) {
 
   return (
     <>
-      <button type="button" className="btn-ghost !px-2.5 !py-1.5 text-xs" onClick={openEditor}>Edit restaurant</button>
+      <button type="button" className="btn-ghost !px-2.5 !py-1.5 text-xs" onClick={openEditor}>Edit business</button>
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm">
           <form onSubmit={submit} className="max-h-[92vh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-2xl border border-line bg-white p-5 shadow-xl sm:p-6">
             <div className="sticky top-[-20px] z-10 flex items-center justify-between border-b border-line bg-white py-2 sm:top-[-24px]">
               <div>
-                <h3 className="text-lg font-semibold text-ink">Edit Restaurant</h3>
-                <p className="text-xs text-ink/55">Details are loaded from this restaurant’s profile.</p>
+                <h3 className="text-lg font-semibold text-ink">Edit Business</h3>
+                <p className="text-xs text-ink/55">Details are loaded from this business profile.</p>
               </div>
               <button type="button" onClick={() => setOpen(false)} className="text-ink/50 hover:text-ink" aria-label="Close">✕</button>
             </div>
@@ -141,15 +145,17 @@ function EditRestaurantButton({ restaurantId }: { restaurantId: string }) {
             {loading ? <p className="py-8 text-center text-sm text-ink/60">Loading restaurant profile…</p> : form && (
               <>
                 <div>
-                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-ink/55">Restaurant profile</h4>
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-ink/55">Business profile</h4>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    {textField("name", "Restaurant name")}
+                    <div>
+                      <label className="label" htmlFor={`${restaurantId}-businessType`}>Business type</label>
+                      <select id={`${restaurantId}-businessType`} className="input" value={form.businessType} onChange={(event) => update("businessType", event.target.value as BusinessType)}>
+                        {BUSINESS_TYPES.map((type) => <option key={type} value={type}>{BUSINESS_TYPE_LABELS[type]}</option>)}
+                      </select>
+                    </div>
+                    {textField("name", "Business name")}
                     {textField("city", "City")}
                     {textField("logoUrl", "Logo URL", "url", true)}
-                    <div>
-                      <label className="label" htmlFor={`${restaurantId}-brandColor`}>Brand color</label>
-                      <input id={`${restaurantId}-brandColor`} type="color" className="input h-11 p-1" value={form.brandColor} onChange={(e) => update("brandColor", e.target.value)} />
-                    </div>
                     {textField("referredByName", "Referred by / seller")}
                   </div>
                 </div>
@@ -164,7 +170,7 @@ function EditRestaurantButton({ restaurantId }: { restaurantId: string }) {
                   </p>
                 </div>
                 <div>
-                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-ink/55">Restaurant links and message</h4>
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-ink/55">Business links and message</h4>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {textField("googleReviewUrl", "Google review URL", "url", true)}
                     {textField("instagramUrl", "Instagram URL", "url")}
@@ -179,7 +185,7 @@ function EditRestaurantButton({ restaurantId }: { restaurantId: string }) {
             )}
             <div className="flex justify-end gap-2 border-t border-line pt-3">
               <button type="button" className="btn-ghost text-xs" onClick={() => setOpen(false)}>Cancel</button>
-              <button type="submit" className="btn text-xs" disabled={busy || loading || !form}>{busy ? "Saving…" : "Save restaurant"}</button>
+              <button type="submit" className="btn text-xs" disabled={busy || loading || !form}>{busy ? "Saving…" : "Save business"}</button>
             </div>
           </form>
         </div>
@@ -247,7 +253,7 @@ function EditRestaurantOwnerButton({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm">
           <form onSubmit={submit} className="w-full max-w-md space-y-4 rounded-2xl border border-line bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between border-b border-line pb-3">
-              <h3 className="text-lg font-semibold text-ink">Edit Restaurant Owner</h3>
+              <h3 className="text-lg font-semibold text-ink">Edit Business Owner</h3>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
@@ -512,6 +518,7 @@ export function RestaurantsAdminTable({
       const q = search.toLowerCase();
       return (
         r.name.toLowerCase().includes(q) ||
+        BUSINESS_TYPE_LABELS[getBusinessType(r.businessType)].toLowerCase().includes(q) ||
         (r.city && r.city.toLowerCase().includes(q)) ||
         r.owner.name.toLowerCase().includes(q) ||
         r.owner.email.toLowerCase().includes(q) ||
@@ -527,7 +534,7 @@ export function RestaurantsAdminTable({
         <div className="flex flex-1 flex-wrap items-center gap-2">
           <input
             type="search"
-            placeholder="Search by restaurant, city, owner, or seller…"
+            placeholder="Search by business, type, city, owner, or seller…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="input max-w-sm"
@@ -580,7 +587,7 @@ export function RestaurantsAdminTable({
         <table className="w-full min-w-[1100px]">
           <thead>
             <tr>
-              <th className="th">Restaurant</th>
+              <th className="th">Business</th>
               <th className="th">Owner &amp; Contact</th>
               <th className="th">QR Codes</th>
               <th className="th">Google Business Profile</th>
@@ -595,8 +602,8 @@ export function RestaurantsAdminTable({
               <tr>
                 <td colSpan={8} className="td text-center text-ink/60 py-10">
                   {restaurants.length === 0
-                    ? "No restaurants onboarded yet. Click '+ Add Restaurant & Owner' to start."
-                    : "No restaurants matched your filters."}
+                    ? "No businesses onboarded yet. Click '+ Add Business & Owner' to start."
+                    : "No businesses matched your filters."}
                 </td>
               </tr>
             ) : (
@@ -610,7 +617,7 @@ export function RestaurantsAdminTable({
                       />
                       <div>
                         <p className="font-semibold text-ink">{r.name}</p>
-                        <p className="text-xs font-normal text-ink/60">{r.city || "No city"}</p>
+                        <p className="text-xs font-normal text-ink/60">{BUSINESS_TYPE_LABELS[getBusinessType(r.businessType)]} · {r.city || "No city"}</p>
                       </div>
                     </div>
                   </td>
@@ -642,6 +649,7 @@ export function RestaurantsAdminTable({
                       ) : (
                         <span className="text-xs text-ink/50">Not submitted</span>
                       )}
+                      <EditRestaurantLinkButton restaurantId={r.id} googleReviewUrl={r.googleReviewUrl} />
                     </div>
                   </td>
                   <td className="td">

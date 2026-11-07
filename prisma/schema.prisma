@@ -37,6 +37,7 @@ model Restaurant {
   id                 String              @id @default(cuid())
   ownerId            String
   name               String
+  businessType       String              @default("RESTAURANT")
   city               String?
   logoUrl            String?
   brandColor         String              @default("#1F6F5C")

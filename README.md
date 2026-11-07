@@ -1,26 +1,21 @@
 # ReviewFlow
 
-Multi-tenant SaaS for restaurants: collect guest feedback with smart QR codes. Guests scan at tables, rate their overall visit, food, and service, optionally add a detail, then receive an editable AI-generated review draft to use if they choose to continue to Google.
+Multi-tenant restaurant feedback and loyalty app. Guests scan a QR code, rate their visit, and receive an editable review draft they can choose to use on Google.
 
-**Stack:** Next.js 15 (App Router) · TypeScript · Tailwind CSS · PostgreSQL (Neon / Supabase) · Prisma · Render Web Service
+**Current stack:** TypeScript · React · Vite · Tailwind CSS · Firebase Authentication · Cloud Firestore · Firebase Hosting (Spark)
+
+The Next.js/PostgreSQL app is retained only as a migration source and rollback
+until the Firebase data migration is complete.
 
 ---
 
-## Direct Activation Workflow (No Gateway Middlemen)
+## Main Workflows
 
-1. **Lead & Sales:** A sales rep or you visit a restaurant and collect details (Restaurant Name, City, Owner Name & Email, Google Review link, Referred By).
-2. **Direct Payment:** The restaurant owner transfers payment directly to you via UPI or bank transfer (no platform transaction fees, no payout delays, no seller cash-handling).
-3. **Super Admin Setup (`/super-admin`):**
-   - Click **"+ Add Restaurant & Owner"**: Creates the restaurant and owner account with a secure temporary password. Copy the pre-formatted WhatsApp onboarding message in one click.
-   - Click **"+ Create & Activate QR"**: Select the restaurant, specify the placement (e.g. Table 1, Billing Counter), and record the payment (Amount, Method: UPI / Bank / Cash, UTR / Reference).
-   - This immediately activates the QR code for **365 days** and issues an auto-incrementing invoice number (`RF-2026-00001`).
-4. **Owner Experience (`/dashboard`):**
-   - Owner logs in with their credentials.
-   - Downloads high-resolution print-ready files (**PNG** and vector **SVG**).
-   - Views real-time scan analytics, guest ratings, and selected feedback suggestions.
-   - Owners cannot create or alter QR code validities directly.
-5. **Renewal (`/super-admin`):**
-   - Upon renewal payment, the Super Admin clicks **"Renew (+1 yr)"** on the QR row, logs the new payment UTR, and validity extends by 365 days. The printed physical QR never changes.
+1. **Account setup:** A restaurant owner signs up with Firebase Authentication. The app creates the owner's Firestore profile and restaurant record, then asks the owner to verify their email.
+2. **QR request:** The owner submits a request from `/dashboard/qr-requests`. The QR remains locked while the Super Admin reviews it.
+3. **Payment:** After approval, the owner scans the amount-prefilled UPI QR and submits the UTR or bank reference. The Super Admin verifies the payment and activates the QR for 365 days.
+4. **Guest experience:** Guests scan the restaurant QR, submit ratings, create an editable review draft, and can use the restaurant's loyalty program. Guest sessions use Firebase Anonymous Authentication.
+5. **Management:** Owners manage restaurant settings, QR activity, feedback, loyalty, and payment history. Super Admins manage requests, users, restaurants, QR status, payments, and audit entries.
 
 ---
 
@@ -28,53 +23,37 @@ Multi-tenant SaaS for restaurants: collect guest feedback with smart QR codes. G
 
 | Role | Area | Description |
 |---|---|---|
-| **Guest (no login)** | `/r/[slug]` | Customer scans the QR, rates the overall visit, food, and service, optionally adds a comment, and receives an editable AI review draft before choosing whether to continue to Google. |
+| **Guest (anonymous Firebase session)** | `/r/[slug]` | Guest scans the QR, rates the visit, receives an editable review draft, and can use the restaurant's loyalty program. |
 | **ADMIN (Restaurant Owner)** | `/dashboard` | View feedback, ratings breakdown, and download high-res QR codes. |
-| **SUPER_ADMIN (Platform Owner)** | `/super-admin` | Full control: onboard restaurants, create & activate 365-day QRs, log direct payments, renew, suspend, enable/disable QRs, and share credentials. |
+| **SUPER_ADMIN (Platform Owner)** | `/super-admin` | Manage users and restaurants, review QR requests, verify payments, activate or disable QR codes, and review audit entries. |
 
 ---
 
 ## Setup & Running Locally
 
-1. `npm install`
-2. Create a Postgres database (Neon or Supabase). Copy `.env.example` to `.env` and fill in:
-   - `DATABASE_URL` (pooled) and `DIRECT_URL` (direct)
-   - `AUTH_SECRET` (generate with `openssl rand -base64 32`)
-   - Firebase web app settings (`NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, and `NEXT_PUBLIC_FIREBASE_APP_ID`) for Google sign-in
-   - `ANTHROPIC_API_KEY` (for rating-based AI feedback suggestions; rule-based suggestions are used if omitted)
-   - `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, and optional `SEED_ADMIN_PHONE` (for the super admin account)
-   - `RESEND_API_KEY` and `EMAIL_FROM` (required to deliver new account email verification links)
-3. Apply the checked-in database migrations with `npx prisma migrate deploy`.
-4. `npm run db:seed` (creates the Super Admin user)
-5. `npm run dev` and navigate to `http://localhost:3000`
+1. Run `npm install`.
+2. Copy `.env.example` to `.env.local` and set the Firebase web app values plus `VITE_UPI_VPA`, `VITE_UPI_PAYEE_NAME`, and `VITE_QR_PRICE_PAISE`.
+3. In Firebase, enable **Email/Password**, **Google**, and **Anonymous** Authentication. Create a Cloud Firestore database and add your local/Hosting domains to Authentication's authorized domains.
+4. Run `npm run dev` and open the URL printed by Vite (usually `http://localhost:5173`).
 
-### Firebase Authentication
+To run against local Firebase emulators, set `VITE_FIREBASE_EMULATORS="true"` in
+`.env.local`, start `firebase emulators:start --only auth,firestore` in one
+terminal, then run `npm run dev` in another. The checked-in `firebase.json`
+declares the Auth and Firestore emulator ports. Leave this setting `false` for
+Firebase Hosting builds so the app connects to the configured Firebase project.
 
-Create a Firebase project, register a web app, and enable **Email/Password** and
-**Google** under **Authentication → Sign-in method**. Add the web app settings
-listed above to `.env` and configure the app's authorized domains in Firebase
-Authentication. Email/password registration and Google sign-in are handled by
-Firebase Authentication. The server verifies Firebase ID tokens, then looks up
-the user's existing ReviewFlow role and restaurant in PostgreSQL before creating
-the app session.
-
-Existing ReviewFlow users must create a Firebase Auth account using their current
-email address (choose **Create account**); this links them to their existing
-database record. Their old password hash cannot be imported to Firebase, so they
-must choose a new Firebase password or use Google with the same email. Firebase
-sends the verification email. Provision the Super Admin identity in Firebase
-Authentication with the same email as its existing ReviewFlow user record, and
-verify the email before signing in. Do not expose private Firebase credentials
-in `NEXT_PUBLIC_*` variables.
+For a new Firebase project, bootstrap its first Super Admin with the one-time
+script described in the Firebase deployment section below. Existing PostgreSQL
+users need Firebase Auth accounts; their old password hashes are not imported,
+so they set a Firebase password through the password reset flow.
 
 ### Google Business Profile URL
 
-The initial version does not connect to or retrieve data from Google Business
-Profile. The restaurant owner pastes a public Maps or Business Profile URL into
-**Dashboard → Profile**; the app validates the URL format locally and saves it
-to the existing restaurant record. Super Admin can review and open the submitted
-URL from **Restaurants & Owners**. No Google Cloud OAuth credentials, Business
-Profile API access, or Google API key is used for this workflow.
+The app does not retrieve data from Google Business Profile. The owner pastes a
+public Maps or Business Profile URL into **Dashboard → Profile**; the app
+validates the URL format locally and saves it to the restaurant's Firestore
+document. Super Admin can review it from **Restaurants & Owners**. No Google
+Cloud OAuth credentials, Business Profile API access, or Google API key is used.
 
 ```text
 Firebase Authentication
@@ -85,24 +64,28 @@ Restaurant Dashboard
     ↓
 Manually enter Google Business Profile URL
     ↓
-Save URL in database
+Save URL in Firestore
     ↓
 Super Admin reviews URL
     ↓
-Existing QR/payment workflow
+Firebase QR and payment workflow
 ```
 
-For UPI QR payments, set `UPI_VPA` to the receiving UPI ID and optionally set
-`UPI_PAYEE_NAME` to the account name shown to customers. Approved QR requests then show a QR
-with the request total prefilled; owners scan it with a UPI app and submit the
-payment reference for admin verification.
+For UPI QR payments, set `UPI_VPA` and `UPI_PAYEE_NAME` for the legacy Next.js
+app. The Firebase SPA uses the public client settings `VITE_UPI_VPA`,
+`VITE_UPI_PAYEE_NAME`, and `VITE_QR_PRICE_PAISE` (amounts are in paise). Its
+approved QR requests show the matching payment QR; owners submit the UTR or
+payment reference for Super Admin verification. Keep the client price value in
+sync with the amount the administrator verifies.
 
-### Render deployment
+### Legacy Render deployment (Next.js/PostgreSQL only)
 
 Deploy this project as a Render **Web Service**, not as a Static Site. It uses
 Next.js server routes, middleware, and authenticated dashboards. The checked-in
 `render.yaml` defines the Node service, build and start commands, health check,
-and environment-variable names. Connect the GitHub repository
+and environment-variable names. It uses the explicitly named `build:next` and
+`start:next` scripts so the Render service remains the legacy deployment.
+Connect the GitHub repository
 `sonamk27/QR_AI` and deploy the `main` branch.
 
 Set `DATABASE_URL`, `DIRECT_URL`, and a strong `AUTH_SECRET` in the Render
@@ -118,6 +101,99 @@ HTTPS URL if you prefer.
 Render's Free Web Services sleep after 15 minutes without traffic and can take
 about a minute to wake on the next request. Free service hours and bandwidth
 also have monthly limits. See [Render's free service details](https://render.com/docs/free).
+
+### Firebase Hosting deployment (primary app)
+
+The TypeScript React SPA is built from `firebase-spa/`.
+It preserves the current Tailwind screens and uses Firebase Authentication and
+Cloud Firestore for the dashboard, QR, guest review, loyalty, payment-record,
+and Super Admin workflows. Its Hosting build has no Next.js server or API route
+runtime. Configure the Firebase web app values from `.env.example` in
+`.env.local`, enable Email/Password, Google, and Anonymous providers in Firebase
+Authentication, then add the Hosting domain to Authentication's authorized
+domains. The anonymous provider is used for guest QR feedback. Set the
+`VITE_UPI_*` and `VITE_QR_PRICE_PAISE` values in `.env.local` if you want the
+SPA to generate amount-prefilled UPI payment QRs.
+
+For a fresh Firebase project, enable the Spark plan, create the default Cloud
+Firestore database, and select the project locally. Then build and deploy the
+SPA plus its access rules and indexes:
+
+```sh
+firebase login
+firebase use --add
+npm run build:firebase
+firebase deploy --only firestore:rules,firestore:indexes,hosting
+```
+
+The default `npm run dev` and `npm run build` commands target this React SPA.
+The separate legacy Next.js build remains available through `dev:next`,
+`build:next`, and `start:next` while existing PostgreSQL data is migrated.
+
+The Firebase web app settings are public client configuration; the service
+account JSON is private and is only used by local migration/bootstrap scripts.
+Do not set up Functions or Firebase Storage for this Spark deployment.
+
+Build with `npm run build:firebase`. Firebase Hosting serves `firebase-spa/dist`
+and rewrites routes to the SPA entry point. The SPA currently uses Firestore for
+owner dashboards and settings, guest review/loyalty, QR requests, payments and
+the Super Admin QR, restaurant, user, and audit pages. The Next.js/Render app
+remains a separate legacy build; Firebase Hosting serves only the React SPA.
+Firestore rules and Hosting have not been live-validated until deployed to a
+Firebase project.
+
+Cloud Storage for Firebase requires a Blaze billing account, even when usage
+would otherwise fit a no-cost storage allowance. This project currently has no
+user-upload feature, so keep bundled public assets in `public/` and avoid adding
+Firebase Storage while remaining strictly on Spark. See [Cloud Storage billing
+requirements](https://firebase.google.com/docs/storage/faqs-storage-changes-announced-sept-2024).
+
+The legacy app still uses PostgreSQL/Prisma; its data can be copied with the
+one-time migration script
+after setting `FIREBASE_SERVICE_ACCOUNT_JSON` locally and confirming the Firebase
+project ID. Preview the document counts first with `npm run migrate:firestore`,
+then execute with `npm run migrate:firestore -- --execute`. The script keeps
+each run below an 18,000-write safety budget. For larger projects, select groups
+of Firestore collection names with `--collections=users,restaurants,qrCodes,loyaltyPrograms`
+and run the next group on a later day. If one collection alone exceeds the
+budget, paginate it with `--collections=scans --limit=15000`, then use the
+printed `--after-id` cursor on the next run. Keep the full import under the
+daily Firestore Spark write quota; partial runs use merge writes and are safe to
+resume from the reported cursor.
+The `restaurants` collection import also creates safe `publicRestaurants`
+documents for guest-visible details; full restaurant records remain private to
+the owner and Super Admin. The `qrCodes` import creates slug-keyed
+`publicQrPages` documents for active QR codes. If either derived collection was
+added after its source records were migrated, rerun the corresponding
+`restaurants` or `qrCodes` migration in manageable batches before switching the
+Hosting site over. Import `restaurants` and `loyaltyPrograms` together to seed a
+default loyalty program for any restaurant that did not previously have one;
+the migration checks for existing Firestore programs before creating defaults.
+PostgreSQL password hashes and old one-time email tokens are deliberately not
+copied; migrated password users must use Firebase's password reset flow. Keep
+the database variables configured until all app features have moved to Firestore.
+Legacy anonymous loyalty customers are imported as restaurant-owned history.
+The PostgreSQL schema does not link them to Firebase guest accounts, so their
+old guest sessions are not imported and guests cannot reclaim those records
+automatically. New guest visits use Firebase Anonymous Authentication.
+
+For a new Firebase project with no migrated users, create the first Super Admin
+with `FIREBASE_SUPER_ADMIN_EMAIL`, `FIREBASE_SUPER_ADMIN_NAME`, and the local
+service-account JSON configured in `.env.local`. Preview first with
+`npm run bootstrap:firebase-admin`, then explicitly create it with
+`npm run bootstrap:firebase-admin -- --execute`. The account is created with
+email verification already completed but without a password; use **Forgot
+password** to set one before signing in. The command refuses to run if a Super Admin already exists or if
+the chosen email already belongs to a Firebase Auth user.
+
+To link an existing Firebase Authentication account when its Firestore profile
+is missing, set `FIREBASE_SUPER_ADMIN_EMAIL`, `FIREBASE_SUPER_ADMIN_NAME`,
+`NEXT_PUBLIC_FIREBASE_PROJECT_ID`, and `FIREBASE_SERVICE_ACCOUNT_FILE` to the
+local service-account JSON file path. Run `npm run link:firebase-super-admin`
+to preview the exact UID and profile path. Apply only after checking the email
+and UID with `npm run link:firebase-super-admin -- --execute --confirm-email
+<email>`. The script never creates or changes Firebase Authentication accounts
+and refuses to overwrite any existing Firestore profile.
 
 For an existing database that already has the legacy schema but no Prisma migration
 history, mark the matching baseline as applied once, then deploy the remaining

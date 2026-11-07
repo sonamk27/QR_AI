@@ -4,9 +4,9 @@ import Image from "next/image";
 const features = [
   {
     icon: "💬",
-    title: "AI-Powered Review Assistance",
+    title: "Review Draft Assistance",
     description:
-      "Guests rate their visit, pick what they enjoyed, and receive an authentic draft in seconds. They edit and post it on Google themselves.",
+      "Guests rate their visit, pick what they enjoyed, and receive a rating-based draft in seconds. They can edit it and post it on Google themselves.",
   },
   {
     icon: "☕",
@@ -75,7 +75,7 @@ export default function Home() {
                 ReviewFlow
               </Link>
               <span className="hidden sm:inline-block ml-2 text-[11px] font-semibold text-[#716B64] uppercase tracking-wider">
-                • QR AI Review &amp; Loyalty System
+                • QR Review &amp; Loyalty System
               </span>
             </div>
           </div>
@@ -105,11 +105,11 @@ export default function Home() {
           </span>
 
           <h1 className="mt-4 font-serif text-3xl font-extrabold leading-tight tracking-tight text-[#24211E] sm:text-5xl">
-            QR AI Review System for Restaurants
+            QR Review System for Restaurants
           </h1>
           <p className="mt-4 max-w-lg text-sm sm:text-base leading-relaxed text-[#716B64]">
             A simple, seamless and delightful experience — from scan to reward.
-            Guests scan table QRs, collect digital stamps, unlock customizable vouchers, and generate genuine reviews with AI assistance.
+            Guests scan table QRs, collect digital stamps, unlock customizable vouchers, and create editable rating-based review drafts.
           </p>
 
           <div className="mt-6 flex flex-col items-stretch gap-2.5 sm:mt-8 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">

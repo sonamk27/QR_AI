@@ -3,12 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { Stars } from "@/components/Stars";
+import { addDoc, collection, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { getFirebaseServices } from "@/firebase-spa/src/firebase";
+import { getBusinessFeedbackConfig, getBusinessType, type BusinessType } from "@/lib/business-type";
+import { createReviewDraft } from "@/lib/review-copy";
 
 export type CustomerJourneyProps = {
   slug: string;
   restaurant: {
     id: string;
     name: string;
+    businessType?: BusinessType | string;
     city?: string | null;
     logoUrl?: string | null;
     brandColor?: string;
@@ -32,6 +37,7 @@ export type CustomerJourneyProps = {
   initialPhone?: string | null;
   initialName?: string | null;
   initialView?: "welcome" | "card" | "review";
+  firebaseContext?: { qrId: string; ownerUid: string; restaurantId: string };
 };
 
 type RewardItem = {
@@ -67,6 +73,12 @@ type CustomerData = {
   transactions: TransactionItem[];
 };
 
+function dateString(value: any): string | null {
+  if (value?.toDate) return value.toDate().toISOString();
+  if (value instanceof Date) return value.toISOString();
+  return typeof value === "string" ? value : null;
+}
+
 export function CustomerJourneyView({
   slug,
   restaurant,
@@ -74,7 +86,22 @@ export function CustomerJourneyView({
   initialPhone,
   initialName,
   initialView = "welcome",
+  firebaseContext,
 }: CustomerJourneyProps) {
+  const businessType = getBusinessType(restaurant.businessType);
+  const businessFeedback = getBusinessFeedbackConfig(businessType);
+
+  function updateReviewRating(index: number, rating: number) {
+    setReviewRatings((current) => {
+      const next: [number, number, number] = [...current];
+      next[index] = rating;
+      return next;
+    });
+    setAiGenerated(false);
+    setAiDraft("");
+    setReviewGenerationError("");
+  }
+
   // Navigation View State
   const [currentView, setCurrentView] = useState<
     "welcome" | "register" | "request_pending" | "card" | "stamp_added" | "review" | "reward_details" | "reward_redeemed"
@@ -115,6 +142,18 @@ export function CustomerJourneyView({
   const [googlePopupBlocked, setGooglePopupBlocked] = useState(false);
   const [reviewVariantIndex, setReviewVariantIndex] = useState(0);
   const [reviewSessionId, setReviewSessionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!firebaseContext) return;
+    const { db, auth } = getFirebaseServices();
+    void addDoc(collection(db, "scans"), {
+      qrId: firebaseContext.qrId,
+      ownerUid: firebaseContext.ownerUid,
+      guestUid: auth.currentUser?.uid ?? null,
+      userAgent: navigator.userAgent.slice(0, 200),
+      createdAt: serverTimestamp(),
+    }).catch((error) => console.error("Could not record QR scan", error));
+  }, [firebaseContext?.qrId, firebaseContext?.ownerUid]);
 
   // Reward Voucher QR Modal / Screen State
   const [selectedReward, setSelectedReward] = useState<RewardItem | null>(null);
@@ -196,6 +235,32 @@ export function CustomerJourneyView({
       setCardError(null);
     }
     try {
+      if (firebaseContext) {
+        const { db, auth } = getFirebaseServices();
+        const guest = auth.currentUser;
+        if (!guest) throw new Error("Guest session is still initializing.");
+        const customerId = `anon_${guest.uid}_${firebaseContext.restaurantId}`;
+        const customerSnap = await getDoc(doc(db, "anonymousCustomers", customerId));
+        if (!customerSnap.exists()) throw new Error("No loyalty card is registered for this visit yet.");
+        const customerRow = customerSnap.data();
+        const [rewardSnap, transactionSnap] = await Promise.all([
+          getDocs(query(collection(db, "anonymousRewards"), where("guestUid", "==", guest.uid), where("customerId", "==", customerId))),
+          getDocs(query(collection(db, "anonymousStampTransactions"), where("guestUid", "==", guest.uid), where("customerId", "==", customerId))),
+        ]);
+        const firebaseCustomer: CustomerData = {
+          id: customerId, name: customerRow.name ?? null, phone: customerRow.phone ?? phoneToFetch,
+          currentStamps: Number(customerRow.currentStamps ?? 0), lifetimeStamps: Number(customerRow.lifetimeStamps ?? 0),
+          cycleNumber: Number(customerRow.cycleNumber ?? 1), stampCycleStartedAt: dateString(customerRow.stampCycleStartedAt),
+          cycleEndsAt: dateString(customerRow.cycleEndsAt), lastVisitAt: dateString(customerRow.lastVisitAt),
+          rewards: rewardSnap.docs.map((d) => ({ id: d.id, code: String(d.data().code ?? ""), rewardTitle: String(d.data().rewardTitle ?? "Reward"), discountAmount: Number(d.data().discountAmount ?? 0), status: d.data().status, expiresAt: dateString(d.data().expiresAt) ?? new Date(0).toISOString(), redeemedAt: dateString(d.data().redeemedAt) })),
+          transactions: transactionSnap.docs.map((d) => ({ id: d.id, stampsCount: Number(d.data().amount ?? 1), billAmount: null, billReference: d.data().staffNote ?? null, createdAt: dateString(d.data().createdAt) ?? new Date(0).toISOString(), staffNote: d.data().staffNote ?? null })).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)),
+        };
+        setCustomer(firebaseCustomer);
+        localStorage.setItem(`loyalty_phone_${slug}`, firebaseCustomer.phone);
+        if (firebaseCustomer.name) setFullName(firebaseCustomer.name);
+        if (!silent) setCurrentView("card");
+        return;
+      }
       const res = await fetch(
         `/api/loyalty/card?slug=${encodeURIComponent(slug)}&phone=${encodeURIComponent(phoneToFetch)}`,
         { cache: "no-store" }
@@ -251,6 +316,26 @@ export function CustomerJourneyView({
     let isCancelled = false;
 
     async function checkStatus() {
+      if (firebaseContext) {
+        if (!pendingRequestId) return;
+        try {
+          const { db } = getFirebaseServices();
+          const snap = await getDoc(doc(db, "stampRequests", pendingRequestId));
+          if (isCancelled || !snap.exists()) return;
+          const request = snap.data();
+          if (request.guestUid !== getFirebaseServices().auth.currentUser?.uid) return;
+          if (request.status === "APPROVED") {
+            setPendingRequestId(null);
+            await fetchLoyaltyCard(customer?.phone || phoneNumber, true);
+            setStampFeedbackMessage(request.staffNote || "Your visit has been recorded. You're one step closer to your reward!");
+            setCurrentView("stamp_added");
+          } else if (request.status === "REJECTED") {
+            setPendingRequestId(null);
+            setRequestError(request.staffNote || "Your stamp request was declined by the restaurant staff.");
+          }
+        } catch (err) { console.error("Firebase stamp status check failed", err); }
+        return;
+      }
       const phoneToUse = customer?.phone || phoneNumber;
       const url = pendingRequestId
         ? `/api/loyalty/request-stamp/status?requestId=${encodeURIComponent(pendingRequestId)}`
@@ -321,6 +406,41 @@ export function CustomerJourneyView({
     setCardError(null);
     setRequestError(null);
     try {
+      if (firebaseContext) {
+        const { db, auth } = getFirebaseServices();
+        const guest = auth.currentUser;
+        if (!guest) throw new Error("Guest session is still initializing. Please try again.");
+        if (!program.isActive || !program.id) throw new Error("This restaurant's loyalty program is not available right now.");
+        const customerId = `anon_${guest.uid}_${firebaseContext.restaurantId}`;
+        const customerRef = doc(db, "anonymousCustomers", customerId);
+        const requestId = `guest_${guest.uid}_${firebaseContext.qrId}_${new Date().toISOString().slice(0, 10).replaceAll("-", "")}`;
+        const requestRef = doc(db, "stampRequests", requestId);
+        const outcome = await runTransaction(db, async (tx) => {
+          const [customerSnap, requestSnap] = await Promise.all([tx.get(customerRef), tx.get(requestRef)]);
+          if (!customerSnap.exists()) throw new Error("Please register your name and phone number first.");
+          if (requestSnap.exists() && requestSnap.data().status === "PENDING") return { pending: true };
+          const lastVisit = customerSnap.data().lastVisitAt?.toDate?.() as Date | undefined;
+          if (lastVisit && Date.now() - lastVisit.getTime() < 24 * 60 * 60 * 1000) return { already: true };
+          tx.set(requestRef, {
+            id: requestRef.id, ownerUid: firebaseContext.ownerUid, guestUid: guest.uid,
+            restaurantId: firebaseContext.restaurantId, qrId: firebaseContext.qrId, programId: program.id,
+            anonCustomerId: customerId, customerName: fullName.trim() || customer?.name || "Customer",
+            customerPhone: phoneToUse, tableNo: null, qrSlug: slug, status: "PENDING", stampsAwarded: 1,
+            createdAt: serverTimestamp(), reviewedAt: null, reviewedByUid: null, staffNote: null,
+          });
+          return { pending: true };
+        });
+        if (outcome.already) {
+          setStampFeedbackMessage("You already received a stamp for today's visit!");
+          await fetchLoyaltyCard(phoneToUse, true);
+          setCurrentView("card");
+        } else {
+          setPendingRequestId(requestId);
+          setPendingTableNo(null);
+          setCurrentView("request_pending");
+        }
+        return;
+      }
       const res = await fetch("/api/loyalty/request-stamp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -376,6 +496,36 @@ export function CustomerJourneyView({
       localStorage.setItem(`loyalty_phone_${slug}`, finalPhone);
       localStorage.setItem(`loyalty_name_${slug}`, fullName.trim());
 
+      if (firebaseContext) {
+        const { auth, db } = getFirebaseServices();
+        const guest = auth.currentUser;
+        if (!guest) throw new Error("Guest session is still initializing. Please try again.");
+        const customerId = `anon_${guest.uid}_${firebaseContext.restaurantId}`;
+        const customerRef = doc(db, "anonymousCustomers", customerId);
+        await runTransaction(db, async (tx) => {
+          const existing = await tx.get(customerRef);
+          const existingData = existing.data();
+          if (existing.exists() && (existingData?.guestUid !== guest.uid || existingData?.ownerUid !== firebaseContext.ownerUid)) throw new Error("This guest profile is linked to another visit.");
+          tx.set(customerRef, {
+            id: customerId, ownerUid: firebaseContext.ownerUid, guestUid: guest.uid,
+            restaurantId: firebaseContext.restaurantId, programId: program.id,
+            name: fullName.trim(), phone: finalPhone,
+            currentStamps: Number(existingData?.currentStamps ?? 0), lifetimeStamps: Number(existingData?.lifetimeStamps ?? 0),
+            cycleNumber: Number(existingData?.cycleNumber ?? 1), stampCycleStartedAt: existingData?.stampCycleStartedAt ?? null,
+            lastVisitAt: existingData?.lastVisitAt ?? null, createdAt: existingData?.createdAt ?? serverTimestamp(),
+          });
+        });
+        setPhoneNumber(finalPhone);
+        await fetchLoyaltyCard(finalPhone, true);
+        setNewCustomerReviewRequired(false);
+        setReviewSubmitted(false);
+        setReviewRatings([0, 0, 0]);
+        setAiGenerated(false);
+        setAiDraft("");
+        setCurrentView("review");
+        return;
+      }
+
       const lookup = await fetch(`/api/loyalty/customer/exists?slug=${encodeURIComponent(slug)}&phone=${encodeURIComponent(finalPhone)}`, { cache: "no-store" });
       const lookupData = await lookup.json().catch(() => ({}));
       if (!lookup.ok) throw new Error(lookupData.error || "Could not check this phone number. Please try again.");
@@ -402,12 +552,65 @@ export function CustomerJourneyView({
 
   // Step 7 Handler: AI Review Generator
   async function handleGenerateAiReview() {
-    const [foodRating, serviceRating, atmosphereRating] = reviewRatings;
-    const starRating = Math.round((foodRating + serviceRating + atmosphereRating) / 3);
+    const [primaryRating, secondaryRating, atmosphereRating] = reviewRatings;
+    const starRating = Math.round((primaryRating + secondaryRating + atmosphereRating) / 3);
     if (starRating < 1 || starRating > 5) return;
     setGeneratingAi(true);
     setReviewGenerationError("");
     try {
+      if (firebaseContext) {
+        const { db, auth } = getFirebaseServices();
+        const chips = [`${businessFeedback.aspectLabels[2]} rating: ${atmosphereRating}/5`];
+        const guestUid = auth.currentUser?.uid;
+        if (!guestUid) throw new Error("Guest session is still initializing. Please try again.");
+        const text = createReviewDraft({
+          businessName: restaurant.name,
+          overall: starRating,
+          aspects: [
+            { label: businessFeedback.aspectLabels[0], score: primaryRating },
+            { label: businessFeedback.aspectLabels[1], score: secondaryRating },
+            { label: businessFeedback.aspectLabels[2], score: atmosphereRating },
+          ],
+          variation: reviewVariantIndex,
+        });
+        if (reviewSessionId) {
+          const draftRef = doc(db, "drafts", reviewSessionId);
+          const existing = await getDoc(draftRef);
+          if (!existing.exists() || existing.data().guestUid !== guestUid) {
+            throw new Error("Your review draft could not be verified. Please start again.");
+          }
+          await updateDoc(draftRef, { text, editedText: null, regenerations: Number(existing.data().regenerations ?? 0) + 1 });
+        } else {
+          const session = await addDoc(collection(db, "feedbackSessions"), {
+            qrId: firebaseContext.qrId,
+            ownerUid: firebaseContext.ownerUid,
+            guestUid,
+            overallRating: starRating,
+            foodRating: primaryRating,
+            serviceRating: secondaryRating,
+            chips,
+            freeText: null,
+            completedAt: serverTimestamp(),
+            googleClickedAt: null,
+          });
+          await setDoc(doc(db, "drafts", session.id), {
+            id: session.id,
+            sessionId: session.id,
+            ownerUid: firebaseContext.ownerUid,
+            guestUid,
+            text,
+            editedText: null,
+            regenerations: 0,
+            googleClickedAt: null,
+            createdAt: serverTimestamp(),
+          });
+          setReviewSessionId(session.id);
+        }
+        setAiDraft(text);
+        setAiGenerated(true);
+        setReviewVariantIndex((i) => i + 1);
+        return;
+      }
       const variants = ["short", "casual", "detailed"] as const;
       const variant = variants[reviewVariantIndex % variants.length];
       const res = await fetch("/api/public/generate-review", {
@@ -419,9 +622,10 @@ export function CustomerJourneyView({
           // first-time review generation to fail schema validation (400).
           sessionId: reviewSessionId || undefined,
           overall: starRating,
-          food: foodRating,
-          service: serviceRating,
-          chips: [`Atmosphere rating: ${atmosphereRating}/5`],
+          food: primaryRating,
+          service: secondaryRating,
+          environment: atmosphereRating,
+          chips: [],
           variant,
           variationId: typeof crypto !== "undefined" && "randomUUID" in crypto
             ? crypto.randomUUID()
@@ -463,13 +667,21 @@ export function CustomerJourneyView({
       // Continue if clipboard write fails
     }
 
-    navigator.sendBeacon?.(
-      "/api/public/google-click",
-      new Blob(
-        [JSON.stringify({ sessionId: reviewSessionId, editedText: aiDraft })],
-        { type: "application/json" },
-      )
-    );
+    if (firebaseContext && reviewSessionId) {
+      const { db } = getFirebaseServices();
+      await Promise.all([
+        updateDoc(doc(db, "feedbackSessions", reviewSessionId), { googleClickedAt: serverTimestamp() }),
+        updateDoc(doc(db, "drafts", reviewSessionId), { googleClickedAt: serverTimestamp(), editedText: aiDraft }),
+      ]).catch((error) => console.error("Could not record Google review click", error));
+    } else {
+      navigator.sendBeacon?.(
+        "/api/public/google-click",
+        new Blob(
+          [JSON.stringify({ sessionId: reviewSessionId, editedText: aiDraft })],
+          { type: "application/json" },
+        )
+      );
+    }
 
     // Fallback: if popup was blocked, navigate in same tab
     if (restaurant.googleReviewUrl && (!googleWin || googleWin.closed)) {
@@ -477,6 +689,18 @@ export function CustomerJourneyView({
     }
 
     setReviewSubmitted(true);
+  }
+
+  function recordSocialClick(platform: "instagram" | "facebook") {
+    if (!firebaseContext) return;
+    const { auth, db } = getFirebaseServices();
+    void addDoc(collection(db, "socialClicks"), {
+      qrId: firebaseContext.qrId,
+      ownerUid: firebaseContext.ownerUid,
+      guestUid: auth.currentUser?.uid ?? null,
+      platform,
+      createdAt: serverTimestamp(),
+    }).catch((error) => console.error("Could not record social link click", error));
   }
 
   // Show Reward Voucher QR Code
@@ -519,7 +743,10 @@ export function CustomerJourneyView({
       : `₹${(program.rewardDiscount / 100).toFixed(0)} OFF`;
 
   return (
-    <div className="min-h-screen bg-[#F7F2E9] font-sans text-[#24211E] antialiased selection:bg-[#FAF5ED] selection:text-[#24211E]">
+    <div
+      className="min-h-screen font-sans text-[#24211E] antialiased"
+      style={{ backgroundColor: businessFeedback.pageColor }}
+    >
       {/* ─────────────────────────────────────────────────────────────
           STEP 2: WELCOME PAGE (Branded Landing Page with Two Clear Options)
       ───────────────────────────────────────────────────────────── */}
@@ -533,10 +760,14 @@ export function CustomerJourneyView({
                 <img
                   src={restaurant.logoUrl}
                   alt={restaurant.name}
-                  className="h-12 w-12 rounded-full border border-[#E8DFD1] object-cover shadow-2xs"
+                  className="h-12 w-12 rounded-full border object-cover shadow-2xs"
+                  style={{ borderColor: businessFeedback.borderColor }}
                 />
               ) : (
-                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[#E8D8BA] bg-white font-serif text-xl font-bold text-[#7A5826] shadow-2xs">
+                <div
+                  className="flex h-12 w-12 items-center justify-center rounded-full border bg-white font-serif text-xl font-bold shadow-2xs"
+                  style={{ borderColor: businessFeedback.borderColor, color: businessFeedback.accentColor }}
+                >
                   {restaurant.name.trim().charAt(0).toUpperCase() || "R"}
                 </div>
               )}
@@ -545,42 +776,91 @@ export function CustomerJourneyView({
               {restaurant.name}
             </h2>
             <p className="text-[11px] font-medium uppercase tracking-wider text-[#716B64]">
-              Cafe &amp; Bistro {restaurant.city ? `• ${restaurant.city}` : ""}
+              {businessFeedback.displayLabel}{restaurant.city ? ` • ${restaurant.city}` : ""}
             </p>
           </div>
 
           {/* Hero Welcome Card */}
           <div className="my-auto py-4 text-center">
-            {/* Simple loyalty-card visual */}
-            <div className="mx-auto mb-6 flex h-48 w-full max-w-[300px] items-center justify-center rounded-3xl border border-[#E8DFD1] bg-[#F1E8D9] p-5 shadow-subtle">
-              <div className="w-full rounded-2xl border border-[#E8DFD1] bg-white p-4 text-left shadow-sm">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#716B64]">Visit card</p>
-                  <span className="rounded-full bg-[#FAF5ED] px-2.5 py-1 text-[10px] font-semibold text-[#7A5826]">{program.rewardTitle || "Rewards"}</span>
+            {businessFeedback.layout === "restaurant" ? (
+              <div className="mx-auto mb-6 flex h-48 w-full max-w-[300px] items-center justify-center rounded-3xl border bg-[#F1E8D9] p-5 shadow-subtle" style={{ borderColor: businessFeedback.borderColor }}>
+                <div className="w-full rounded-2xl border bg-white p-4 text-left shadow-sm" style={{ borderColor: businessFeedback.borderColor }}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#716B64]">Visit card</p>
+                    <span className="rounded-full px-2.5 py-1 text-[10px] font-semibold" style={{ backgroundColor: businessFeedback.softColor, color: businessFeedback.accentColor }}>{program.rewardTitle || "Rewards"}</span>
+                  </div>
+                  <div className="my-5 flex items-center justify-between gap-2" aria-hidden="true">
+                    {Array.from({ length: 5 }).map((_, index) => (
+                      <span key={index} className="flex h-9 w-9 items-center justify-center rounded-full border text-sm" style={index === 0 ? { borderColor: businessFeedback.accentColor, backgroundColor: businessFeedback.accentColor, color: "#FFFFFF" } : { borderStyle: "dashed", borderColor: businessFeedback.borderColor, backgroundColor: businessFeedback.softColor, color: "#B8B1A8" }}>
+                        {index === 0 ? "✓" : "·"}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-xs font-semibold text-[#24211E]">Every visit brings you closer to a reward</p>
                 </div>
-                <div className="my-5 flex items-center justify-between gap-2" aria-hidden="true">
-                  {Array.from({ length: 5 }).map((_, index) => (
-                    <span
-                      key={index}
-                      className={`flex h-9 w-9 items-center justify-center rounded-full border text-sm ${
-                        index === 0
-                          ? "border-[#B58A4B] bg-[#B58A4B] font-bold text-white"
-                          : "border-dashed border-[#D8C8AF] bg-[#FAF7F2] text-[#B8B1A8]"
-                      }`}
-                    >
-                      {index === 0 ? "✓" : "·"}
-                    </span>
+              </div>
+            ) : businessFeedback.layout === "general-store" ? (
+              <div
+                className="mx-auto mb-6 flex h-48 w-full max-w-[300px] flex-col justify-between rounded-2xl border bg-white p-4 text-left shadow-subtle"
+                style={{ borderColor: businessFeedback.borderColor, background: `linear-gradient(145deg, #FFFFFF 0%, ${businessFeedback.softColor} 100%)` }}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: businessFeedback.accentColor }}>Your local store</p>
+                    <p className="mt-1 font-serif text-lg font-bold text-[#24211E]">A little of everything</p>
+                  </div>
+                  <span className="grid h-12 w-12 place-items-center rounded-xl bg-white text-2xl shadow-sm" aria-hidden="true">🛍️</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  {[
+                    ["🥬", "Fresh"],
+                    ["🥫", "Pantry"],
+                    ["🧴", "Daily care"],
+                  ].map(([icon, label]) => (
+                    <div key={label} className="rounded-xl border bg-white/80 px-2 py-2" style={{ borderColor: businessFeedback.borderColor }}>
+                      <span className="block text-xl" aria-hidden="true">{icon}</span>
+                      <span className="mt-1 block text-[9px] font-semibold text-[#51484B]">{label}</span>
+                    </div>
                   ))}
                 </div>
-                <p className="text-xs font-semibold text-[#24211E]">Every visit brings you closer to a reward</p>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="rounded-full px-3 py-2 text-[10px] font-bold" style={{ backgroundColor: businessFeedback.accentColor, color: "#FFFFFF" }}>{program.rewardTitle || "Rewards"}</span>
+                  <span className="text-[10px] font-semibold" style={{ color: businessFeedback.accentColor }}>Choose · Shop · Enjoy</span>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div
+                className={`mx-auto mb-6 flex h-48 w-full max-w-[300px] flex-col justify-between rounded-[2rem] border p-5 text-left shadow-subtle ${businessFeedback.layout === "salon" ? "rotate-[-1deg]" : ""}`}
+                style={{ borderColor: businessFeedback.borderColor, background: `linear-gradient(145deg, #FFFFFF 0%, ${businessFeedback.softColor} 100%)` }}
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: businessFeedback.accentColor }}>{businessFeedback.heroEyebrow}</p>
+                    <p className="mt-2 max-w-[175px] font-serif text-xl font-bold leading-tight text-[#24211E]">{businessFeedback.heroMessage}</p>
+                  </div>
+                  <span className="grid h-14 w-14 place-items-center rounded-2xl bg-white text-3xl shadow-sm" aria-hidden="true">{businessFeedback.heroIcon}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  {businessFeedback.layout === "salon" ? (
+                    ["Service", "Results", "Relax"].map((step, index) => (
+                      <div key={step} className="flex-1 rounded-xl bg-white/80 px-2 py-2 text-center shadow-sm">
+                        <span className="block text-[9px] font-bold" style={{ color: businessFeedback.accentColor }}>0{index + 1}</span>
+                        <span className="text-[10px] font-semibold text-[#51484B]">{step}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="rounded-full bg-white/80 px-3 py-2 text-[10px] font-semibold text-[#3F5E4A] shadow-sm">Sip <span aria-hidden="true">·</span> Stay <span aria-hidden="true">·</span> Share</p>
+                  )}
+                  <span className="rounded-full px-3 py-2 text-[10px] font-bold" style={{ backgroundColor: businessFeedback.accentColor, color: "#FFFFFF" }}>{program.rewardTitle || "Rewards"}</span>
+                </div>
+              </div>
+            )}
 
             <h1 className="font-serif text-3xl font-extrabold tracking-tight text-[#24211E] leading-tight">
-              Good Food<br />Brings People Together
+              {businessFeedback.welcomeHeadline[0]}<br />{businessFeedback.welcomeHeadline[1]}
             </h1>
             <p className="mx-auto mt-2.5 max-w-xs text-xs text-[#716B64] leading-relaxed">
-              Join our loyalty program and share your experience with the world.
+              {businessFeedback.welcomeSupportingText}
             </p>
 
             {/* Two Clear Options: Collect My Stamp & Share Your Experience */}
@@ -588,7 +868,10 @@ export function CustomerJourneyView({
               <button
                 onClick={() => handleCollectStampClick()}
                 disabled={collectingStamp}
-                className="w-full rounded-2xl bg-[#B58A4B] py-3.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#9E7438] active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
+                className="w-full rounded-2xl py-3.5 text-sm font-bold text-white shadow-xs transition active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
+                style={{ backgroundColor: businessFeedback.accentColor }}
+                onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentHoverColor; }}
+                onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentColor; }}
               >
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-sm">✓</span>
                 <span>{collectingStamp ? "Collecting Stamp..." : "Collect My Stamp"}</span>
@@ -596,7 +879,10 @@ export function CustomerJourneyView({
 
               <button
                 onClick={() => setCurrentView("review")}
-                className="w-full rounded-2xl border border-[#E8DFD1] bg-white py-3.5 text-sm font-bold text-[#24211E] shadow-2xs hover:bg-[#FAF7F2] transition active:scale-[0.98] flex items-center justify-center gap-2"
+                className="w-full rounded-2xl border bg-white py-3.5 text-sm font-bold text-[#24211E] shadow-2xs transition active:scale-[0.98] flex items-center justify-center gap-2"
+                style={{ borderColor: businessFeedback.borderColor }}
+                onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.softColor; }}
+                onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = "#FFFFFF"; }}
               >
                 <span>⭐</span>
                 <span>Share Your Experience</span>
@@ -605,18 +891,18 @@ export function CustomerJourneyView({
           </div>
 
           {/* Three Value Badges at Bottom */}
-          <div className="flex items-center justify-center gap-6 border-t border-[#E8DFD1] pt-5 text-center text-xs font-medium text-[#716B64]">
+          <div className="flex items-center justify-center gap-6 border-t pt-5 text-center text-xs font-medium text-[#716B64]" style={{ borderColor: businessFeedback.borderColor }}>
             <div className="flex items-center gap-1.5">
               <span>★</span>
-              <span>Great Food</span>
+              <span>{businessFeedback.welcomeBadges[0]}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span>🤎</span>
-              <span>Kind People</span>
+              <span>{businessFeedback.welcomeBadges[1]}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span>✨</span>
-              <span>Better Together</span>
+              <span>{businessFeedback.welcomeBadges[2]}</span>
             </div>
           </div>
         </main>
@@ -806,13 +1092,13 @@ export function CustomerJourneyView({
       {currentView === "card" && (
         <main className="mx-auto min-h-screen max-w-sm px-5 py-6">
           {/* Header Bar */}
-          <div className="flex items-center justify-between border-b border-[#E8DFD1] pb-3.5">
-            <button
+          <div className="flex items-center justify-between border-b pb-3.5" style={{ borderColor: businessFeedback.borderColor }}>
+            {!firebaseContext && <button
               onClick={() => setCurrentView("welcome")}
               className="text-xs font-semibold text-[#716B64] hover:text-[#24211E] transition flex items-center gap-1"
             >
-              <span>←</span>
-            </button>
+              <span aria-label="Back to business home">←</span>
+            </button>}
             <div className="text-center">
               <h2 className="font-serif text-base font-bold text-[#24211E] leading-tight">
                 My Rewards
@@ -1168,7 +1454,7 @@ export function CustomerJourneyView({
             </button>
             <div className="text-center">
               <h2 className="font-serif text-base font-bold text-[#24211E] leading-tight">
-                Share Your Experience
+                {businessFeedback.reviewTopbar}
               </h2>
               <p className="text-[11px] text-[#716B64]">{restaurant.name}</p>
             </div>
@@ -1184,42 +1470,70 @@ export function CustomerJourneyView({
                 {restaurant.name.trim().charAt(0).toUpperCase() || "R"}
               </div>
             )}
-            <h3 className="font-serif text-2xl font-bold text-[#24211E]">How was your visit to {restaurant.name}?</h3>
+            <h3 className="font-serif text-2xl font-bold text-[#24211E]">
+              {businessFeedback.layout === "restaurant"
+                ? `How was your visit to ${restaurant.name}?`
+                : businessFeedback.reviewHeading}
+            </h3>
             <p className="mx-auto mt-1 max-w-xs text-xs text-[#716B64]">
-              {restaurant.shareCaption || `Tell ${restaurant.name} what you enjoyed. Your honest feedback helps the team make every visit better.`}
+              {restaurant.shareCaption || businessFeedback.reviewPrompt}
             </p>
 
             <div className="my-5">
-              <p className="mb-3 text-sm font-semibold text-[#24211E]">Rate your experience</p>
+              <p className="mb-3 text-sm font-semibold text-[#24211E]">{businessFeedback.reviewInstruction}</p>
               <div className="space-y-2.5 text-left">
-                {(["How was the food?", "How was the service?", "How was the atmosphere?"] as const).map((question, index) => (
-                  <div key={question} className="flex min-h-[68px] items-center justify-between gap-2 rounded-xl border border-[#E8DFD1] bg-white px-3 py-2">
-                    <span className="min-w-0 text-xs font-semibold text-[#24211E]">{question}</span>
-                    <Stars
-                      size={34}
-                      value={reviewRatings[index]}
-                      onChange={(rating) => {
-                        setReviewRatings((current) => {
-                          const next: [number, number, number] = [...current];
-                          next[index] = rating;
-                          return next;
-                        });
-                        setAiGenerated(false);
-                        setAiDraft("");
-                        setReviewGenerationError("");
-                      }}
-                      label={question}
-                    />
-                  </div>
+                {businessFeedback.questions.map((question, index) => (
+                  businessFeedback.layout === "salon" ? (
+                    <div key={question} className="rounded-2xl border bg-white p-4 shadow-sm" style={{ borderColor: businessFeedback.borderColor }}>
+                      <div className="flex items-center gap-3">
+                          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-xl" style={{ backgroundColor: businessFeedback.softColor }} aria-hidden="true">{businessFeedback.questionIcons[index]}</span>
+                          <div>
+                            <p className="text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: businessFeedback.accentColor }}>Salon detail 0{index + 1}</p>
+                            <p className="mt-1 text-sm font-semibold text-[#24211E]">{question}</p>
+                          </div>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between border-t pt-3" style={{ borderColor: businessFeedback.borderColor }}>
+                          <span className="text-[10px] font-medium text-[#716B64]">Tap to rate</span>
+                          <Stars size={32} value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
+                      </div>
+                    </div>
+                  ) : businessFeedback.layout === "cafe" ? (
+                    <div key={question} className="flex min-h-[76px] items-center gap-3 rounded-2xl border bg-white px-3 py-3 shadow-sm" style={{ borderColor: businessFeedback.borderColor }}>
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-lg" style={{ backgroundColor: businessFeedback.softColor }} aria-hidden="true">{businessFeedback.questionIcons[index]}</span>
+                      <div className="min-w-0 flex-1">
+                          <p className="mb-1.5 text-xs font-semibold text-[#24211E]">{question}</p>
+                          <Stars size={29} value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
+                      </div>
+                    </div>
+                  ) : businessFeedback.layout === "general-store" ? (
+                    <div key={question} className="rounded-xl border bg-white p-3 shadow-sm" style={{ borderColor: businessFeedback.borderColor }}>
+                      <div className="flex items-center gap-3">
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-lg" style={{ backgroundColor: businessFeedback.softColor }} aria-hidden="true">{businessFeedback.questionIcons[index]}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[9px] font-bold uppercase tracking-[0.16em]" style={{ color: businessFeedback.accentColor }}>Shopping detail 0{index + 1}</p>
+                          <p className="mt-1 text-xs font-semibold text-[#24211E]">{question}</p>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between border-t pt-2" style={{ borderColor: businessFeedback.borderColor }}>
+                        <span className="text-[10px] font-medium text-[#716B64]">Tap to rate</span>
+                        <Stars size={30} value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
+                      </div>
+                    </div>
+                  ) : (
+                    <div key={question} className="flex min-h-[68px] items-center justify-between gap-2 rounded-xl border bg-white px-3 py-2" style={{ borderColor: businessFeedback.borderColor }}>
+                      <span className="min-w-0 text-xs font-semibold text-[#24211E]">{question}</span>
+                      <Stars size={34} value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
+                    </div>
+                  )
                 ))}
               </div>
               <p className="mt-2 text-[11px] text-[#716B64]" aria-live="polite">
-                {reviewRatings.filter(Boolean).length === 3 ? "Thanks for rating your visit!" : "Tap 1–5 stars for food, service, and atmosphere."}
+                {reviewRatings.filter(Boolean).length === 3 ? businessFeedback.ratingThankYou : `Tap 1–5 stars for ${businessFeedback.aspectLabels.map((aspect) => aspect.toLowerCase()).join(", and ")}.`}
               </p>
             </div>
           </div>
 
-          <div className="space-y-4 rounded-3xl border border-[#E8DFD1] bg-white p-5 shadow-subtle">
+          <div className="space-y-4 rounded-3xl border bg-white p-5 shadow-subtle" style={{ borderColor: businessFeedback.borderColor }}>
             {aiGenerated && (
               <div>
                 <label htmlFor="generated-review" className="mb-2 block text-xs font-semibold text-[#716B64]">
@@ -1230,25 +1544,40 @@ export function CustomerJourneyView({
                   value={aiDraft}
                   onChange={(e) => setAiDraft(e.target.value)}
                   rows={5}
-                  className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF7F2]/60 p-3 text-sm text-[#24211E] outline-none transition focus:border-[#B58A4B] focus:bg-white"
+                  className="w-full rounded-xl border bg-white p-3 text-sm text-[#24211E] outline-none transition focus:bg-white"
+                  style={{ borderColor: businessFeedback.borderColor }}
                 />
+                <button
+                  type="button"
+                  onClick={handleGenerateAiReview}
+                  disabled={generatingAi || reviewRatings.some((rating) => rating === 0)}
+                  className="mt-2 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border bg-white py-2 text-xs font-bold transition hover:bg-[#FAF7F2] disabled:opacity-60"
+                  style={{ borderColor: businessFeedback.borderColor, color: businessFeedback.accentColor }}
+                  aria-label="Generate another review draft"
+                >
+                  <span className={generatingAi ? "inline-block animate-spin" : "inline-block"} aria-hidden="true">↻</span>
+                  <span>{generatingAi ? "Creating another draft..." : "Generate another version"}</span>
+                </button>
               </div>
             )}
 
-            {/* Button: Generate Review with AI */}
+            {/* Button: create a review draft (AI in Next.js, local template on Firebase Hosting) */}
             <button
               onClick={aiGenerated ? handleCopyAndGoogleReview : handleGenerateAiReview}
               disabled={generatingAi || reviewRatings.some((rating) => rating === 0)}
-              className="sticky bottom-3 z-20 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/40 bg-[#B58A4B] py-3 text-sm font-bold text-white shadow-lg transition hover:bg-[#9E7438] active:scale-[0.98] disabled:opacity-60"
+              className="sticky bottom-3 z-20 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/40 py-3 text-sm font-bold text-white shadow-lg transition active:scale-[0.98] disabled:opacity-60"
+              style={{ backgroundColor: businessFeedback.accentColor }}
+              onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentHoverColor; }}
+              onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentColor; }}
               aria-live="polite"
             >
-              <span>✨</span>
+              <span>{businessFeedback.heroIcon}</span>
               <span>
                 {generatingAi
-                  ? "Crafting Review with AI..."
+                  ? firebaseContext ? "Creating your review draft..." : "Crafting Review with AI..."
                   : aiGenerated
                     ? "Continue to Google Reviews"
-                    : "Continue"}
+                    : firebaseContext ? "Create review draft" : "Continue"}
               </span>
             </button>
 
@@ -1261,6 +1590,7 @@ export function CustomerJourneyView({
             {restaurant.instagramUrl && (
               <a
                 href={restaurant.instagramUrl}
+                onClick={() => recordSocialClick("instagram")}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#E8DFD1] bg-white px-4 text-sm font-bold text-[#24211E] transition hover:bg-[#FAF7F2]"
@@ -1282,7 +1612,7 @@ export function CustomerJourneyView({
           </div>
 
           {/* Bottom Stamp CTA */}
-          <div className="mt-5 rounded-2xl border border-[#E8DFD1] bg-white p-4 text-center">
+          {(firebaseContext ? program.isActive : true) && <div className="mt-5 rounded-2xl border border-[#E8DFD1] bg-white p-4 text-center">
             <p className="text-xs font-semibold text-[#716B64]">
               Want to collect a loyalty stamp for your visit?
             </p>
@@ -1293,7 +1623,7 @@ export function CustomerJourneyView({
             >
               {newCustomerReviewRequired && !reviewSubmitted ? "Complete your review to continue" : "Collect My Stamp Now →"}
             </button>
-          </div>
+          </div>}
         </main>
       )}
 

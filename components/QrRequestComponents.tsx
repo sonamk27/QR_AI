@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { rupees } from "@/lib/plans";
 
@@ -66,18 +66,38 @@ function ManualPaymentForm({
   request,
   allowTestPayment,
   paymentUnitPaise,
+  onSubmitPaymentFirebase,
+  createPaymentQrFirebase,
 }: {
   request: QrRequestItem;
   allowTestPayment: boolean;
   paymentUnitPaise: number;
+  onSubmitPaymentFirebase?: (requestId: string, pendingPaymentId: string | null, reference: string, method: "UPI" | "BANK") => Promise<void>;
+  createPaymentQrFirebase?: (amountPaise: number, requestId: string) => Promise<string>;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [reference, setReference] = useState("");
+  const [method, setMethod] = useState<"UPI" | "BANK">("UPI");
+  const [submitted, setSubmitted] = useState(false);
+  const [firebasePaymentQr, setFirebasePaymentQr] = useState("");
+  const [paymentQrError, setPaymentQrError] = useState("");
 
   const recordedPayment = request.payments.find((p) => p.status === "RECORDED");
   const paidPayment = request.payments.find((p) => p.status === "PAID");
   const totalPaise = paymentUnitPaise * request.quantity;
+
+  useEffect(() => {
+    if (!onSubmitPaymentFirebase || !createPaymentQrFirebase) return;
+    let active = true;
+    void createPaymentQrFirebase(totalPaise, request.id).then((url) => {
+      if (active) setFirebasePaymentQr(url);
+    }).catch((error) => {
+      if (active) setPaymentQrError(error instanceof Error ? error.message : "Could not create the UPI payment QR.");
+    });
+    return () => { active = false; };
+  }, [onSubmitPaymentFirebase, createPaymentQrFirebase, request.id, totalPaise]);
 
   if (paidPayment) {
     return (
@@ -106,6 +126,37 @@ function ManualPaymentForm({
     }
   }
 
+  async function submitPayment(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const cleanReference = reference.trim();
+    if (!cleanReference || cleanReference.length > 120) {
+      setError("Enter the UTR or payment reference (up to 120 characters).");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      if (onSubmitPaymentFirebase) {
+        const pendingPaymentId = request.payments.find((payment) => payment.status === "PENDING")?.id ?? null;
+        await onSubmitPaymentFirebase(request.id, pendingPaymentId, cleanReference, method);
+      } else {
+        const res = await fetch("/api/restaurant/qr-requests/payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ qrRequestId: request.id, reference: cleanReference, method }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Could not submit payment reference.");
+        router.refresh();
+      }
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not submit payment reference.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (recordedPayment) {
     return (
       <div className="text-xs text-[#7A5826] font-semibold bg-[#FAF5ED] px-3 py-1.5 rounded-xl border border-[#E8D8BA]">
@@ -114,19 +165,28 @@ function ManualPaymentForm({
     );
   }
 
+  if (submitted) {
+    return <div role="status" className="rounded-xl border border-[#E8D8BA] bg-[#FAF5ED] px-3 py-2 text-xs font-semibold text-[#7A5826]">Payment reference submitted; awaiting admin verification.</div>;
+  }
+
   return (
     <div className="flex flex-col gap-2">
       <div className="rounded-2xl border border-[#E8DFD1] bg-white p-4 text-center shadow-subtle">
         <p className="font-serif text-sm font-bold text-[#24211E]">Scan to pay {rupees(totalPaise)}</p>
-        <img
-          src="/payment-qr.jpeg"
-          alt="UPI payment QR code"
-          className="mx-auto my-2.5 h-44 w-44 object-contain rounded-xl border border-[#E8DFD1]"
-        />
+        {onSubmitPaymentFirebase ? firebasePaymentQr ? <img src={firebasePaymentQr} alt={`UPI payment QR for ${rupees(totalPaise)}`} className="mx-auto my-2.5 h-44 w-44 object-contain rounded-xl border border-[#E8DFD1]" /> : <p role="alert" className="mx-auto my-2.5 grid h-44 w-44 place-items-center rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] p-3 text-xs text-[#A83B3B]">{paymentQrError || "Preparing payment QR…"}</p> : <img src={`/api/restaurant/qr-requests/${request.id}/payment-qr`} alt="UPI payment QR code" className="mx-auto my-2.5 h-44 w-44 object-contain rounded-xl border border-[#E8DFD1]" />}
         <p className="text-[11px] text-[#716B64] leading-relaxed">
           Scan with any UPI app. Once paid, the administrator will verify and activate your QR code.
         </p>
       </div>
+      <form onSubmit={submitPayment} className="space-y-2 rounded-2xl border border-[#E8DFD1] bg-white p-3">
+        <label className="block text-left text-[11px] font-semibold text-[#716B64]" htmlFor={`payment-method-${request.id}`}>Payment method
+          <select id={`payment-method-${request.id}`} value={method} onChange={(event) => setMethod(event.target.value as "UPI" | "BANK")} className="mt-1 w-full rounded-lg border border-[#E8DFD1] bg-white px-2.5 py-2 text-xs text-[#24211E]"><option value="UPI">UPI</option><option value="BANK">Bank transfer</option></select>
+        </label>
+        <label className="block text-left text-[11px] font-semibold text-[#716B64]" htmlFor={`payment-reference-${request.id}`}>UTR / payment reference
+          <input id={`payment-reference-${request.id}`} required maxLength={120} value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Enter the reference shown by your payment app" className="mt-1 w-full rounded-lg border border-[#E8DFD1] bg-white px-2.5 py-2 text-xs text-[#24211E]" />
+        </label>
+        <button type="submit" disabled={busy} className="w-full rounded-xl bg-[#B58A4B] px-3 py-2 text-xs font-bold text-white disabled:opacity-60">{busy ? "Submitting…" : "I’ve paid · Submit reference"}</button>
+      </form>
       {allowTestPayment && (
         <button
           type="button"
@@ -142,7 +202,13 @@ function ManualPaymentForm({
   );
 }
 
-export function QrRequestForm() {
+export function QrRequestForm({
+  onSubmitFirebase,
+  onSaved,
+}: {
+  onSubmitFirebase?: (values: { name: string; location: string; tableNo: string; quantity: number; note: string }) => Promise<void>;
+  onSaved?: () => Promise<void> | void;
+} = {}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -162,6 +228,20 @@ export function QrRequestForm() {
     setBusy(true);
     setError("");
     try {
+      if (onSubmitFirebase) {
+        await onSubmitFirebase({
+          ...form,
+          quantity: Number(form.quantity),
+        });
+        setSuccess(true);
+        await onSaved?.();
+        setTimeout(() => {
+          setSuccess(false);
+          setOpen(false);
+          setForm({ name: "", location: "", tableNo: "", quantity: 1, note: "" });
+        }, 2000);
+        return;
+      }
       const res = await fetch("/api/restaurant/qr-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -329,10 +409,14 @@ export function QrRequestList({
   requests,
   allowTestPayment = false,
   paymentUnitPaise = 99900,
+  onSubmitPaymentFirebase,
+  createPaymentQrFirebase,
 }: {
   requests: QrRequestItem[];
   allowTestPayment?: boolean;
   paymentUnitPaise?: number;
+  onSubmitPaymentFirebase?: (requestId: string, pendingPaymentId: string | null, reference: string, method: "UPI" | "BANK") => Promise<void>;
+  createPaymentQrFirebase?: (amountPaise: number, requestId: string) => Promise<string>;
 }) {
   if (requests.length === 0) {
     return (
@@ -440,6 +524,8 @@ export function QrRequestList({
                   request={req}
                   allowTestPayment={allowTestPayment}
                   paymentUnitPaise={paymentUnitPaise}
+                  onSubmitPaymentFirebase={onSubmitPaymentFirebase}
+                  createPaymentQrFirebase={createPaymentQrFirebase}
                 />
               )}
             </div>

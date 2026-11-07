@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { generateDraft } from "@/lib/ai";
 import { isActive } from "@/lib/qr-status";
 import { rateLimit, clientIp } from "@/lib/ratelimit";
 import { MAX_DRAFTS_PER_QR_PER_MONTH } from "@/lib/plans";
+import { getBusinessFeedbackConfig, getBusinessType } from "@/lib/business-type";
 
 const schema = z.object({
   slug: z.string().min(1).max(40),
@@ -12,6 +14,7 @@ const schema = z.object({
   overall: z.number().int().min(1).max(5),
   food: z.number().int().min(1).max(5).optional(),
   service: z.number().int().min(1).max(5).optional(),
+  environment: z.number().int().min(1).max(5).optional(),
   chips: z.array(z.string().max(30)).max(8),
   text: z.string().max(600).optional(),
   variant: z.enum(["short", "casual", "detailed"]).optional(),
@@ -30,6 +33,14 @@ async function generateReview(req: Request) {
   if (!qr || !isActive(qr) || qr.restaurant.status !== "ACTIVE") {
     return NextResponse.json({ error: "Feedback is temporarily unavailable." }, { status: 403 });
   }
+  const businessType = getBusinessType(qr.restaurant.businessType);
+  const feedback = getBusinessFeedbackConfig(businessType);
+  const chips = [
+    ...d.chips,
+    ...(d.environment == null
+      ? []
+      : [`${feedback.aspectLabels[2]} rating: ${d.environment}/5`]),
+  ];
 
   let sessionId = d.sessionId;
   let previousDraft: string | null = null;
@@ -52,7 +63,7 @@ async function generateReview(req: Request) {
         overallRating: d.overall,
         foodRating: d.food,
         serviceRating: d.service,
-        chips: d.chips,
+        chips,
         freeText: d.text || null,
       },
     });
@@ -72,7 +83,7 @@ async function generateReview(req: Request) {
         overallRating: d.overall,
         foodRating: d.food,
         serviceRating: d.service,
-        chips: d.chips,
+        chips,
         freeText: d.text || null,
       },
     });
@@ -82,14 +93,16 @@ async function generateReview(req: Request) {
   const text = await generateDraft(
     {
       restaurantName: qr.restaurant.name,
+      businessType,
       overall: d.overall,
       food: d.food,
       service: d.service,
+      environment: d.environment,
       chips: d.chips,
       text: d.text,
       previousDraft,
       variant: d.variant,
-      variationId: d.variationId,
+      variationId: d.variationId ?? randomUUID(),
     },
     { enabled: qr.restaurant.aiEnabled !== false },
   );

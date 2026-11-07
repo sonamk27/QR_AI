@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSuperAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AuditLogAdminTable } from "@/components/AuditLogAdminTable";
+import { getBusinessType } from "@/lib/business-type";
 
 export const dynamic = "force-dynamic";
 
@@ -20,12 +21,23 @@ export default async function SuperAdminAuditPage() {
       })
     : [];
   const actorsById = new Map(actors.map((actor) => [actor.id, actor]));
+  const restaurantIds = Array.from(
+    new Set(logs.map((log) => log.restaurantId).filter((id): id is string => Boolean(id))),
+  );
+  const restaurants = restaurantIds.length
+    ? await db.restaurant.findMany({
+        where: { id: { in: restaurantIds } },
+        select: { id: true, businessType: true },
+      })
+    : [];
+  const businessTypesById = new Map(restaurants.map((restaurant) => [restaurant.id, getBusinessType(restaurant.businessType)]));
 
   const serialized = logs.map((l) => ({
     id: l.id,
     actorId: l.actorId,
     action: l.action,
     target: l.target,
+    businessType: l.restaurantId ? businessTypesById.get(l.restaurantId) ?? null : null,
     meta: l.meta,
     createdAt: l.createdAt.toISOString(),
     actorName: l.actorId === "webhook" ? "System webhook" : actorsById.get(l.actorId)?.name ?? "Unknown actor",

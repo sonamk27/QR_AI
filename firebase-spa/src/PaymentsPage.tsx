@@ -1,0 +1,32 @@
+import { useEffect, useState } from "react";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { Stat } from "../../components/Shell";
+import { OwnerPaymentsClientTable } from "../../components/OwnerPaymentsClientTable";
+import { QrRequestList } from "../../components/QrRequestComponents";
+import { rupees } from "../../lib/plans";
+import { getFirebaseServices } from "./firebase";
+import { useAuthState } from "./AuthState";
+import { useOutletContext } from "react-router-dom";
+import type { DashboardOutletContext } from "./DashboardShell";
+import { createFirebaseUpiQr, getFirebaseQrPricePaise, submitQrPaymentReference } from "./paymentActions";
+
+function date(value: any) { return value?.toDate?.() ?? (value instanceof Date ? value : new Date(0)); }
+export default function PaymentsPage() {
+  const { user, profile } = useAuthState(); const { restaurant } = useOutletContext<DashboardOutletContext>();
+  const [payments, setPayments] = useState<any[]>([]); const [requests, setRequests] = useState<any[]>([]); const [qrCount, setQrCount] = useState(0); const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const [reloadKey, setReloadKey] = useState(0);
+  useEffect(() => { if (!user) return; void (async () => { try {
+    const db = getFirebaseServices().db; const [pSnap, qSnap, rSnap, cSnap] = await Promise.all([
+      getDocs(query(collection(db, "payments"), where("ownerUid", "==", user.uid))),
+      getDocs(query(collection(db, "qrCodes"), where("ownerUid", "==", user.uid))),
+      getDocs(query(collection(db, "qrRequests"), where("ownerUid", "==", user.uid))),
+      getDocs(query(collection(db, "qrCodes"), where("ownerUid", "==", user.uid), where("status", "==", "ACTIVE"))),
+    ]);
+    const qrById = new Map(qSnap.docs.map((d) => [d.id, d.data()])); const requestById = new Map(rSnap.docs.map((d) => [d.id, d.data()]));
+    const mappedPayments = pSnap.docs.map((d) => { const p = d.data(); return { id: d.id, invoiceNo: p.invoiceNo ?? null, amount: Number(p.amount ?? 0), method: String(p.method ?? "UPI"), reference: String(p.reference ?? ""), status: String(p.status ?? "PENDING"), gatewayOrderId: p.gatewayOrderId ?? null, createdAt: date(p.createdAt).toISOString(), qrName: qrById.get(String(p.qrId))?.name ?? null, qrRequestName: requestById.get(String(p.qrRequestId))?.name ?? null }; }).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    const mappedRequests = rSnap.docs.map((d) => { const r = d.data(); const pay = pSnap.docs.filter((p) => p.data().qrRequestId === d.id).map((p) => ({ id: p.id, status: String(p.data().status ?? ""), amount: Number(p.data().amount ?? 0), method: p.data().method, reference: p.data().reference })); const codes = qSnap.docs.filter((q) => q.data().qrRequestId === d.id).map((q) => ({ id: q.id, slug: String(q.data().slug ?? ""), status: String(q.data().status ?? "") })); return { id: d.id, name: String(r.name ?? "QR request"), location: r.location ?? null, tableNo: r.tableNo ?? null, quantity: Number(r.quantity ?? 1), note: r.note ?? null, status: r.status, rejectionReason: r.rejectionReason ?? null, createdAt: date(r.createdAt).toISOString(), restaurant: restaurant ? { name: restaurant.name } : undefined, qrCodes: codes, payments: pay }; }).filter((r) => r.status === "APPROVED_PAYMENT_DUE" && !r.payments.some((p: any) => p.status === "PAID")).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    setPayments(mappedPayments); setRequests(mappedRequests); setQrCount(cSnap.size);
+  } catch (e) { console.error("Billing data could not be loaded", e); setError("Could not load billing data from Firestore. Check your Firestore access rules."); } finally { setLoading(false); } })(); }, [user, restaurant, reloadKey]);
+  async function submitPaymentReference(requestId: string, pendingPaymentId: string | null, reference: string, method: "UPI" | "BANK") { if (!user) throw new Error("Sign in again and retry."); await submitQrPaymentReference({ ownerUid: user.uid, requestId, pendingPaymentId, reference, method }); setReloadKey((value) => value + 1); }
+  const paid = payments.filter((p) => ["PAID", "CONFIRMED"].includes(p.status)); const total = paid.reduce((n, p) => n + p.amount, 0);
+  return <div className="space-y-7"><div className="border-b border-[#E8DFD1] pb-4"><h1 className="font-serif text-3xl font-bold text-[#24211E]">Payment History &amp; Invoices</h1><p className="mt-1 text-xs text-[#716B64]">Track all subscription payments, download printable receipts, and review renewal records.</p></div>{error && <p role="alert" className="text-sm text-red-700">{error}</p>}{loading ? <p className="text-sm text-[#716B64]">Loading billing history…</p> : <><div className="grid grid-cols-1 gap-4 sm:grid-cols-3"><Stat label="Total Paid" value={rupees(total)} hint="Across all subscriptions" /><Stat label="Invoices" value={payments.length} hint={`${paid.length} completed`} /><Stat label="Active Subscriptions" value={qrCount} hint="Live 365-day QR licenses" /></div><div className="rounded-2xl border border-[#E8DFD1] bg-white p-5 shadow-subtle"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-serif text-sm font-bold">Payment &amp; Billing Support Desk</h2><p className="text-xs text-[#716B64]">Questions regarding your invoices, payment verification, or license renewals?</p></div><div className="flex flex-wrap gap-2"><a href="mailto:billing@reviewflow.in" className="rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] px-3 py-1.5 text-xs font-semibold">✉️ billing@reviewflow.in</a><a href="tel:+919876543210" className="rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] px-3 py-1.5 text-xs font-semibold">📞 +91 98765 43210</a></div></div></div><OwnerPaymentsClientTable payments={payments} restaurantName={restaurant?.name ?? ""} restaurantCity={restaurant?.city ?? null} ownerName={profile?.name ?? ""} ownerEmail={user?.email ?? ""} />{requests.length > 0 && <section className="space-y-3 pt-3"><div><h2 className="font-serif text-xl font-bold">Approved QR requests</h2><p className="mt-1 text-xs text-[#716B64]">Payment can be completed through the listed UPI method; an administrator verifies it before activating your QR.</p></div><QrRequestList requests={requests} allowTestPayment={false} paymentUnitPaise={getFirebaseQrPricePaise()} onSubmitPaymentFirebase={submitPaymentReference} createPaymentQrFirebase={createFirebaseUpiQr} /></section>}</>}</div>;
+}

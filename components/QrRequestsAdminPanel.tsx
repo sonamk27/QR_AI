@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { BUSINESS_TYPE_LABELS, type BusinessType } from "@/lib/business-type";
 
 type QrRequestFull = {
   id: string;
@@ -17,6 +18,7 @@ type QrRequestFull = {
   restaurant: {
     id: string;
     name: string;
+    businessType: BusinessType;
     city?: string | null;
     owner: { name: string; email: string };
   };
@@ -28,6 +30,13 @@ type QrRequestFull = {
     method: string;
     reference: string;
   }[];
+};
+
+type FirebaseActions = {
+  approve?: (requestId: string) => Promise<void>;
+  reject?: (requestId: string, reason: string) => Promise<void>;
+  verifyPayment?: (requestId: string) => Promise<void>;
+  onChanged?: () => Promise<void> | void;
 };
 
 const STATUS_CONFIG: Record<
@@ -56,7 +65,7 @@ const STATUS_CONFIG: Record<
   },
 };
 
-function ApproveButton({ requestId }: { requestId: string }) {
+function ApproveButton({ requestId, firebaseActions }: { requestId: string; firebaseActions?: FirebaseActions }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
@@ -67,6 +76,12 @@ function ApproveButton({ requestId }: { requestId: string }) {
     setBusy(true);
     setError("");
     try {
+      if (firebaseActions?.approve) {
+        await firebaseActions.approve(requestId);
+        setDone(true);
+        await firebaseActions.onChanged?.();
+        return;
+      }
       const res = await fetch(
         `/api/super-admin/qr-requests/${requestId}/approve`,
         { method: "POST" },
@@ -98,7 +113,7 @@ function ApproveButton({ requestId }: { requestId: string }) {
   );
 }
 
-function RejectButton({ requestId }: { requestId: string }) {
+function RejectButton({ requestId, firebaseActions }: { requestId: string; firebaseActions?: FirebaseActions }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -111,6 +126,13 @@ function RejectButton({ requestId }: { requestId: string }) {
     setBusy(true);
     setError("");
     try {
+      if (firebaseActions?.reject) {
+        await firebaseActions.reject(requestId, reason);
+        setDone(true);
+        setOpen(false);
+        await firebaseActions.onChanged?.();
+        return;
+      }
       const res = await fetch(
         `/api/super-admin/qr-requests/${requestId}/reject`,
         {
@@ -197,7 +219,7 @@ function RejectButton({ requestId }: { requestId: string }) {
   );
 }
 
-function ConfirmManualPaymentButton({ requestId }: { requestId: string }) {
+function ConfirmManualPaymentButton({ requestId, firebaseActions }: { requestId: string; firebaseActions?: FirebaseActions }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -207,6 +229,11 @@ function ConfirmManualPaymentButton({ requestId }: { requestId: string }) {
     setBusy(true);
     setError("");
     try {
+      if (firebaseActions?.verifyPayment) {
+        await firebaseActions.verifyPayment(requestId);
+        await firebaseActions.onChanged?.();
+        return;
+      }
       const res = await fetch(`/api/super-admin/qr-requests/${requestId}/verify-payment`, {
         method: "POST",
       });
@@ -267,9 +294,13 @@ function DetailPanel({ request }: { request: QrRequestFull }) {
             <div className="mt-4 space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="text-xs text-ink/50 uppercase tracking-wider">Restaurant</p>
+                  <p className="text-xs text-ink/50 uppercase tracking-wider">Business</p>
                   <p className="font-medium">{request.restaurant.name}</p>
                   <p className="text-xs text-ink/60">{request.restaurant.city}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-ink/50 uppercase tracking-wider">Business type</p>
+                  <p className="font-medium">{BUSINESS_TYPE_LABELS[request.restaurant.businessType]}</p>
                 </div>
                 <div>
                   <p className="text-xs text-ink/50 uppercase tracking-wider">Owner</p>
@@ -375,9 +406,11 @@ function DetailPanel({ request }: { request: QrRequestFull }) {
 export function QrRequestsAdminPanel({
   requests,
   filter,
+  firebaseActions,
 }: {
   requests: QrRequestFull[];
   filter: "all" | "PENDING_APPROVAL" | "APPROVED_PAYMENT_DUE" | "REJECTED";
+  firebaseActions?: FirebaseActions;
 }) {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<string>(filter);
@@ -436,10 +469,11 @@ export function QrRequestsAdminPanel({
 
       {/* Table */}
       <div className="panel overflow-x-auto">
-        <table className="w-full min-w-[800px]">
+        <table className="w-full min-w-[900px]">
           <thead>
             <tr>
-              <th className="th">Restaurant</th>
+              <th className="th">Business</th>
+              <th className="th">Business Type</th>
               <th className="th">QR Name</th>
               <th className="th">Qty</th>
               <th className="th">Status</th>
@@ -451,7 +485,7 @@ export function QrRequestsAdminPanel({
           <tbody className="divide-y divide-line">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className="td text-center text-ink/60 py-8">
+                <td colSpan={8} className="td text-center text-ink/60 py-8">
                   No requests found for this filter.
                 </td>
               </tr>
@@ -469,6 +503,7 @@ export function QrRequestsAdminPanel({
                       <p className="font-medium text-ink">{req.restaurant.name}</p>
                       <p className="text-xs text-ink/60">{req.restaurant.owner.email}</p>
                     </td>
+                    <td className="td text-sm">{BUSINESS_TYPE_LABELS[req.restaurant.businessType]}</td>
                     <td className="td">
                       <p className="font-medium">{req.name}</p>
                       {req.location && (
@@ -508,12 +543,12 @@ export function QrRequestsAdminPanel({
                       <div className="flex flex-wrap items-center gap-1.5">
                         <DetailPanel request={req} />
                         {req.status === "APPROVED_PAYMENT_DUE" && !paidPayment && (
-                          <ConfirmManualPaymentButton requestId={req.id} />
+                          <ConfirmManualPaymentButton requestId={req.id} firebaseActions={firebaseActions} />
                         )}
                         {req.status === "PENDING_APPROVAL" && (
                           <>
-                            <ApproveButton requestId={req.id} />
-                            <RejectButton requestId={req.id} />
+                            <ApproveButton requestId={req.id} firebaseActions={firebaseActions} />
+                            <RejectButton requestId={req.id} firebaseActions={firebaseActions} />
                           </>
                         )}
                       </div>

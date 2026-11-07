@@ -2,8 +2,17 @@
 
 import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 export function getFirebaseAuth() {
+  return getAuth(getFirebaseApp());
+}
+
+export function getFirebaseDb() {
+  return getFirestore(getFirebaseApp());
+}
+
+function getFirebaseApp() {
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
   const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
@@ -18,5 +27,5 @@ export function getFirebaseAuth() {
       ? getApp()
       : initializeApp({ apiKey, authDomain, projectId, appId });
 
-  return getAuth(app);
+  return app;
 }

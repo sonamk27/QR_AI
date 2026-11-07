@@ -10,6 +10,7 @@ const schema = z.union([
   z.object({
     action: z.literal("update_restaurant"),
     name: z.string().trim().min(2).max(100),
+    businessType: z.enum(["RESTAURANT", "CAFE", "SALON", "GENERAL_STORE"]).optional(),
     city: z.string().trim().max(80).optional().or(z.literal("")),
     logoUrl: z.string().trim().url().max(1000).optional().or(z.literal("")),
     brandColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
@@ -90,6 +91,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         where: { id: id },
         data: {
           name: d.name,
+          businessType: d.businessType,
           city: d.city || null,
           logoUrl: d.logoUrl || null,
           brandColor: d.brandColor,

@@ -1,0 +1,456 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function verifiedUser() {
+      return signedIn();
+    }
+
+    function isSuperAdmin() {
+      return verifiedUser()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin';
+    }
+
+    function readableQr(data) {
+      return data.status in ['ACTIVE', 'GRACE']
+        && (!('validUntil' in data) || data.validUntil == null || request.time <= data.validUntil + duration.value(7, 'd'));
+    }
+
+    function publicQr(data) {
+      return readableQr(data)
+        && get(/databases/$(database)/documents/restaurants/$(data.restaurantId)).data.status == 'ACTIVE';
+    }
+
+    match /users/{uid} {
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.role == 'restaurant_admin'
+        && request.resource.data.keys().hasOnly(['uid', 'email', 'name', 'role', 'createdAt']);
+      allow read: if signedIn() && (request.auth.uid == uid || isSuperAdmin());
+      allow update: if (isSuperAdmin()
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.role in ['restaurant_admin', 'super_admin']
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'role', 'phoneNumber', 'updatedAt']))
+        || (signedIn() && request.auth.uid == uid
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name']));
+      allow delete: if isSuperAdmin();
+    }
+
+    match /restaurants/{restaurantId} {
+      allow create: if signedIn()
+        && restaurantId == request.auth.uid
+        && request.resource.data.ownerUid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'restaurant_admin'
+        && request.resource.data.keys().hasOnly([
+          'ownerUid', 'name', 'city', 'referredByName', 'brandColor', 'status', 'aiEnabled', 'createdAt',
+          'googleReviewUrl', 'instagramUrl', 'facebookUrl', 'shareCaption', 'businessType'
+        ])
+        && (!('businessType' in request.resource.data) || request.resource.data.businessType in ['RESTAURANT', 'CAFE', 'SALON', 'GENERAL_STORE'])
+        && (!('googleReviewUrl' in request.resource.data) || request.resource.data.googleReviewUrl == null || request.resource.data.googleReviewUrl is string)
+        && (!('instagramUrl' in request.resource.data) || request.resource.data.instagramUrl == null || request.resource.data.instagramUrl is string)
+        && (!('facebookUrl' in request.resource.data) || request.resource.data.facebookUrl == null || request.resource.data.facebookUrl is string)
+        && (!('shareCaption' in request.resource.data) || request.resource.data.shareCaption == null || request.resource.data.shareCaption is string);
+      allow read: if (signedIn()
+        && (resource.data.ownerUid == request.auth.uid || isSuperAdmin()));
+      allow update: if (isSuperAdmin()
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'name', 'city', 'logoUrl', 'brandColor', 'googleReviewUrl', 'instagramUrl', 'facebookUrl', 'shareCaption', 'referredByName', 'status', 'statusUpdatedAt', 'businessType'
+          ]))
+        || (isSuperAdmin()
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          && resource.data.openQrRequestId is string
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['primaryQrId'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['openQrRequestId'])
+          && (!('openQrRequestId' in request.resource.data) || request.resource.data.openQrRequestId == null)
+          && getAfter(/databases/$(database)/documents/qrRequests/$(resource.data.openQrRequestId)).data.ownerUid == resource.data.ownerUid
+          && getAfter(/databases/$(database)/documents/qrRequests/$(resource.data.openQrRequestId)).data.restaurantId == restaurantId
+          && getAfter(/databases/$(database)/documents/qrRequests/$(resource.data.openQrRequestId)).data.status == 'REJECTED')
+        || (isSuperAdmin()
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          && resource.data.openQrRequestId is string
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['openQrRequestId', 'primaryQrId'])
+          && (!('openQrRequestId' in request.resource.data) || request.resource.data.openQrRequestId == null)
+          && request.resource.data.primaryQrId is string
+          && getAfter(/databases/$(database)/documents/qrRequests/$(resource.data.openQrRequestId)).data.ownerUid == resource.data.ownerUid
+          && getAfter(/databases/$(database)/documents/qrRequests/$(resource.data.openQrRequestId)).data.restaurantId == restaurantId
+          && getAfter(/databases/$(database)/documents/qrRequests/$(resource.data.openQrRequestId)).data.status == 'ACTIVE'
+          && getAfter(/databases/$(database)/documents/qrRequests/$(resource.data.openQrRequestId)).data.qrCodeIds.hasAny([request.resource.data.primaryQrId])
+          && getAfter(/databases/$(database)/documents/qrCodes/$(request.resource.data.primaryQrId)).data.ownerUid == resource.data.ownerUid
+          && getAfter(/databases/$(database)/documents/qrCodes/$(request.resource.data.primaryQrId)).data.restaurantId == restaurantId
+          && getAfter(/databases/$(database)/documents/qrCodes/$(request.resource.data.primaryQrId)).data.qrRequestId == resource.data.openQrRequestId
+          && getAfter(/databases/$(database)/documents/qrCodes/$(request.resource.data.primaryQrId)).data.status == 'ACTIVE')
+        || (verifiedUser()
+          && resource.data.ownerUid == request.auth.uid
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'name', 'city', 'logoUrl', 'brandColor', 'googleReviewUrl', 'instagramUrl', 'facebookUrl', 'shareCaption'
+          ]))
+        || (verifiedUser()
+          && resource.data.ownerUid == request.auth.uid
+          && (!('openQrRequestId' in resource.data) || resource.data.openQrRequestId == null)
+          && (!('primaryQrId' in resource.data) || resource.data.primaryQrId == null)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['openQrRequestId'])
+          && request.resource.data.openQrRequestId is string
+          && getAfter(/databases/$(database)/documents/qrRequests/$(request.resource.data.openQrRequestId)).data.ownerUid == request.auth.uid);
+      allow delete: if isSuperAdmin();
+    }
+
+    match /publicRestaurants/{restaurantId} {
+      allow get: if resource.data.status == 'ACTIVE';
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.restaurantId == restaurantId
+        && getAfter(/databases/$(database)/documents/restaurants/$(restaurantId)).data.ownerUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['restaurantId', 'name', 'businessType', 'city', 'logoUrl', 'brandColor', 'googleReviewUrl', 'instagramUrl', 'facebookUrl', 'shareCaption', 'status'])
+        && (!('businessType' in request.resource.data) || request.resource.data.businessType in ['RESTAURANT', 'CAFE', 'SALON', 'GENERAL_STORE']);
+      allow update: if (isSuperAdmin()
+          && request.resource.data.restaurantId == resource.data.restaurantId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'businessType', 'city', 'logoUrl', 'brandColor', 'googleReviewUrl', 'instagramUrl', 'facebookUrl', 'shareCaption', 'status'])
+          && (!('businessType' in request.resource.data) || request.resource.data.businessType in ['RESTAURANT', 'CAFE', 'SALON', 'GENERAL_STORE']))
+        || (verifiedUser()
+          && get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.ownerUid == request.auth.uid
+          && request.resource.data.restaurantId == resource.data.restaurantId
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'businessType', 'city', 'logoUrl', 'brandColor', 'googleReviewUrl', 'instagramUrl', 'facebookUrl', 'shareCaption'])
+          && (!('businessType' in request.resource.data) || request.resource.data.businessType in ['RESTAURANT', 'CAFE', 'SALON', 'GENERAL_STORE']));
+      allow delete: if isSuperAdmin();
+    }
+
+    match /qrCodes/{qrId} {
+      // Public access goes through publicQrPages/{slug} so active QR records
+      // cannot be enumerated from this collection.
+      allow read: if isSuperAdmin() || (verifiedUser() && resource.data.ownerUid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.status == 'PENDING_PAYMENT'
+        && request.resource.data.slug is string
+        && request.resource.data.slug.size() >= 16
+        && request.resource.data.keys().hasOnly([
+          'id', 'ownerUid', 'restaurantId', 'qrRequestId', 'name', 'location', 'tableNo', 'slug', 'status', 'createdAt'
+        ])
+        && getAfter(/databases/$(database)/documents/qrRequests/$(request.resource.data.qrRequestId)).data.ownerUid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/qrRequests/$(request.resource.data.qrRequestId)).data.qrCodeIds.hasAny([qrId])
+        && getAfter(/databases/$(database)/documents/restaurants/$(request.resource.data.restaurantId)).data.openQrRequestId == request.resource.data.qrRequestId;
+      allow update, delete: if isSuperAdmin();
+    }
+
+    match /publicQrPages/{slug} {
+      // Public visitors must know the slug and may only fetch one QR page.
+      // Listing this collection is always denied.
+      allow get: if isSuperAdmin()
+        || (resource.data.slug == slug
+          && readableQr(resource.data)
+          && get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.status == 'ACTIVE');
+      allow list: if false;
+      allow create, update: if isSuperAdmin() && request.resource.data.slug == slug;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /scans/{scanId} {
+      allow read: if isSuperAdmin() || (verifiedUser() && resource.data.ownerUid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.guestUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['qrId', 'ownerUid', 'guestUid', 'userAgent', 'createdAt'])
+        && request.resource.data.userAgent is string
+        && request.resource.data.userAgent.size() <= 200
+        && request.resource.data.createdAt == request.time
+        && publicQr(get(/databases/$(database)/documents/qrCodes/$(request.resource.data.qrId)).data)
+        && get(/databases/$(database)/documents/qrCodes/$(request.resource.data.qrId)).data.ownerUid == request.resource.data.ownerUid;
+      allow update, delete: if false;
+    }
+
+    match /feedbackSessions/{sessionId} {
+      allow read: if isSuperAdmin() || (verifiedUser() && resource.data.ownerUid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.guestUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['qrId', 'ownerUid', 'guestUid', 'overallRating', 'foodRating', 'serviceRating', 'chips', 'freeText', 'completedAt', 'googleClickedAt'])
+        && request.resource.data.overallRating is int
+        && request.resource.data.overallRating >= 1 && request.resource.data.overallRating <= 5
+        && request.resource.data.foodRating is int
+        && request.resource.data.foodRating >= 1 && request.resource.data.foodRating <= 5
+        && request.resource.data.serviceRating is int
+        && request.resource.data.serviceRating >= 1 && request.resource.data.serviceRating <= 5
+        && request.resource.data.chips is list
+        && request.resource.data.chips.size() <= 20
+        && (request.resource.data.freeText == null
+          || (request.resource.data.freeText is string && request.resource.data.freeText.size() <= 1000))
+        && request.resource.data.completedAt == request.time
+        && request.resource.data.googleClickedAt == null
+        && get(/databases/$(database)/documents/qrCodes/$(request.resource.data.qrId)).data.ownerUid == request.resource.data.ownerUid
+        && publicQr(get(/databases/$(database)/documents/qrCodes/$(request.resource.data.qrId)).data);
+      allow update: if signedIn()
+        && resource.data.guestUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['googleClickedAt'])
+        && request.resource.data.googleClickedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /drafts/{draftId} {
+      allow read: if isSuperAdmin() || (verifiedUser() && resource.data.ownerUid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.guestUid == request.auth.uid
+        && request.resource.data.ownerUid is string
+        && request.resource.data.sessionId == draftId
+        && request.resource.data.keys().hasOnly(['id', 'sessionId', 'ownerUid', 'guestUid', 'text', 'editedText', 'regenerations', 'googleClickedAt', 'createdAt'])
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 4000
+        && request.resource.data.editedText == null
+        && request.resource.data.regenerations == 0
+        && request.resource.data.googleClickedAt == null
+        && request.resource.data.createdAt == request.time
+        && get(/databases/$(database)/documents/feedbackSessions/$(draftId)).data.guestUid == request.auth.uid
+        && get(/databases/$(database)/documents/feedbackSessions/$(draftId)).data.ownerUid == request.resource.data.ownerUid;
+      allow update: if signedIn()
+        && resource.data.guestUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['googleClickedAt', 'editedText', 'text', 'regenerations'])
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['googleClickedAt'])
+          || request.resource.data.googleClickedAt == request.time)
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['editedText'])
+          || request.resource.data.editedText == null
+          || (request.resource.data.editedText is string && request.resource.data.editedText.size() <= 4000))
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['text'])
+          || (request.resource.data.text is string && request.resource.data.text.size() <= 4000))
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['regenerations'])
+          || request.resource.data.regenerations == resource.data.regenerations + 1);
+      allow delete: if false;
+    }
+
+    match /socialClicks/{clickId} {
+      allow read: if isSuperAdmin() || (verifiedUser() && resource.data.ownerUid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.guestUid == request.auth.uid
+        && request.resource.data.platform in ['instagram', 'facebook']
+        && request.resource.data.keys().hasOnly(['qrId', 'ownerUid', 'guestUid', 'platform', 'createdAt'])
+        && get(/databases/$(database)/documents/qrCodes/$(request.resource.data.qrId)).data.ownerUid == request.resource.data.ownerUid
+        && publicQr(get(/databases/$(database)/documents/qrCodes/$(request.resource.data.qrId)).data);
+      allow update, delete: if false;
+    }
+
+    match /qrRequests/{requestId} {
+      allow read: if isSuperAdmin() || (verifiedUser() && resource.data.ownerUid == request.auth.uid);
+      allow create: if verifiedUser()
+        && request.resource.data.id == requestId
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.status == 'PENDING_APPROVAL'
+        && request.resource.data.quantity == 1
+        && request.resource.data.keys().hasOnly([
+          'id', 'ownerUid', 'restaurantId', 'name', 'location', 'tableNo', 'quantity', 'note', 'qrCodeIds', 'status', 'createdAt'
+        ])
+        && getAfter(/databases/$(database)/documents/restaurants/$(request.resource.data.restaurantId)).data.ownerUid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/restaurants/$(request.resource.data.restaurantId)).data.openQrRequestId == requestId
+        && (!('primaryQrId' in getAfter(/databases/$(database)/documents/restaurants/$(request.resource.data.restaurantId)).data)
+          || getAfter(/databases/$(database)/documents/restaurants/$(request.resource.data.restaurantId)).data.primaryQrId == null);
+      allow update, delete: if isSuperAdmin();
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isSuperAdmin() || (verifiedUser() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isSuperAdmin()
+        || (verifiedUser()
+          && request.resource.data.id == paymentId
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.status == 'RECORDED'
+          && request.resource.data.amount is int && request.resource.data.amount > 0
+          && request.resource.data.currency == 'INR'
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.gatewayOrderId == null && request.resource.data.gatewayPaymentId == null
+          && request.resource.data.method in ['UPI', 'BANK']
+          && request.resource.data.reference is string
+          && request.resource.data.reference.size() > 0 && request.resource.data.reference.size() <= 120
+          && request.resource.data.keys().hasOnly(['id', 'ownerUid', 'restaurantId', 'qrRequestId', 'amount', 'currency', 'status', 'method', 'reference', 'gatewayOrderId', 'gatewayPaymentId', 'createdAt'])
+          && get(/databases/$(database)/documents/qrRequests/$(request.resource.data.qrRequestId)).data.ownerUid == request.auth.uid
+          && get(/databases/$(database)/documents/qrRequests/$(request.resource.data.qrRequestId)).data.restaurantId == request.resource.data.restaurantId
+          && get(/databases/$(database)/documents/qrRequests/$(request.resource.data.qrRequestId)).data.status == 'APPROVED_PAYMENT_DUE');
+      allow update: if isSuperAdmin()
+        || (verifiedUser()
+          && resource.data.ownerUid == request.auth.uid
+          && resource.data.status == 'PENDING'
+          && request.resource.data.status == 'RECORDED'
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          && request.resource.data.qrRequestId == resource.data.qrRequestId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['amount', 'method', 'reference', 'status', 'gatewayOrderId', 'gatewayPaymentId'])
+          && request.resource.data.amount is int && request.resource.data.amount > 0
+          && request.resource.data.method in ['UPI', 'BANK']
+          && request.resource.data.reference is string
+          && request.resource.data.reference.size() > 0 && request.resource.data.reference.size() <= 120
+          && get(/databases/$(database)/documents/qrRequests/$(resource.data.qrRequestId)).data.ownerUid == request.auth.uid
+          && get(/databases/$(database)/documents/qrRequests/$(resource.data.qrRequestId)).data.status == 'APPROVED_PAYMENT_DUE');
+      allow delete: if isSuperAdmin();
+    }
+
+    match /auditLogs/{logId} {
+      allow read: if isSuperAdmin();
+      allow create: if isSuperAdmin()
+        || (verifiedUser()
+          && request.resource.data.id == logId
+          && request.resource.data.actorUid == request.auth.uid
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.action == 'payment.utr_submitted'
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.keys().hasOnly(['id', 'actorUid', 'ownerUid', 'action', 'target', 'restaurantId', 'meta', 'createdAt'])
+          && get(/databases/$(database)/documents/restaurants/$(request.resource.data.restaurantId)).data.ownerUid == request.auth.uid
+          && getAfter(/databases/$(database)/documents/payments/$(request.resource.data.target)).data.ownerUid == request.auth.uid
+          && getAfter(/databases/$(database)/documents/payments/$(request.resource.data.target)).data.status == 'RECORDED'
+          && getAfter(/databases/$(database)/documents/payments/$(request.resource.data.target)).data.qrRequestId == request.resource.data.meta.qrRequestId
+          && getAfter(/databases/$(database)/documents/payments/$(request.resource.data.target)).data.reference == request.resource.data.meta.reference);
+      allow update, delete: if false;
+    }
+
+    match /invoiceCounters/{year} {
+      allow read, write: if isSuperAdmin();
+    }
+
+    match /loyaltyPrograms/{programId} {
+      allow read: if isSuperAdmin() || (verifiedUser() && resource.data.ownerUid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/restaurants/$(request.resource.data.restaurantId)).data.ownerUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['id', 'ownerUid', 'restaurantId', 'title', 'isActive', 'discountType', 'stampsRequired', 'minBillAmount', 'rewardTitle', 'rewardDiscount', 'rewardExpiryDays', 'terminalPin', 'createdAt', 'updatedAt']);
+      allow update: if verifiedUser()
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.restaurantId == resource.data.restaurantId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'isActive', 'discountType', 'stampsRequired', 'minBillAmount', 'rewardTitle', 'rewardDiscount', 'rewardExpiryDays', 'terminalPin', 'updatedAt']);
+      allow delete: if isSuperAdmin();
+    }
+
+    match /loyaltyPublicPrograms/{restaurantId} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.restaurantId == restaurantId
+        && getAfter(/databases/$(database)/documents/restaurants/$(restaurantId)).data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['id', 'programId', 'restaurantId', 'ownerUid', 'title', 'isActive', 'discountType', 'stampsRequired', 'minBillAmount', 'rewardTitle', 'rewardDiscount', 'rewardExpiryDays']);
+      allow update: if verifiedUser()
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.restaurantId == resource.data.restaurantId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'isActive', 'discountType', 'stampsRequired', 'minBillAmount', 'rewardTitle', 'rewardDiscount', 'rewardExpiryDays']);
+      allow delete: if isSuperAdmin();
+    }
+
+    match /loyaltyCustomers/{id} {
+      allow read: if isSuperAdmin() || (verifiedUser() && resource.data.ownerUid == request.auth.uid);
+      allow create: if verifiedUser() && request.resource.data.ownerUid == request.auth.uid
+        && (get(/databases/$(database)/documents/loyaltyPrograms/$(request.resource.data.programId)).data.ownerUid == request.auth.uid
+          || getAfter(/databases/$(database)/documents/loyaltyPrograms/$(request.resource.data.programId)).data.ownerUid == request.auth.uid)
+        && request.resource.data.phone is string
+        && request.resource.data.keys().hasOnly(['id', 'ownerUid', 'programId', 'phone', 'name', 'currentStamps', 'lifetimeStamps', 'lastVisitAt', 'cycleNumber', 'stampCycleStartedAt', 'createdAt']);
+      allow update: if verifiedUser() && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'currentStamps', 'lifetimeStamps', 'lastVisitAt', 'cycleNumber', 'stampCycleStartedAt']);
+      allow create, delete: if false;
+    }
+    match /loyaltyTransactions/{id} {
+      allow read: if isSuperAdmin() || (verifiedUser() && resource.data.ownerUid == request.auth.uid);
+      allow create: if verifiedUser() && request.resource.data.ownerUid == request.auth.uid
+        && get(/databases/$(database)/documents/loyaltyPrograms/$(request.resource.data.programId)).data.ownerUid == request.auth.uid
+        && (get(/databases/$(database)/documents/loyaltyCustomers/$(request.resource.data.customerId)).data.ownerUid == request.auth.uid
+          || getAfter(/databases/$(database)/documents/loyaltyCustomers/$(request.resource.data.customerId)).data.ownerUid == request.auth.uid);
+      allow update, delete: if false;
+    }
+    match /loyaltyRewards/{id} {
+      allow read: if isSuperAdmin() || (verifiedUser() && resource.data.ownerUid == request.auth.uid);
+      allow create: if verifiedUser() && request.resource.data.ownerUid == request.auth.uid
+        && get(/databases/$(database)/documents/loyaltyPrograms/$(request.resource.data.programId)).data.ownerUid == request.auth.uid
+        && (get(/databases/$(database)/documents/loyaltyCustomers/$(request.resource.data.customerId)).data.ownerUid == request.auth.uid
+          || getAfter(/databases/$(database)/documents/loyaltyCustomers/$(request.resource.data.customerId)).data.ownerUid == request.auth.uid);
+      allow update: if verifiedUser() && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'redeemedAt', 'redeemedByStaff']);
+      allow delete: if false;
+    }
+    match /anonymousCustomers/{id} {
+      allow read: if isSuperAdmin() || (signedIn() && id.matches('anon_' + request.auth.uid + '_.+'))
+        || (verifiedUser() && resource.data.ownerUid == request.auth.uid)
+        || (signedIn() && resource.data.guestUid == request.auth.uid);
+      function validGuestProfile() {
+        return request.resource.data.ownerUid == get(/databases/$(database)/documents/restaurants/$(request.resource.data.restaurantId)).data.ownerUid
+          && get(/databases/$(database)/documents/loyaltyPublicPrograms/$(request.resource.data.restaurantId)).data.isActive == true
+          && request.resource.data.programId == get(/databases/$(database)/documents/loyaltyPublicPrograms/$(request.resource.data.restaurantId)).data.programId;
+      }
+      allow create: if signedIn() && request.auth.uid == request.resource.data.guestUid
+        && id == 'anon_' + request.auth.uid + '_' + request.resource.data.restaurantId
+        && request.resource.data.id == id
+        && request.resource.data.keys().hasOnly(['id', 'ownerUid', 'guestUid', 'restaurantId', 'programId', 'name', 'phone', 'currentStamps', 'lifetimeStamps', 'cycleNumber', 'stampCycleStartedAt', 'lastVisitAt', 'createdAt'])
+        && validGuestProfile()
+        && request.resource.data.phone is string;
+      allow update: if (verifiedUser() && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentStamps', 'lifetimeStamps', 'lastVisitAt', 'cycleNumber', 'stampCycleStartedAt', 'status']))
+        || (signedIn() && resource.data.guestUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone'])
+        && validGuestProfile());
+      allow delete: if false;
+    }
+    match /anonymousStampTransactions/{id} {
+      allow read: if isSuperAdmin() || (verifiedUser() && resource.data.ownerUid == request.auth.uid)
+        || (signedIn() && resource.data.guestUid == request.auth.uid);
+      allow create: if verifiedUser() && request.resource.data.ownerUid == request.auth.uid
+        && (get(/databases/$(database)/documents/anonymousCustomers/$(request.resource.data.customerId)).data.ownerUid == request.auth.uid
+          || getAfter(/databases/$(database)/documents/anonymousCustomers/$(request.resource.data.customerId)).data.ownerUid == request.auth.uid);
+      allow update, delete: if false;
+    }
+    match /anonymousRewards/{id} {
+      allow read: if isSuperAdmin() || (verifiedUser() && resource.data.ownerUid == request.auth.uid)
+        || (signedIn() && resource.data.guestUid == request.auth.uid);
+      allow create: if verifiedUser() && request.resource.data.ownerUid == request.auth.uid
+        && (get(/databases/$(database)/documents/loyaltyPrograms/$(request.resource.data.programId)).data.ownerUid == request.auth.uid
+          || getAfter(/databases/$(database)/documents/loyaltyPrograms/$(request.resource.data.programId)).data.ownerUid == request.auth.uid)
+        && (get(/databases/$(database)/documents/anonymousCustomers/$(request.resource.data.customerId)).data.ownerUid == request.auth.uid
+          || getAfter(/databases/$(database)/documents/anonymousCustomers/$(request.resource.data.customerId)).data.ownerUid == request.auth.uid);
+      allow update: if verifiedUser() && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'redeemedAt']);
+      allow delete: if false;
+    }
+    match /stampRequests/{id} {
+      allow read: if isSuperAdmin() || (signedIn() && id.matches('guest_' + request.auth.uid + '_.+'))
+        || (verifiedUser() && resource.data.ownerUid == request.auth.uid)
+        || (signedIn() && resource.data.guestUid == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.guestUid == request.auth.uid
+        && request.resource.data.id == id && id.matches('guest_' + request.auth.uid + '_' + request.resource.data.qrId + '_[0-9]{8}')
+        && request.resource.data.status == 'PENDING' && request.resource.data.stampsAwarded == 1
+        && request.resource.data.keys().hasOnly(['id', 'ownerUid', 'guestUid', 'restaurantId', 'qrId', 'programId', 'anonCustomerId', 'customerName', 'customerPhone', 'tableNo', 'qrSlug', 'status', 'stampsAwarded', 'createdAt', 'reviewedAt', 'reviewedByUid', 'staffNote'])
+        && request.resource.data.anonCustomerId == 'anon_' + request.auth.uid + '_' + request.resource.data.restaurantId
+        && get(/databases/$(database)/documents/anonymousCustomers/$(request.resource.data.anonCustomerId)).data.ownerUid == request.resource.data.ownerUid
+        && get(/databases/$(database)/documents/anonymousCustomers/$(request.resource.data.anonCustomerId)).data.guestUid == request.auth.uid
+        && get(/databases/$(database)/documents/anonymousCustomers/$(request.resource.data.anonCustomerId)).data.name == request.resource.data.customerName
+        && get(/databases/$(database)/documents/anonymousCustomers/$(request.resource.data.anonCustomerId)).data.phone == request.resource.data.customerPhone
+        && (get(/databases/$(database)/documents/anonymousCustomers/$(request.resource.data.anonCustomerId)).data.lastVisitAt == null
+          || request.time >= get(/databases/$(database)/documents/anonymousCustomers/$(request.resource.data.anonCustomerId)).data.lastVisitAt + duration.value(1, 'd'))
+        && get(/databases/$(database)/documents/loyaltyPublicPrograms/$(request.resource.data.restaurantId)).data.programId == request.resource.data.programId
+        && get(/databases/$(database)/documents/loyaltyPublicPrograms/$(request.resource.data.restaurantId)).data.isActive == true
+        && get(/databases/$(database)/documents/qrCodes/$(request.resource.data.qrId)).data.ownerUid == request.resource.data.ownerUid
+        && get(/databases/$(database)/documents/qrCodes/$(request.resource.data.qrId)).data.restaurantId == request.resource.data.restaurantId
+        && publicQr(get(/databases/$(database)/documents/qrCodes/$(request.resource.data.qrId)).data);
+      allow update: if (verifiedUser() && resource.data.ownerUid == request.auth.uid
+        && resource.data.status == 'PENDING'
+        && request.resource.data.status in ['APPROVED', 'REJECTED']
+        && request.resource.data.reviewedByUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedByUid', 'staffNote'])
+        ) || (signedIn()
+          && resource.data.guestUid == request.auth.uid
+          && resource.data.status == 'REJECTED'
+          && request.resource.data.status == 'PENDING'
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.reviewedAt == null
+          && request.resource.data.reviewedByUid == null
+          && request.resource.data.staffNote == null
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'createdAt', 'reviewedAt', 'reviewedByUid', 'staffNote'])
+          && (get(/databases/$(database)/documents/anonymousCustomers/$(resource.data.anonCustomerId)).data.lastVisitAt == null
+            || request.time >= get(/databases/$(database)/documents/anonymousCustomers/$(resource.data.anonCustomerId)).data.lastVisitAt + duration.value(1, 'd')));
+      allow delete: if false;
+    }
+
+    // Collections without an explicit match remain denied by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

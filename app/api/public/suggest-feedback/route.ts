@@ -5,6 +5,7 @@ import { isActive } from "@/lib/qr-status";
 import { rateLimit, clientIp } from "@/lib/ratelimit";
 import { MAX_FEEDBACK_PER_QR_PER_MONTH } from "@/lib/plans";
 import { suggestFeedback } from "@/lib/ai";
+import { getBusinessType } from "@/lib/business-type";
 
 const schema = z.object({
   slug: z.string().min(1).max(40),
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
   const qr = await db.qrCode.findUnique({
     where: { slug: ratings.slug },
     include: {
-      restaurant: { select: { status: true, aiEnabled: true } },
+      restaurant: { select: { status: true, aiEnabled: true, businessType: true } },
     },
   });
   if (!qr || !isActive(qr) || qr.restaurant.status !== "ACTIVE") {
@@ -49,6 +50,9 @@ export async function POST(req: Request) {
     );
   }
 
-  const suggestions = await suggestFeedback(ratings, { enabled: qr.restaurant.aiEnabled !== false });
+  const suggestions = await suggestFeedback(
+    { ...ratings, businessType: getBusinessType(qr.restaurant.businessType) },
+    { enabled: qr.restaurant.aiEnabled !== false },
+  );
   return NextResponse.json({ suggestions });
 }

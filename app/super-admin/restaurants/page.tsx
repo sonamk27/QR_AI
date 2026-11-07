@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSuperAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { RestaurantsAdminTable } from "@/components/RestaurantsAdminTable";
+import { getBusinessType } from "@/lib/business-type";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export default async function SuperAdminRestaurantsPage() {
   const serialized = restaurants.map((r) => ({
     id: r.id,
     name: r.name,
+    businessType: getBusinessType(r.businessType),
     city: r.city,
     brandColor: r.brandColor,
     status: r.status,
@@ -41,9 +43,9 @@ export default async function SuperAdminRestaurantsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-serif text-3xl font-bold tracking-tight text-[#24211E]">Restaurants &amp; Owners</h1>
+          <h1 className="font-serif text-3xl font-bold tracking-tight text-[#24211E]">Businesses &amp; Owners</h1>
           <p className="mt-1 text-sm text-[#716B64]">
-            Manage restaurant accounts, review submitted Google Business Profile URLs, and partner attribution.
+            Manage business accounts, review submitted Google Business Profile URLs, and partner attribution.
           </p>
         </div>
         <div className="flex gap-2 text-xs">

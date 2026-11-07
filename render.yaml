@@ -3,8 +3,8 @@ services:
     name: QR_AI
     runtime: node
     plan: free
-    buildCommand: npm ci --include=dev && npm run build
-    startCommand: npm run start
+    buildCommand: npm ci --include=dev && npm run build:next
+    startCommand: npm run start:next
     healthCheckPath: /
     envVars:
       - key: DATABASE_URL

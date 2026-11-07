@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { OwnerStampRequestsPanel } from "./OwnerStampRequestsPanel";
+import { OwnerStampRequestsPanel, type FirebaseStampActions } from "./OwnerStampRequestsPanel";
 
 export type DailyGrowthPoint = {
   date: string;
@@ -86,6 +86,24 @@ type LiveActivityItem = {
   code?: string | null;
 };
 
+type FirebaseDashboardData = {
+  stats: Stats;
+  customers: RecentCustomer[];
+  recentActivity: LiveActivityItem[];
+  dailyGrowth: DailyGrowthPoint[];
+  monthlyGrowth: MonthlyGrowthPoint[];
+  program?: Partial<Program>;
+};
+
+type FirebaseActions = {
+  loadDashboardData?: () => Promise<FirebaseDashboardData>;
+  saveProgram?: (settings: { title: string; isActive: boolean; discountType: string; stampsRequired: number; minBillAmountRupees: number; rewardTitle: string; rewardDiscountRupees: number; rewardExpiryDays: number; terminalPin: string }) => Promise<Program>;
+  stampRequests?: FirebaseStampActions;
+  issueStamp?: (input: { customerRef: string; billReference: string; staffNote: string }) => Promise<string>;
+  redeemVoucher?: (code: string) => Promise<string>;
+  issueExtraVoucher?: (customerRef: string) => Promise<{ message: string; code: string }>;
+};
+
 export function LoyaltySettingsView({
   initialProgram,
   stats,
@@ -94,6 +112,7 @@ export function LoyaltySettingsView({
   initialDailyGrowth = [],
   initialMonthlyGrowth = [],
   qrSlug,
+  firebaseActions,
 }: {
   initialProgram: Program;
   stats: Stats;
@@ -102,6 +121,7 @@ export function LoyaltySettingsView({
   initialDailyGrowth?: DailyGrowthPoint[];
   initialMonthlyGrowth?: MonthlyGrowthPoint[];
   qrSlug?: string;
+  firebaseActions?: FirebaseActions;
 }) {
   const [program, setProgram] = useState(initialProgram);
   const [title, setTitle] = useState(initialProgram.title || "The Daily Brew Rewards");
@@ -162,6 +182,16 @@ export function LoyaltySettingsView({
 
   async function refreshDashboardData() {
     try {
+      if (firebaseActions?.loadDashboardData) {
+        const data = await firebaseActions.loadDashboardData();
+        setLiveStats(data.stats);
+        setLiveCustomers(data.customers);
+        setLiveActivity(data.recentActivity);
+        setDailyGrowth(data.dailyGrowth);
+        setMonthlyGrowth(data.monthlyGrowth);
+        if (data.program) setProgram((prev) => ({ ...prev, ...data.program }));
+        return;
+      }
       const res = await fetch("/api/loyalty/dashboard-data");
       const data = await res.json();
       if (res.ok && data.success) {
@@ -177,12 +207,12 @@ export function LoyaltySettingsView({
     }
   }
 
-  // Live auto-refresh polling every 4 seconds
+  // Use a longer polling interval on Firebase's free tier.
   useEffect(() => {
     refreshDashboardData();
-    const interval = setInterval(refreshDashboardData, 4000);
+    const interval = setInterval(refreshDashboardData, firebaseActions ? 60_000 : 4000);
     return () => clearInterval(interval);
-  }, []);
+  }, [firebaseActions]);
 
   function handleTypeChange(newType: "PERCENT" | "FLAT" | "FREE_ITEM") {
     setDiscountType(newType);
@@ -212,6 +242,17 @@ export function LoyaltySettingsView({
         : rewardDiscountVal;
 
     try {
+      if (firebaseActions?.saveProgram) {
+        const updated = await firebaseActions.saveProgram({
+          title, isActive, discountType, stampsRequired,
+          minBillAmountRupees: minBillRupees,
+          rewardTitle, rewardDiscountRupees, rewardExpiryDays,
+          terminalPin: program.terminalPin || "1234",
+        });
+        setSaveSuccess("Program settings updated successfully!");
+        setProgram(updated);
+        return;
+      }
       const res = await fetch("/api/loyalty/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -244,6 +285,12 @@ export function LoyaltySettingsView({
     setQuickStampLoadingPhone(phone);
     setQuickStampFeedback(null);
     try {
+      if (firebaseActions?.issueStamp) {
+        const message = await firebaseActions.issueStamp({ customerRef: phone, billReference: `Dashboard-${Date.now()}`, staffNote: "Direct staff 1-click stamp" });
+        setQuickStampFeedback({ phone, type: "success", message: message || `1 Stamp awarded to ${customerName || phone}!` });
+        await refreshDashboardData();
+        return;
+      }
       const res = await fetch("/api/loyalty/stamp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -282,6 +329,11 @@ export function LoyaltySettingsView({
     setStampLoading(true);
     setStampFeedback(null);
     try {
+      if (firebaseActions?.issueStamp) {
+        const message = await firebaseActions.issueStamp({ customerRef: stampCustomerRef.trim(), billReference: stampVisitRef.trim(), staffNote: stampNote.trim() });
+        setStampFeedback({ type: "success", message: message || "1 Stamp awarded successfully!" });
+        setStampVisitRef(""); setStampNote(""); await refreshDashboardData(); return;
+      }
       const isAnon = stampCustomerRef.trim().startsWith("anon_");
       const endpoint = isAnon ? "/api/loyalty/anon/stamp" : "/api/loyalty/stamp";
       const payload = isAnon
@@ -330,6 +382,11 @@ export function LoyaltySettingsView({
     setRedeemLoading(true);
     setRedeemFeedback(null);
     try {
+      if (firebaseActions?.redeemVoucher) {
+        const message = await firebaseActions.redeemVoucher(redeemVoucherCode.trim().toUpperCase());
+        setRedeemFeedback({ type: "success", message: message || `Voucher ${redeemVoucherCode} redeemed successfully!` });
+        setRedeemVoucherCode(""); await refreshDashboardData(); return;
+      }
       const res = await fetch("/api/loyalty/redeem", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -363,6 +420,11 @@ export function LoyaltySettingsView({
     setIssueVoucherLoading(true);
     setIssueVoucherFeedback(null);
     try {
+      if (firebaseActions?.issueExtraVoucher) {
+        const result = await firebaseActions.issueExtraVoucher(voucherCustomerRef.trim());
+        setIssueVoucherFeedback({ type: "success", message: result.message, code: result.code });
+        setVoucherCustomerRef(""); await refreshDashboardData(); return;
+      }
       const lookupRes = await fetch("/api/loyalty/customer/adjust", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -538,10 +600,15 @@ export function LoyaltySettingsView({
       </div>
 
       {/* Real-time Customer Visit Stamp Requests Panel */}
-      <OwnerStampRequestsPanel
-        restaurantBrandColor="#B58A4B"
-        onApprovedOrRejected={refreshDashboardData}
-      />
+      {firebaseActions?.stampRequests ? (
+        <OwnerStampRequestsPanel restaurantBrandColor="#B58A4B" onApprovedOrRejected={refreshDashboardData} firebaseActions={firebaseActions.stampRequests} />
+      ) : firebaseActions ? (
+        <div className="rounded-2xl border border-[#E8D8BA] bg-[#FAF5ED] p-4 text-xs text-[#7A5826]">
+          Stamp approvals, counter tools, and voucher operations are still being moved to Firestore.
+        </div>
+      ) : (
+        <OwnerStampRequestsPanel restaurantBrandColor="#B58A4B" onApprovedOrRejected={refreshDashboardData} />
+      )}
 
       {/* ─────────────────────────────────────────────────────────────
           SECTION 3: 4 TOP KPI METRIC CARDS (Exact match to reference mockup)
@@ -893,13 +960,13 @@ export function LoyaltySettingsView({
                           <p className="text-xs text-[#716B64]">+91 {c.phone}</p>
                         </div>
                       </div>
-                      <button
+                      {(!firebaseActions || firebaseActions.issueStamp) && <button
                         onClick={() => handleQuickStamp(c.phone, c.name)}
                         disabled={quickStampLoadingPhone === c.phone}
                         className="min-h-10 shrink-0 rounded-lg bg-[#B58A4B] px-3 text-xs font-bold text-white shadow-2xs transition hover:bg-[#9E7438] disabled:opacity-50"
                       >
                         {quickStampLoadingPhone === c.phone ? "Adding…" : "+1 Stamp"}
-                      </button>
+                      </button>}
                     </div>
                     <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-[#E8DFD1] pt-2 text-xs text-[#716B64]">
                       <span><strong className="text-[#24211E]">{c.visits}</strong> visits</span>
@@ -949,13 +1016,13 @@ export function LoyaltySettingsView({
                       </td>
                       <td className="py-3 text-right text-[11px] text-[#716B64]">{c.lastVisit}</td>
                       <td className="py-3 text-right">
-                        <button
+                        {(!firebaseActions || firebaseActions.issueStamp) && <button
                           onClick={() => handleQuickStamp(c.phone, c.name)}
                           disabled={quickStampLoadingPhone === c.phone}
                           className="rounded-lg bg-[#B58A4B] hover:bg-[#9E7438] text-white px-2.5 py-1 text-[11px] font-bold shadow-2xs transition active:scale-95 disabled:opacity-50"
                         >
                           {quickStampLoadingPhone === c.phone ? "..." : "+1 Stamp"}
-                        </button>
+                        </button>}
                       </td>
                     </tr>
                   ))}
@@ -1013,7 +1080,7 @@ export function LoyaltySettingsView({
       {/* ─────────────────────────────────────────────────────────────
           COUNTER TOOLS: Staff Stamp Issuance & Voucher Redeem
       ───────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <div className={`${firebaseActions && (!firebaseActions.issueStamp || !firebaseActions.redeemVoucher) ? "hidden" : "grid grid-cols-1 gap-5 lg:grid-cols-2"}`}>
         {/* Tool 1: Staff Stamp Tool */}
         <div className="rounded-2xl border border-[#E8DFD1] bg-white p-4 shadow-subtle sm:p-6 sm:space-y-4">
           <div className="border-b border-[#E8DFD1]/60 pb-3">
@@ -1130,7 +1197,7 @@ export function LoyaltySettingsView({
       </div>
 
       {/* Owner-only extra voucher issuance */}
-      <section className="overflow-hidden rounded-2xl border border-[#E8D8BA] bg-white shadow-subtle">
+      <section className={`${firebaseActions && !firebaseActions.issueExtraVoucher ? "hidden" : "overflow-hidden rounded-2xl border border-[#E8D8BA] bg-white shadow-subtle"}`}>
         <div className="flex flex-col gap-3 bg-gradient-to-r from-[#FAF5ED] to-white p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#E8D8BA] bg-white text-xl">🎟️</span>

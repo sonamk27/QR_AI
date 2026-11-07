@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSuperAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { QrRequestsAdminPanel } from "@/components/QrRequestsAdminPanel";
+import { getBusinessType } from "@/lib/business-type";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,10 @@ export default async function SuperAdminQrRequestsPage({
 
   const serializedRequests = qrRequests.map((r) => ({
     ...r,
+    restaurant: {
+      ...r.restaurant,
+      businessType: getBusinessType(r.restaurant.businessType),
+    },
     createdAt: r.createdAt.toISOString(),
     reviewedAt: r.reviewedAt?.toISOString() ?? null,
   }));

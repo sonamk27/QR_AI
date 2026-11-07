@@ -186,6 +186,11 @@ export function AuthForm({
         )}
         <button className="btn w-full" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>
       </form>
+      {mode === "login" && (
+        <Link href="/reset-password" className="mt-3 inline-flex text-sm font-medium text-[#7A5826] underline">
+          Forgot password?
+        </Link>
+      )}
       {portal !== "super_admin" && (
         <>
           <div className="my-5 flex items-center gap-3 text-xs text-ink/45">

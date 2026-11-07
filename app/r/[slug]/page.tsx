@@ -48,6 +48,7 @@ export default async function CustomerPage({
       restaurant={{
         id: qr.restaurant.id,
         name: qr.restaurant.name,
+        businessType: qr.restaurant.businessType,
         city: qr.restaurant.city,
         logoUrl: qr.restaurant.logoUrl,
         brandColor: qr.restaurant.brandColor,

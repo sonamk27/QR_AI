@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { QrRowActions } from "@/components/SuperAdminModals";
+import { BUSINESS_TYPE_LABELS, type BusinessType } from "@/lib/business-type";
 
 const DAY = 86_400_000;
 
@@ -18,6 +19,7 @@ type QrItem = {
   restaurant: {
     id: string;
     name: string;
+    businessType: BusinessType;
     city: string | null;
     owner: { name: string; email: string };
   };
@@ -31,10 +33,12 @@ export function QrCodesAdminTable({
   qrCodes,
   restaurants,
   appUrl,
+  firebaseActions,
 }: {
   qrCodes: QrItem[];
-  restaurants: { id: string; name: string; city: string | null; owner: { name: string; email: string } }[];
+  restaurants: { id: string; name: string; businessType: BusinessType; city: string | null; owner: { name: string; email: string } }[];
   appUrl: string;
+  firebaseActions?: { disable: (id: string) => Promise<void>; extend: (id: string) => Promise<void>; onChanged: () => void };
 }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -50,6 +54,7 @@ export function QrCodesAdminTable({
       return (
         q.name.toLowerCase().includes(term) ||
         q.restaurant.name.toLowerCase().includes(term) ||
+        BUSINESS_TYPE_LABELS[q.restaurant.businessType].toLowerCase().includes(term) ||
         (q.location && q.location.toLowerCase().includes(term)) ||
         (q.tableNo && q.tableNo.toLowerCase().includes(term))
       );
@@ -63,7 +68,7 @@ export function QrCodesAdminTable({
         <div className="flex flex-1 flex-wrap items-center gap-2">
           <input
             type="search"
-            placeholder="Search by QR name, restaurant, or location…"
+            placeholder="Search by QR name, business type, or location…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="input max-w-sm"
@@ -87,7 +92,7 @@ export function QrCodesAdminTable({
             onChange={(e) => setRestaurantFilter(e.target.value)}
             className="input !w-auto max-w-[200px]"
           >
-            <option value="ALL">All Restaurants</option>
+            <option value="ALL">All Businesses</option>
             {restaurants.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.name}
@@ -113,11 +118,12 @@ export function QrCodesAdminTable({
 
       {/* Table */}
       <div className="panel overflow-x-auto">
-        <table className="w-full min-w-[860px]">
+        <table className="w-full min-w-[940px]">
           <thead>
             <tr>
               <th className="th">QR Name</th>
-              <th className="th">Restaurant</th>
+              <th className="th">Business</th>
+              <th className="th">Business Type</th>
               <th className="th">Status</th>
               <th className="th">Validity / Days Left</th>
               <th className="th">Valid Until</th>
@@ -128,7 +134,7 @@ export function QrCodesAdminTable({
           <tbody className="divide-y divide-line">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className="td text-center text-ink/60 py-10">
+                <td colSpan={8} className="td text-center text-ink/60 py-10">
                   {qrCodes.length === 0
                     ? "No QR codes created yet. Click '+ Create & Activate QR' to start."
                     : "No QR codes match the current filters."}
@@ -152,6 +158,7 @@ export function QrCodesAdminTable({
                       <p className="font-medium text-ink">{q.restaurant.name}</p>
                       <p className="text-xs text-ink/60">{q.restaurant.city || "—"}</p>
                     </td>
+                    <td className="td text-sm">{BUSINESS_TYPE_LABELS[q.restaurant.businessType]}</td>
                     <td className="td">
                       <span
                         className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${
@@ -201,6 +208,7 @@ export function QrCodesAdminTable({
                         restaurantName={q.restaurant.name}
                         status={q.resolvedStatus}
                         appUrl={appUrl}
+                        firebaseActions={firebaseActions}
                       />
                     </td>
                   </tr>

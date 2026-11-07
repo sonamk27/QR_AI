@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { platformStats } from "@/lib/analytics";
 import { Stat } from "@/components/Shell";
 import { CreateRestaurantModal } from "@/components/SuperAdminModals";
+import { BUSINESS_TYPE_LABELS, getBusinessType } from "@/lib/business-type";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,7 @@ export default async function SuperAdminOverview() {
       take: 5,
       include: {
         restaurant: {
-          select: { name: true, city: true, owner: { select: { name: true, email: true } } },
+          select: { name: true, businessType: true, city: true, owner: { select: { name: true, email: true } } },
         },
       },
     }),
@@ -59,6 +60,16 @@ export default async function SuperAdminOverview() {
         select: { id: true, name: true },
       })
     : [];
+  const auditRestaurantIds = Array.from(
+    new Set(recentAuditLogs.map((log) => log.restaurantId).filter((id): id is string => Boolean(id))),
+  );
+  const auditRestaurants = auditRestaurantIds.length
+    ? await db.restaurant.findMany({
+        where: { id: { in: auditRestaurantIds } },
+        select: { id: true, businessType: true },
+      })
+    : [];
+  const auditBusinessTypes = new Map(auditRestaurants.map((restaurant) => [restaurant.id, getBusinessType(restaurant.businessType)]));
   const auditActorNames = new Map(auditActors.map((actor) => [actor.id, actor.name]));
 
   return (
@@ -79,7 +90,7 @@ export default async function SuperAdminOverview() {
       {/* Primary KPI Grid */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <Stat
-          label="Active Restaurants"
+          label="Active Businesses"
           value={stats.activeRestaurants}
           hint={`+${newRestaurantsThisMonth} onboarded this month`}
         />
@@ -118,7 +129,7 @@ export default async function SuperAdminOverview() {
                   {pendingRequestsCount} Pending QR Request{pendingRequestsCount > 1 ? "s" : ""}
                 </h3>
                 <p className="text-xs text-[#716B64] mt-0.5">
-                  Restaurants are waiting for your review. QR codes are generated only after payment is confirmed.
+                  Businesses are waiting for your review. QR codes are generated only after payment is confirmed.
                 </p>
               </div>
             </div>
@@ -135,6 +146,7 @@ export default async function SuperAdminOverview() {
               <div key={req.id} className="flex items-center justify-between py-2 text-xs">
                 <div>
                   <span className="font-medium text-[#24211E]">{req.restaurant.name}</span>
+                  <span className="ml-2 text-[#716B64]">{BUSINESS_TYPE_LABELS[getBusinessType(req.restaurant.businessType)]}</span>
                   <span className="text-[#716B64] ml-2">
                     requested &ldquo;{req.name}&rdquo; ({req.quantity} QR{req.quantity > 1 ? "s" : ""})
                   </span>
@@ -164,7 +176,8 @@ export default async function SuperAdminOverview() {
           <div className="mt-4 space-y-1.5 border-t border-[#E8DFD1] pt-3">
             {recentRestaurants.slice(0, 3).map((r) => (
               <div key={r.id} className="flex justify-between text-xs text-[#716B64]">
-                <span className="font-medium truncate max-w-[160px] text-[#24211E]">{r.name}</span>
+                <span className="font-medium truncate max-w-[140px] text-[#24211E]">{r.name}</span>
+                <span className="text-[10px]">{BUSINESS_TYPE_LABELS[getBusinessType(r.businessType)]}</span>
                 <span>{r._count.qrCodes} QRs</span>
               </div>
             ))}
@@ -203,11 +216,12 @@ export default async function SuperAdminOverview() {
         </div>
 
         <div className="panel overflow-x-auto">
-          <table className="w-full min-w-[500px]">
+          <table className="w-full min-w-[650px]">
             <thead>
               <tr>
                 <th className="th">Action</th>
                 <th className="th">Target</th>
+                <th className="th">Business Type</th>
                 <th className="th">Actor</th>
                 <th className="th">Time</th>
               </tr>
@@ -215,7 +229,7 @@ export default async function SuperAdminOverview() {
             <tbody className="divide-y divide-[#E8DFD1]">
               {recentAuditLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="td text-center text-[#716B64] py-6">
+                  <td colSpan={5} className="td text-center text-[#716B64] py-6">
                     No actions logged yet.
                   </td>
                 </tr>
@@ -224,6 +238,11 @@ export default async function SuperAdminOverview() {
                   <tr key={log.id}>
                     <td className="td font-mono text-xs font-medium text-[#24211E]">{log.action}</td>
                     <td className="td font-mono text-xs text-[#716B64]">{log.target ?? "—"}</td>
+                    <td className="td text-xs text-[#716B64]">
+                      {log.restaurantId && auditBusinessTypes.has(log.restaurantId)
+                        ? BUSINESS_TYPE_LABELS[auditBusinessTypes.get(log.restaurantId)!]
+                        : "—"}
+                    </td>
                     <td className="td text-xs text-[#716B64]">
                       {log.actorId === "webhook"
                         ? "System webhook"

@@ -152,25 +152,43 @@ export function Flow({
 
     setCopyingPlatform(platform);
     setError("");
-    try {
-      await navigator.clipboard.writeText(textToCopy);
-    } catch {
-      setError("Could not copy your review. Please allow clipboard access and try again.");
-      setCopyingPlatform(null);
-      return;
-    }
-
+    // Open synchronously in the click handler so popup blockers do not cancel
+    // the Google redirect while clipboard access is pending.
+    const destination = window.open(url, "_blank", "noopener,noreferrer");
     if (platform === "google") {
       trackClick();
       setGooglePosted(true);
     } else {
       trackSocialClick(platform);
     }
-
     setLastPlatform(platform);
     setStep(5);
+
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+    } catch {
+      setError(destination
+        ? "Google Maps opened, but the review could not be copied. Copy it manually from the draft."
+        : "The destination was blocked. Allow pop-ups and try again.");
+      if (platform !== "google") {
+        setCopyingPlatform(null);
+        setStep(4);
+        return;
+      }
+    }
+
+    if (!destination) {
+      setError("The destination was blocked. Allow pop-ups and try again.");
+      setCopyingPlatform(null);
+      setStep(4);
+      return;
+    }
+
+    if (platform !== "google") {
+      setCopyingPlatform(null);
+      return;
+    }
     setCopyingPlatform(null);
-    window.open(url, "_blank", "noopener,noreferrer");
   }
 
   async function copyOnly() {
@@ -533,6 +551,19 @@ export function Flow({
                   ? "Your review draft was copied! Paste it into Facebook to recommend us."
                   : "Your review draft was copied to your clipboard. Thank you for your feedback!"}
               </p>
+              {error && (
+                <div role="alert" className="w-full rounded-xl border border-amber-200 bg-amber-50 p-3 text-left">
+                  <p className="mb-2 text-xs text-amber-900">{error} You can select and copy the draft here:</p>
+                  <textarea
+                    aria-label="Review draft to copy manually"
+                    readOnly
+                    onFocus={(event) => event.currentTarget.select()}
+                    className="w-full rounded-lg border border-amber-200 bg-white p-2 text-sm text-ink"
+                    rows={4}
+                    value={draft}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Follow & Review Rewards / Shoutouts Panel */}

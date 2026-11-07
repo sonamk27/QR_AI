@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { BUSINESS_TYPE_LABELS, type BusinessType } from "@/lib/business-type";
 
 type AuditLogRow = {
   id: string;
@@ -9,6 +10,7 @@ type AuditLogRow = {
   actorEmail: string | null;
   action: string;
   target: string | null;
+  businessType?: BusinessType | null;
   meta: any;
   createdAt: string;
 };
@@ -37,6 +39,7 @@ export function AuditLogAdminTable({ logs }: { logs: AuditLogRow[] }) {
         (l.target && l.target.toLowerCase().includes(q)) ||
         l.actorId.toLowerCase().includes(q) ||
         l.actorName.toLowerCase().includes(q) ||
+        (l.businessType && BUSINESS_TYPE_LABELS[l.businessType].toLowerCase().includes(q)) ||
         (l.actorEmail && l.actorEmail.toLowerCase().includes(q)) ||
         (l.meta && JSON.stringify(l.meta).toLowerCase().includes(q))
       );
@@ -85,11 +88,12 @@ export function AuditLogAdminTable({ logs }: { logs: AuditLogRow[] }) {
 
       {/* Table */}
       <div className="panel overflow-x-auto">
-        <table className="w-full min-w-[700px]">
+        <table className="w-full min-w-[780px]">
           <thead>
             <tr>
               <th className="th">Action</th>
               <th className="th">Target Entity</th>
+              <th className="th">Business Type</th>
               <th className="th">Who</th>
               <th className="th">Metadata</th>
               <th className="th">Timestamp</th>
@@ -98,7 +102,7 @@ export function AuditLogAdminTable({ logs }: { logs: AuditLogRow[] }) {
           <tbody className="divide-y divide-line">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={5} className="td text-center text-ink/60 py-10">
+                <td colSpan={6} className="td text-center text-ink/60 py-10">
                   {logs.length === 0 ? "No audit log entries recorded." : "No actions match your filters."}
                 </td>
               </tr>
@@ -118,6 +122,9 @@ export function AuditLogAdminTable({ logs }: { logs: AuditLogRow[] }) {
                     ) : (
                       "—"
                     )}
+                  </td>
+                  <td className="td text-xs">
+                    {l.businessType ? BUSINESS_TYPE_LABELS[l.businessType] : "—"}
                   </td>
                   <td className="td text-xs text-ink/70">
                     <p className="font-medium text-ink">{l.actorName}</p>

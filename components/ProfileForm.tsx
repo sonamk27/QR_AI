@@ -12,6 +12,13 @@ type R = {
   shareCaption: string | null;
 };
 
+type FirebaseSavers = {
+  onSaved?: () => Promise<void> | void;
+  saveIdentity?: (values: { name: string; city: string | null; logoUrl: string | null; brandColor: string }) => Promise<void>;
+  saveGoogleUrl?: (url: string) => Promise<void>;
+  saveSocial?: (values: { instagramUrl: string | null; facebookUrl: string | null; shareCaption: string | null }) => Promise<void>;
+};
+
 function SaveButton({ busy, label }: { busy: boolean; label: string }) {
   return (
     <button
@@ -42,7 +49,7 @@ function StatusBadge({ msg, isError }: { msg: string; isError?: boolean }) {
   );
 }
 
-export function ProfileForm({ r }: { r: R }) {
+export function ProfileForm({ r, firebaseSavers }: { r: R; firebaseSavers?: FirebaseSavers }) {
   const router = useRouter();
   const [msg, setMsg] = useState("");
   const [msgIsError, setMsgIsError] = useState(false);
@@ -66,6 +73,25 @@ export function ProfileForm({ r }: { r: R }) {
     setBusy(true);
     setMsg("");
     const body = Object.fromEntries(new FormData(e.currentTarget).entries());
+    if (firebaseSavers?.saveIdentity) {
+      try {
+        await firebaseSavers.saveIdentity({
+          name: String(body.name ?? "").trim(),
+          city: String(body.city ?? "").trim() || null,
+          logoUrl: String(body.logoUrl ?? "").trim() || null,
+          brandColor: String(body.brandColor ?? ""),
+        });
+        await firebaseSavers.onSaved?.();
+        setMsgIsError(false);
+        setMsg("Changes saved!");
+      } catch (error) {
+        setMsgIsError(true);
+        setMsg(error instanceof Error ? error.message : "Could not save.");
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     const res = await fetch("/api/restaurant", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -84,6 +110,13 @@ export function ProfileForm({ r }: { r: R }) {
     setGoogleUrlError("");
     setGoogleUrlSaved("");
     try {
+      if (firebaseSavers?.saveGoogleUrl) {
+        await firebaseSavers.saveGoogleUrl(googleBusinessUrl.trim());
+        await firebaseSavers.onSaved?.();
+        setGoogleUrlSaved("URL saved!");
+        router.refresh();
+        return;
+      }
       const response = await fetch("/api/restaurant/google-business-url", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -109,6 +142,17 @@ export function ProfileForm({ r }: { r: R }) {
     setSocialError("");
     setSocialMsg("");
     try {
+      if (firebaseSavers?.saveSocial) {
+        await firebaseSavers.saveSocial({
+          instagramUrl: instagramUrl.trim() || null,
+          facebookUrl: facebookUrl.trim() || null,
+          shareCaption: shareCaption.trim() || null,
+        });
+        await firebaseSavers.onSaved?.();
+        setSocialMsg("Social links saved!");
+        router.refresh();
+        return;
+      }
       const response = await fetch("/api/restaurant/social-links", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -276,7 +320,7 @@ export function ProfileForm({ r }: { r: R }) {
 
         <div className="space-y-4 p-6">
           <p className="text-xs text-[#716B64]">
-            Guests can follow your Instagram &amp; Facebook pages, copy their AI review draft, and share on social media.
+            Guests can follow your Instagram &amp; Facebook pages, copy their review draft, and share on social media.
           </p>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

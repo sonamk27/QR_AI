@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { BUSINESS_TYPE_LABELS, type BusinessType } from "@/lib/business-type";
 
 type UserItem = {
   id: string;
@@ -11,21 +12,23 @@ type UserItem = {
   phoneNumber: string | null;
   role: "restaurant_admin" | "super_admin";
   createdAt: string;
-  restaurants: { id: string; name: string; city: string | null; status: string }[];
+  restaurants: { id: string; name: string; businessType: BusinessType; city: string | null; status: string }[];
 };
 
 function ResetPasswordModal({
   user,
   onClose,
+  onResetPassword,
 }: {
   user: UserItem;
   onClose: () => void;
+  onResetPassword?: (email: string) => Promise<void>;
 }) {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [successInfo, setSuccessInfo] = useState<{ pass: string } | null>(null);
+  const [successInfo, setSuccessInfo] = useState<{ pass?: string } | null>(null);
 
   function generatePass() {
     const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -40,6 +43,11 @@ function ResetPasswordModal({
     setError("");
 
     try {
+      if (onResetPassword) {
+        await onResetPassword(user.email);
+        setSuccessInfo({});
+        return;
+      }
       const res = await fetch(`/api/super-admin/users/${user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -61,6 +69,7 @@ function ResetPasswordModal({
   }
 
   const welcomeMessage = successInfo
+    ? successInfo.pass
     ? `Hello ${user.name}! Your ReviewFlow password has been updated.\n\n` +
       `🌐 Login: ${typeof window !== "undefined" ? window.location.origin : ""}/login\n` +
       `📧 Email: ${user.email}\n` +
@@ -68,6 +77,7 @@ function ResetPasswordModal({
       (user.emailVerifiedAt
         ? "You can now log in to your dashboard."
         : "Verify your email before signing in. If the link expired, open /verify-email and request a new one.")
+    : `A Firebase password reset link was sent to ${user.email}. The user can set a new password from that email.`
     : "";
 
   return (
@@ -76,9 +86,9 @@ function ResetPasswordModal({
         {successInfo ? (
           <div className="space-y-4">
             <div className="rounded-xl bg-emerald-50 p-4 border border-emerald-200">
-              <h3 className="font-semibold text-emerald-900">Password Reset Successful</h3>
+              <h3 className="font-semibold text-emerald-900">{successInfo.pass ? "Password Reset Successful" : "Password Reset Email Sent"}</h3>
               <p className="mt-1 text-xs text-emerald-800">
-                The password for {user.name} ({user.email}) has been updated.
+                {successInfo.pass ? `The password for ${user.name} (${user.email}) has been updated.` : `A secure reset link was sent to ${user.email}.`}
               </p>
             </div>
 
@@ -87,23 +97,21 @@ function ResetPasswordModal({
             </div>
 
             <div className="flex flex-wrap gap-2 pt-2">
-              <button
+              {successInfo.pass && <button
                 onClick={() => {
                   navigator.clipboard.writeText(welcomeMessage);
                   alert("Copied to clipboard!");
                 }}
                 className="btn flex-1 text-xs"
-              >
-                Copy Credentials
-              </button>
-              <a
+              >Copy Credentials</button>}
+              {successInfo.pass && <a
                 href={`https://wa.me/?text=${encodeURIComponent(welcomeMessage)}`}
                 target="_blank"
                 rel="noreferrer"
                 className="btn-ghost flex-1 text-xs text-center"
               >
                 Share via WhatsApp
-              </a>
+              </a>}
               <button onClick={onClose} className="btn-ghost text-xs">
                 Close
               </button>
@@ -127,7 +135,7 @@ function ResetPasswordModal({
 
             {error && <p className="rounded bg-rose-50 p-2 text-xs text-rose-700">{error}</p>}
 
-            <div>
+            {!onResetPassword && <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="label !mb-0">New Password *</label>
                 <button
@@ -146,14 +154,14 @@ function ResetPasswordModal({
                 placeholder="Enter or generate temporary password"
                 className="input font-mono"
               />
-            </div>
+            </div>}
 
             <div className="flex justify-end gap-2 pt-3 border-t border-line">
               <button type="button" onClick={onClose} className="btn-ghost" disabled={busy}>
                 Cancel
               </button>
               <button type="submit" className="btn" disabled={busy}>
-                {busy ? "Saving…" : "Set New Password"}
+                {busy ? "Sending…" : onResetPassword ? "Send Reset Email" : "Set New Password"}
               </button>
             </div>
           </form>
@@ -163,7 +171,7 @@ function ResetPasswordModal({
   );
 }
 
-function EditSuperAdminPhoneButton({ user, onSaved }: { user: UserItem; onSaved: () => void }) {
+function EditSuperAdminPhoneButton({ user, onSaved, updatePhone }: { user: UserItem; onSaved: () => void; updatePhone?: (id: string, phone: string) => Promise<void> }) {
   const [open, setOpen] = useState(false);
   const [phone, setPhone] = useState(user.phoneNumber ?? "");
   const [busy, setBusy] = useState(false);
@@ -174,6 +182,12 @@ function EditSuperAdminPhoneButton({ user, onSaved }: { user: UserItem; onSaved:
     setBusy(true);
     setError("");
     try {
+      if (updatePhone) {
+        await updatePhone(user.id, phone.trim());
+        setOpen(false);
+        onSaved();
+        return;
+      }
       const response = await fetch(`/api/super-admin/users/${user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -218,7 +232,14 @@ function EditSuperAdminPhoneButton({ user, onSaved }: { user: UserItem; onSaved:
   );
 }
 
-export function UsersAdminTable({ users, currentAdminId }: { users: UserItem[]; currentAdminId: string }) {
+type FirebaseUserActions = {
+  resetPassword: (email: string) => Promise<void>;
+  updatePhone: (id: string, phone: string) => Promise<void>;
+  changeRole: (id: string, role: UserItem["role"]) => Promise<void>;
+  onChanged: () => void;
+};
+
+export function UsersAdminTable({ users, currentAdminId, firebaseActions }: { users: UserItem[]; currentAdminId: string; firebaseActions?: FirebaseUserActions }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
@@ -234,7 +255,7 @@ export function UsersAdminTable({ users, currentAdminId }: { users: UserItem[]; 
       return (
         u.name.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q) ||
-        u.restaurants.some((r) => r.name.toLowerCase().includes(q))
+        u.restaurants.some((r) => r.name.toLowerCase().includes(q) || BUSINESS_TYPE_LABELS[r.businessType].toLowerCase().includes(q))
       );
     });
   }, [users, search, roleFilter]);
@@ -250,6 +271,11 @@ export function UsersAdminTable({ users, currentAdminId }: { users: UserItem[]; 
 
     setBusyId(user.id);
     try {
+      if (firebaseActions) {
+        await firebaseActions.changeRole(user.id, nextRole);
+        firebaseActions.onChanged();
+        return;
+      }
       const res = await fetch(`/api/super-admin/users/${user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -270,7 +296,7 @@ export function UsersAdminTable({ users, currentAdminId }: { users: UserItem[]; 
         <div className="flex flex-1 flex-wrap items-center gap-2">
           <input
             type="search"
-            placeholder="Search by name, email, or restaurant…"
+            placeholder="Search by name, email, business, or type…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="input max-w-sm"
@@ -282,7 +308,7 @@ export function UsersAdminTable({ users, currentAdminId }: { users: UserItem[]; 
             className="input !w-auto"
           >
             <option value="ALL">All Roles</option>
-            <option value="restaurant_admin">Restaurant Admins</option>
+            <option value="restaurant_admin">Business Admins</option>
             <option value="super_admin">Super Admins</option>
           </select>
 
@@ -309,7 +335,7 @@ export function UsersAdminTable({ users, currentAdminId }: { users: UserItem[]; 
               <th className="th">Email</th>
               <th className="th">Mobile</th>
               <th className="th">Role</th>
-              <th className="th">Associated Restaurants</th>
+              <th className="th">Associated Businesses</th>
               <th className="th">Joined</th>
               <th className="th">Actions</th>
             </tr>
@@ -333,7 +359,7 @@ export function UsersAdminTable({ users, currentAdminId }: { users: UserItem[]; 
                   </td>
                   <td className="td text-xs">
                     <div className="font-mono text-ink/80">{u.phoneNumber || "—"}</div>
-                    {u.role === "super_admin" && u.id === currentAdminId && <div className="mt-1"><EditSuperAdminPhoneButton user={u} onSaved={() => router.refresh()} /></div>}
+                    {u.role === "super_admin" && u.id === currentAdminId && <div className="mt-1"><EditSuperAdminPhoneButton user={u} onSaved={() => { if (firebaseActions) firebaseActions.onChanged(); else router.refresh(); }} updatePhone={firebaseActions?.updatePhone} /></div>}
                   </td>
                   <td className="td">
                     <span
@@ -348,12 +374,13 @@ export function UsersAdminTable({ users, currentAdminId }: { users: UserItem[]; 
                   </td>
                   <td className="td text-xs">
                     {u.restaurants.length === 0 ? (
-                      <span className="text-ink/40">No restaurants</span>
+                      <span className="text-ink/40">No associated businesses</span>
                     ) : (
                       <div className="space-y-1">
                         {u.restaurants.map((r) => (
-                          <div key={r.id} className="flex items-center gap-1.5">
+                          <div key={r.id} className="flex flex-wrap items-center gap-1.5">
                             <span className="font-medium text-ink">{r.name}</span>
+                            <span className="text-[10px] text-ink/60">{BUSINESS_TYPE_LABELS[r.businessType]}</span>
                             {r.city && <span className="text-ink/50">({r.city})</span>}
                             {r.status === "SUSPENDED" && (
                               <span className="rounded bg-rose-50 px-1.5 py-0.2 text-[10px] text-rose-700 border border-rose-200">
@@ -409,6 +436,7 @@ export function UsersAdminTable({ users, currentAdminId }: { users: UserItem[]; 
         <ResetPasswordModal
           user={resetModalUser}
           onClose={() => setResetModalUser(null)}
+          onResetPassword={firebaseActions?.resetPassword}
         />
       )}
     </div>

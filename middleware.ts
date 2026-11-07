@@ -21,7 +21,6 @@ export async function middleware(req: NextRequest) {
   }
 
   const isRestaurantLogin = pathname === "/admin/login";
-  const isSuperAdminLogin = pathname === "/super-admin/login";
 
   if (
     (pathname.startsWith("/dashboard") || pathname === "/admin") &&
@@ -34,11 +33,10 @@ export async function middleware(req: NextRequest) {
   }
   if (
     pathname.startsWith("/super-admin") &&
-    !isSuperAdminLogin &&
     role !== "super_admin"
   ) {
     return NextResponse.redirect(
-      new URL(role === "restaurant_admin" ? "/admin" : "/super-admin/login", req.url),
+      new URL(role === "restaurant_admin" ? "/admin" : "/login", req.url),
     );
   }
   if (pathname.startsWith("/admin/") && !isRestaurantLogin) {

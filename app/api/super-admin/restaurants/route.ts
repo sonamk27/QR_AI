@@ -8,7 +8,8 @@ import { isGoogleBusinessUrl } from "@/lib/google-business-url";
 import { issueEmailVerification } from "@/lib/email-verification";
 
 const schema = z.object({
-  name: z.string().trim().min(2, "Restaurant name is required").max(100),
+  name: z.string().trim().min(2, "Business name is required").max(100),
+  businessType: z.enum(["RESTAURANT", "CAFE", "SALON", "GENERAL_STORE"]).default("RESTAURANT"),
   city: z.string().max(80).optional(),
   googleReviewUrl: z.string().trim().max(500).optional().or(z.literal("")).refine(
     (url) => !url || isGoogleBusinessUrl(url),
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
   const existingOwner = await db.user.findUnique({ where: { email }, select: { role: true } });
   if (existingOwner) {
     return NextResponse.json(
-      { error: "This email already has an account. Use a new owner email so the restaurant is connected to the correct account." },
+      { error: "This email already has an account. Use a new owner email so the business is connected to the correct account." },
       { status: 409 },
     );
   }
@@ -83,6 +84,7 @@ export async function POST(req: Request) {
         data: {
           ownerId: owner.id,
           name: data.name,
+          businessType: data.businessType,
           city: data.city?.trim() || null,
           googleReviewUrl: data.googleReviewUrl?.trim() || null,
           instagramUrl: data.instagramUrl?.trim() || null,

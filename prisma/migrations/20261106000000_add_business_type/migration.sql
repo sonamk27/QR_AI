@@ -1,0 +1,2 @@
+ALTER TABLE "Restaurant"
+  ADD COLUMN "businessType" TEXT NOT NULL DEFAULT 'RESTAURANT';

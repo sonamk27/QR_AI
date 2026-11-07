@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSuperAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { UsersAdminTable } from "@/components/UsersAdminTable";
+import { getBusinessType } from "@/lib/business-type";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export default async function SuperAdminUsersPage() {
     take: 200,
     include: {
       restaurants: {
-        select: { id: true, name: true, city: true, status: true },
+        select: { id: true, name: true, businessType: true, city: true, status: true },
       },
     },
   });
@@ -27,7 +28,10 @@ export default async function SuperAdminUsersPage() {
     phoneNumber: u.phoneNumber,
     role: u.role,
     createdAt: u.createdAt.toISOString(),
-    restaurants: u.restaurants,
+    restaurants: u.restaurants.map((restaurant) => ({
+      ...restaurant,
+      businessType: getBusinessType(restaurant.businessType),
+    })),
   }));
 
   const adminCount = users.filter((u) => u.role === "restaurant_admin").length;
@@ -48,7 +52,7 @@ export default async function SuperAdminUsersPage() {
             <span className="font-bold text-[#24211E]">{users.length}</span>
           </div>
           <div className="rounded-xl border border-[#E8DFD1] bg-[#FAF5ED] px-3.5 py-1.5 text-center shadow-xs">
-            <span className="text-[#B58A4B] block font-medium">Restaurant Admins</span>
+            <span className="text-[#B58A4B] block font-medium">Business Admins</span>
             <span className="font-bold text-[#B58A4B]">{adminCount}</span>
           </div>
           <div className="rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-1.5 text-center shadow-xs">
