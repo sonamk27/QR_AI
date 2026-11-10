@@ -6,7 +6,7 @@ service cloud.firestore {
     }
 
     function verifiedUser() {
-      return signedIn();
+      return signedIn() && request.auth.token.email_verified == true;
     }
 
     function isSuperAdmin() {
@@ -58,7 +58,7 @@ service cloud.firestore {
         && (!('instagramUrl' in request.resource.data) || request.resource.data.instagramUrl == null || request.resource.data.instagramUrl is string)
         && (!('facebookUrl' in request.resource.data) || request.resource.data.facebookUrl == null || request.resource.data.facebookUrl is string)
         && (!('shareCaption' in request.resource.data) || request.resource.data.shareCaption == null || request.resource.data.shareCaption is string);
-      allow read: if (signedIn()
+      allow read: if (verifiedUser()
         && (resource.data.ownerUid == request.auth.uid || isSuperAdmin()));
       allow update: if (isSuperAdmin()
           && request.resource.data.ownerUid == resource.data.ownerUid

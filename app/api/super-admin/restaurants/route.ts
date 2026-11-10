@@ -134,11 +134,6 @@ export async function POST(req: Request) {
     owner: {
       id: created.owner.id,
       name: created.owner.name,
-      email: created.owner.email,
-    },
-    credentials: {
-      email: created.owner.email,
-      password: rawPassword,
     },
     emailVerificationRequired: true,
     verificationEmailSent,

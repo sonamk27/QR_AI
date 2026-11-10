@@ -47,7 +47,10 @@ export function VerifyEmailView({ token, initialEmail }: { token: string; initia
       setMessage("A Firebase verification link has been sent. Check your inbox, verify your email, then sign in.");
     } catch (error) {
       setState("error");
-      setMessage(error instanceof Error ? error.message : "Could not send a new link.");
+      const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+      setMessage(code === "auth/too-many-requests"
+        ? "Firebase has temporarily limited verification emails. Wait before requesting another and check your inbox and spam folder."
+        : error instanceof Error ? error.message : "Could not send a new link.");
     } finally {
       setBusy(false);
     }

@@ -1,5 +1,5 @@
-import { lazy, Suspense } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { lazy, Suspense, useLayoutEffect, useRef } from "react";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import HomePage from "../../app/page";
 
 const FirebaseAuthForm = lazy(() => import("./FirebaseAuthForm"));
@@ -34,6 +34,28 @@ function LoadingPage() {
 export default function App() {
   return (
     <BrowserRouter>
+      <RouteAnimatedContent />
+    </BrowserRouter>
+  );
+}
+
+function RouteAnimatedContent() {
+  const location = useLocation();
+  const contentRef = useRef<HTMLDivElement>(null);
+  const previousPath = useRef(location.pathname);
+
+  useLayoutEffect(() => {
+    if (previousPath.current === location.pathname) return;
+    previousPath.current = location.pathname;
+    const content = contentRef.current;
+    if (!content || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    content.classList.remove("route-enter");
+    void content.offsetWidth;
+    content.classList.add("route-enter");
+  }, [location.pathname]);
+
+  return (
+    <div ref={contentRef} className="route-enter">
       <Suspense fallback={<LoadingPage />}>
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -78,6 +100,6 @@ export default function App() {
           <Route path="*" element={<HomePage />} />
         </Routes>
       </Suspense>
-    </BrowserRouter>
+    </div>
   );
 }

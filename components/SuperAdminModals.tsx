@@ -21,9 +21,6 @@ export function CreateRestaurantModal() {
   const [createdInfo, setCreatedInfo] = useState<{
     restaurantName: string;
     businessType: BusinessType;
-    ownerName: string;
-    email: string;
-    pass: string;
     verificationEmailSent: boolean;
   } | null>(null);
 
@@ -68,10 +65,21 @@ export function CreateRestaurantModal() {
       setCreatedInfo({
         restaurantName: form.name,
         businessType: form.businessType,
-        ownerName: form.ownerName,
-        email: data.credentials?.email || form.ownerEmail,
-        pass: data.credentials?.password || form.password,
         verificationEmailSent: Boolean(data.verificationEmailSent),
+      });
+      setForm({
+        name: "",
+        businessType: "",
+        city: "",
+        googleReviewUrl: "",
+        instagramUrl: "",
+        facebookUrl: "",
+        shareCaption: "",
+        ownerName: "",
+        ownerEmail: "",
+        password: "",
+        referredByName: "",
+        aiEnabled: true,
       });
       router.refresh();
     } catch (err: any) {
@@ -80,16 +88,6 @@ export function CreateRestaurantModal() {
       setBusy(false);
     }
   }
-
-  const welcomeMessage = createdInfo
-    ? `Hello ${createdInfo.ownerName}! Your ReviewFlow dashboard for ${createdInfo.restaurantName} is active.\n` +
-      `Business type: ${BUSINESS_TYPE_LABELS[createdInfo.businessType]}\n\n` +
-      `🌐 Verify email: ${typeof window !== "undefined" ? window.location.origin : ""}/verify-email?email=${encodeURIComponent(createdInfo.email)}\n` +
-      `🌐 Login: ${typeof window !== "undefined" ? window.location.origin : ""}/login\n` +
-      `📧 Email: ${createdInfo.email}\n` +
-      `🔑 Password: ${createdInfo.pass}\n\n` +
-      `Verify your email address before signing in. Then log in to open your dashboard.`
-    : "";
 
   return (
     <>
@@ -120,28 +118,7 @@ export function CreateRestaurantModal() {
                   </p>
                 </div>
 
-                <div className="rounded-lg bg-paper p-4 text-xs font-mono whitespace-pre-wrap select-all border border-line">
-                  {welcomeMessage}
-                </div>
-
-                <div className="flex flex-wrap gap-2 pt-2">
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(welcomeMessage);
-                      alert("Message copied to clipboard!");
-                    }}
-                    className="btn flex-1 text-xs"
-                  >
-                    Copy Credentials Message
-                  </button>
-                  <a
-                    href={`https://wa.me/?text=${encodeURIComponent(welcomeMessage)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn-ghost flex-1 text-xs text-center"
-                  >
-                    Share via WhatsApp
-                  </a>
+                <div className="flex justify-end pt-2">
                   <button
                     onClick={() => {
                       setCreatedInfo(null);
@@ -318,6 +295,8 @@ export function CreateRestaurantModal() {
                     <input
                       required
                       className="input font-mono"
+                      type="password"
+                      autoComplete="new-password"
                       value={form.password}
                       onChange={(e) => setForm({ ...form, password: e.target.value })}
                     />

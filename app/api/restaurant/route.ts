@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getOwnerContext } from "@/lib/auth";
+import { isSupportedLogoUrl } from "@/lib/logo-url";
 
 const schema = z.object({
   name: z.string().min(2).max(100),
   city: z.string().max(80).optional().nullable(),
-  logoUrl: z.string().url().max(300).optional().nullable().or(z.literal("")),
+  logoUrl: z.string().trim().url().max(300).optional().nullable().or(z.literal(""))
+    .refine((url) => !url || isSupportedLogoUrl(url), "Logo URL must point to a PNG or SVG image."),
   brandColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
 });
 

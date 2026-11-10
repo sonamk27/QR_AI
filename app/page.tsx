@@ -32,7 +32,7 @@ function ReviewPreview() {
   return (
     <div
       aria-label="Preview of the guest review experience"
-      className="mx-auto w-full max-w-xs rounded-3xl border border-[#E8DFD1] bg-white p-5 shadow-subtle"
+      className="landing-preview mx-auto w-full max-w-xs rounded-3xl border border-[#E8DFD1] bg-white p-5 shadow-subtle"
     >
       <div className="text-center">
         <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-[#FAF5ED] text-base text-[#B58A4B] border border-[#E8D8BA]">
@@ -99,35 +99,35 @@ export default function Home() {
       {/* Hero Section */}
       <section className="mx-auto grid w-full max-w-6xl items-center gap-8 px-4 pb-12 pt-8 sm:gap-10 sm:px-8 sm:pb-16 sm:pt-14 lg:grid-cols-[1.2fr_0.8fr] lg:gap-14 lg:pb-20">
         <div>
-          <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[#E8D8BA] bg-[#FAF5ED] px-3 py-1 text-[11px] font-bold leading-relaxed text-[#7A5826] sm:px-3.5 sm:text-xs">
+          <span className="landing-hero-item landing-hero-badge inline-flex max-w-full items-center gap-1.5 rounded-full border border-[#E8D8BA] bg-[#FAF5ED] px-3 py-1 text-[11px] font-bold leading-relaxed text-[#7A5826] sm:px-3.5 sm:text-xs">
             <span>✨</span>
             <span>More Reviews. Happier Customers. Stronger Loyalty.</span>
           </span>
 
-          <h1 className="mt-4 font-serif text-3xl font-extrabold leading-tight tracking-tight text-[#24211E] sm:text-5xl">
+          <h1 className="landing-hero-item landing-hero-title mt-4 font-serif text-3xl font-extrabold leading-tight tracking-tight text-[#24211E] sm:text-5xl">
             QR Review System for Restaurants
           </h1>
-          <p className="mt-4 max-w-lg text-sm sm:text-base leading-relaxed text-[#716B64]">
+          <p className="landing-hero-item landing-hero-description mt-4 max-w-lg text-sm sm:text-base leading-relaxed text-[#716B64]">
             A simple, seamless and delightful experience — from scan to reward.
             Guests scan table QRs, collect digital stamps, unlock customizable vouchers, and create editable rating-based review drafts.
           </p>
 
-          <div className="mt-6 flex flex-col items-stretch gap-2.5 sm:mt-8 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+          <div className="landing-hero-item landing-hero-actions mt-6 flex flex-col items-stretch gap-2.5 sm:mt-8 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
             <Link
               href="/signup"
-              className="rounded-2xl bg-[#B58A4B] px-4 py-3.5 text-center text-xs font-bold text-white shadow-xs transition hover:bg-[#9E7438] active:scale-[0.98] sm:px-6"
+              className="rounded-2xl bg-[#B58A4B] px-4 py-3.5 text-center text-xs font-bold text-white shadow-xs transition hover:-translate-y-0.5 hover:bg-[#9E7438] active:scale-[0.98] sm:px-6"
             >
               Start Free Restaurant Trial →
             </Link>
             <Link
               href="/login"
-              className="rounded-2xl border border-[#E8DFD1] bg-white px-4 py-3.5 text-center text-xs font-bold text-[#24211E] shadow-2xs transition hover:bg-[#FAF7F2] sm:px-5"
+              className="rounded-2xl border border-[#E8DFD1] bg-white px-4 py-3.5 text-center text-xs font-bold text-[#24211E] shadow-2xs transition hover:-translate-y-0.5 hover:bg-[#FAF7F2] sm:px-5"
             >
               Owner Portal Sign In
             </Link>
           </div>
 
-          <p className="mt-4 text-xs text-[#716B64]/70">
+          <p className="landing-hero-item landing-hero-note mt-4 text-xs text-[#716B64]/70">
             ₹999 per QR code per year • Seamless table stand activation
           </p>
         </div>
@@ -140,10 +140,11 @@ export default function Home() {
         aria-label="Features"
         className="mx-auto grid w-full max-w-6xl gap-4 border-t border-[#E8DFD1] px-4 py-10 sm:grid-cols-2 sm:gap-6 sm:px-8 sm:py-12 lg:grid-cols-4"
       >
-        {features.map((feature) => (
+        {features.map((feature, index) => (
           <article
             key={feature.title}
-            className="rounded-2xl border border-[#E8DFD1] bg-white p-4 shadow-subtle transition hover:border-[#B58A4B] sm:p-5"
+            className="landing-feature rounded-2xl border border-[#E8DFD1] bg-white p-4 shadow-subtle transition duration-300 hover:-translate-y-1 hover:border-[#B58A4B] hover:shadow-elevated sm:p-5"
+            style={{ animationDelay: `${index * 90}ms` }}
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FAF5ED] text-xl border border-[#E8D8BA]">
               {feature.icon}

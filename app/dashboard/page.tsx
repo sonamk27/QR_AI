@@ -56,7 +56,7 @@ export default async function Overview() {
   const max = Math.max(1, ...s.distribution.map((d) => d.count));
 
   return (
-    <div className="screen-enter space-y-6 sm:space-y-7">
+    <div className="space-y-6 sm:space-y-7">
       <header className="flex flex-col gap-4 border-b border-[#E8DFD1] pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9A7441]">Restaurant overview · Last 30 days</p>

@@ -15,8 +15,11 @@ export default function FirebaseResetPasswordPage() {
     try {
       await sendPasswordResetEmail(getFirebaseServices().auth, email.trim());
       setMessage("If a Firebase account exists for that email, a password reset link has been sent.");
-    } catch {
-      setMessage("Firebase could not send the reset email. Check the address and try again.");
+    } catch (error) {
+      const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+      setMessage(code === "auth/too-many-requests"
+        ? "Firebase has temporarily limited reset emails. Wait before requesting another and check your inbox and spam folder."
+        : "Firebase could not send the reset email. Check the address and try again.");
     } finally {
       setBusy(false);
     }
@@ -24,7 +27,7 @@ export default function FirebaseResetPasswordPage() {
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-5 py-10">
-      <section className="screen-enter rounded-3xl border border-[#E8DFD1] bg-white p-6 shadow-subtle sm:p-8">
+      <section className="rounded-3xl border border-[#E8DFD1] bg-white p-6 shadow-subtle sm:p-8">
         <p className="text-xs font-semibold uppercase tracking-wider text-ink/50">Firebase account</p>
         <h1 className="mt-2 text-3xl font-semibold">Reset your password</h1>
         <p className="mt-2 text-sm text-ink/70">We’ll email a secure Firebase password reset link.</p>

@@ -89,7 +89,7 @@ export default function QrRequestsPage() {
     const restaurantRef = doc(db, "restaurants", restaurantId);
     const requestRef = doc(collection(db, "qrRequests"));
     const qrRef = doc(collection(db, "qrCodes"));
-    const slug = crypto.randomUUID().replaceAll("-", "");
+    const slug = qrRef.id;
 
     await runTransaction(db, async (transaction) => {
       const restaurantSnap = await transaction.get(restaurantRef);

@@ -217,9 +217,10 @@ export function ProfileForm({ r, firebaseSavers }: { r: R; firebaseSavers?: Fire
                 type="url"
                 defaultValue={r.logoUrl ?? ""}
                 className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] px-3.5 py-2 text-xs font-medium text-[#24211E] outline-none focus:border-[#B58A4B] focus:bg-white"
-                placeholder="https://example.com/logo.png"
+                placeholder="https://example.com/logo.png or logo.svg"
                 onChange={(e) => setLogoPreview(e.target.value)}
               />
+              <p className="mt-1 text-[11px] text-[#716B64]">Use a PNG or SVG image URL. Leave blank to use no logo.</p>
             </div>
           </div>
 

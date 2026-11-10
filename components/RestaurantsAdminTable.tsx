@@ -155,7 +155,8 @@ function EditRestaurantButton({ restaurantId }: { restaurantId: string }) {
                     </div>
                     {textField("name", "Business name")}
                     {textField("city", "City")}
-                    {textField("logoUrl", "Logo URL", "url", true)}
+                    {textField("logoUrl", "Logo URL (optional)", "url", true)}
+                    <p className="text-xs text-ink/55 sm:col-span-2">Use a PNG or SVG image URL, or leave blank for no logo.</p>
                     {textField("referredByName", "Referred by / seller")}
                   </div>
                 </div>

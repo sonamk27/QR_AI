@@ -2,6 +2,7 @@ import { useOutletContext } from "react-router-dom";
 import { doc, writeBatch } from "firebase/firestore";
 import { ProfileForm } from "../../components/ProfileForm";
 import { isGoogleBusinessUrl } from "../../lib/google-business-url";
+import { isSupportedLogoUrl } from "../../lib/logo-url";
 import { getFirebaseServices } from "./firebase";
 import type { DashboardOutletContext } from "./DashboardShell";
 
@@ -25,7 +26,9 @@ export default function ProfileSettingsPage() {
       if ((values.city?.length ?? 0) > 80) throw new Error("City must be 80 characters or fewer.");
       if (!/^#[0-9a-fA-F]{6}$/.test(values.brandColor)) throw new Error("Enter a valid 6-digit brand colour.");
       if (values.logoUrl) {
-        try { new URL(values.logoUrl); } catch { throw new Error("Enter a valid logo URL."); }
+        if (values.logoUrl.length > 300 || !isSupportedLogoUrl(values.logoUrl)) {
+          throw new Error("Enter a valid PNG or SVG logo URL (300 characters or fewer).");
+        }
       }
       const batch = writeBatch(db);
       batch.update(restaurantRef, values);
