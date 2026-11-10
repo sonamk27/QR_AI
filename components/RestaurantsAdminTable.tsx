@@ -24,7 +24,6 @@ type RestaurantRow = {
     id: string;
     name: string;
     email: string;
-    emailVerifiedAt: string | null;
   };
   _count: {
     qrCodes: number;
@@ -53,7 +52,6 @@ function EditRestaurantButton({ restaurantId }: { restaurantId: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState<RestaurantEditData | null>(null);
-  const [ownerEmailVerified, setOwnerEmailVerified] = useState(false);
 
   async function openEditor() {
     setOpen(true);
@@ -65,7 +63,6 @@ function EditRestaurantButton({ restaurantId }: { restaurantId: string }) {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not load restaurant details.");
       const r = result.restaurant;
-      setOwnerEmailVerified(Boolean(r.owner?.emailVerifiedAt));
       setForm({
         name: r.name ?? "",
         businessType: getBusinessType(r.businessType),
@@ -166,9 +163,6 @@ function EditRestaurantButton({ restaurantId }: { restaurantId: string }) {
                     {textField("ownerName", "Owner name")}
                     {textField("ownerEmail", "Owner email", "email")}
                   </div>
-                  <p className={`mt-2 text-xs font-medium ${ownerEmailVerified ? "text-emerald-700" : "text-amber-800"}`}>
-                    Saved email: {ownerEmailVerified ? "verified" : "not verified"}. Any email change requires verification before the owner can sign in.
-                  </p>
                 </div>
                 <div>
                   <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-ink/55">Business links and message</h4>
@@ -625,9 +619,6 @@ export function RestaurantsAdminTable({
                   <td className="td">
                     <p className="font-medium text-ink">{r.owner.name}</p>
                     <p className="text-xs text-ink/60">{r.owner.email}</p>
-                    <span className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${r.owner.emailVerifiedAt ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
-                      {r.owner.emailVerifiedAt ? "Email verified" : "Email not verified"}
-                    </span>
                   </td>
                   <td className="td">
                     <span className="inline-flex items-center rounded-md bg-paper px-2 py-0.5 text-xs font-semibold text-ink border border-line">

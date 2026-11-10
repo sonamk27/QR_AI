@@ -3,7 +3,6 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { getSuperAdmin } from "@/lib/auth";
 import { isGoogleBusinessUrl } from "@/lib/google-business-url";
-import { issueEmailVerification } from "@/lib/email-verification";
 import { isSupportedLogoUrl } from "@/lib/logo-url";
 
 const schema = z.union([
@@ -58,7 +57,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const restaurant = await db.restaurant.findUnique({
     where: { id: id },
-    include: { owner: { select: { id: true, name: true, email: true, emailVerifiedAt: true } } },
+    include: { owner: { select: { id: true, name: true, email: true } } },
   });
   if (!restaurant) return NextResponse.json({ error: "Restaurant not found." }, { status: 404 });
   return NextResponse.json({ restaurant });
@@ -79,14 +78,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if ("action" in parsed.data && parsed.data.action === "update_restaurant") {
     const d = parsed.data;
     const email = d.ownerEmail.toLowerCase();
-    const [existingUser, owner] = await Promise.all([
-      db.user.findUnique({ where: { email }, select: { id: true } }),
-      db.user.findUnique({ where: { id: restaurant.ownerId }, select: { email: true } }),
-    ]);
+    const existingUser = await db.user.findUnique({ where: { email }, select: { id: true } });
     if (existingUser && existingUser.id !== restaurant.ownerId) {
       return NextResponse.json({ error: "That email is already in use by another account." }, { status: 409 });
     }
-    const emailChanged = owner?.email.toLowerCase() !== email;
 
     await db.$transaction([
       db.restaurant.update({
@@ -106,7 +101,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       }),
       db.user.update({
         where: { id: restaurant.ownerId },
-        data: { name: d.ownerName, email, emailVerifiedAt: emailChanged ? null : undefined },
+        data: { name: d.ownerName, email },
       }),
       db.auditLog.create({
         data: {
@@ -118,31 +113,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         },
       }),
     ]);
-    if (emailChanged) {
-      try {
-        await issueEmailVerification(restaurant.ownerId, email);
-      } catch (error) {
-        console.error("Updated owner verification email could not be sent:", error);
-      }
-    }
-    return NextResponse.json({ ok: true, emailVerificationRequired: emailChanged });
+    return NextResponse.json({ ok: true });
   }
 
   if ("action" in parsed.data && parsed.data.action === "update_owner") {
     const email = parsed.data.ownerEmail.toLowerCase();
-    const [existingUser, owner] = await Promise.all([
-      db.user.findUnique({ where: { email }, select: { id: true } }),
-      db.user.findUnique({ where: { id: restaurant.ownerId }, select: { email: true } }),
-    ]);
+    const existingUser = await db.user.findUnique({ where: { email }, select: { id: true } });
     if (existingUser && existingUser.id !== restaurant.ownerId) {
       return NextResponse.json({ error: "That email is already in use by another account." }, { status: 409 });
     }
-    const emailChanged = owner?.email.toLowerCase() !== email;
 
     await db.$transaction([
       db.user.update({
         where: { id: restaurant.ownerId },
-        data: { name: parsed.data.ownerName, email, emailVerifiedAt: emailChanged ? null : undefined },
+        data: { name: parsed.data.ownerName, email },
       }),
       db.auditLog.create({
         data: {
@@ -154,14 +138,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         },
       }),
     ]);
-    if (emailChanged) {
-      try {
-        await issueEmailVerification(restaurant.ownerId, email);
-      } catch (error) {
-        console.error("Updated owner verification email could not be sent:", error);
-      }
-    }
-    return NextResponse.json({ ok: true, emailVerificationRequired: emailChanged });
+    return NextResponse.json({ ok: true });
   }
 
   if ("action" in parsed.data && parsed.data.action === "update_google_link") {

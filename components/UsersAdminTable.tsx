@@ -8,7 +8,6 @@ type UserItem = {
   id: string;
   name: string;
   email: string;
-  emailVerifiedAt: string | null;
   phoneNumber: string | null;
   role: "restaurant_admin" | "super_admin";
   createdAt: string;
@@ -74,9 +73,7 @@ function ResetPasswordModal({
       `🌐 Login: ${typeof window !== "undefined" ? window.location.origin : ""}/login\n` +
       `📧 Email: ${user.email}\n` +
       `🔑 Password: ${successInfo.pass}\n\n` +
-      (user.emailVerifiedAt
-        ? "You can now log in to your dashboard."
-        : "Verify your email before signing in. If the link expired, open /verify-email and request a new one.")
+      "You can now log in to your dashboard."
     : `A Firebase password reset link was sent to ${user.email}. The user can set a new password from that email.`
     : "";
 
@@ -353,9 +350,6 @@ export function UsersAdminTable({ users, currentAdminId, firebaseActions }: { us
                   <td className="td font-semibold text-ink">{u.name}</td>
                   <td className="td text-xs">
                     <div className="font-mono text-ink/80">{u.email}</div>
-                    <span className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${u.emailVerifiedAt ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
-                      {u.emailVerifiedAt ? "Verified" : "Unverified"}
-                    </span>
                   </td>
                   <td className="td text-xs">
                     <div className="font-mono text-ink/80">{u.phoneNumber || "—"}</div>

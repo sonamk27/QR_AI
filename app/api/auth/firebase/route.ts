@@ -48,10 +48,6 @@ export async function POST(req: Request) {
         !["google.com", "password"].includes(String(provider))) {
       return NextResponse.json({ error: "Use Google or email and password to continue." }, { status: 401 });
     }
-    if (parsed.data.mode === "login" && payload.email_verified !== true) {
-      return NextResponse.json({ error: "Verify your email using the Firebase link before signing in." }, { status: 403 });
-    }
-
     const email = payload.email.toLowerCase();
     let user = await db.user.findUnique({ where: { email } });
 
@@ -63,7 +59,6 @@ export async function POST(req: Request) {
         user = await db.user.create({
           data: {
             email,
-            emailVerifiedAt: payload.email_verified === true ? new Date() : null,
             name: parsed.data.name,
             passwordHash: await bcrypt.hash(randomBytes(32).toString("hex"), 12),
             role: "restaurant_admin",
@@ -87,15 +82,6 @@ export async function POST(req: Request) {
     }
 
     if (!user) return NextResponse.json({ error: "Unable to create or find your account." }, { status: 500 });
-    if (payload.email_verified === true && !user.emailVerifiedAt) {
-      user = await db.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date() } });
-      await db.emailVerificationToken.deleteMany({ where: { userId: user.id } });
-    }
-    if (parsed.data.mode === "signup" && payload.email_verified !== true) {
-      return NextResponse.json({ ok: true, emailVerificationRequired: true,
-        redirect: `/verify-email?email=${encodeURIComponent(email)}` });
-    }
-
     await setSessionCookie(await createSessionToken({ uid: user.id, role: user.role }));
     return NextResponse.json({ ok: true, redirect: user.role === "super_admin" ? "/super-admin" : "/dashboard" });
   } catch (error) {

@@ -5,7 +5,6 @@ import { randomBytes } from "crypto";
 import { db } from "@/lib/db";
 import { getSuperAdmin } from "@/lib/auth";
 import { isGoogleBusinessUrl } from "@/lib/google-business-url";
-import { issueEmailVerification } from "@/lib/email-verification";
 
 const schema = z.object({
   name: z.string().trim().min(2, "Business name is required").max(100),
@@ -77,7 +76,6 @@ export async function POST(req: Request) {
           name: data.ownerName,
           passwordHash,
           role: "restaurant_admin",
-          emailVerifiedAt: null,
         },
       });
       const restaurant = await tx.restaurant.create({
@@ -120,14 +118,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unable to create the restaurant account. Please try again." }, { status: 500 });
   }
 
-  let verificationEmailSent = false;
-  try {
-    await issueEmailVerification(created.owner.id, created.owner.email);
-    verificationEmailSent = true;
-  } catch (error) {
-    console.error("Restaurant owner verification email could not be sent:", error);
-  }
-
   return NextResponse.json({
     ok: true,
     restaurant: created.restaurant,
@@ -135,7 +125,5 @@ export async function POST(req: Request) {
       id: created.owner.id,
       name: created.owner.name,
     },
-    emailVerificationRequired: true,
-    verificationEmailSent,
   });
 }

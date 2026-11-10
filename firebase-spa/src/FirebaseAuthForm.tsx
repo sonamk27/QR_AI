@@ -5,10 +5,8 @@ import {
   deleteUser,
   GoogleAuthProvider,
   getAdditionalUserInfo,
-  sendEmailVerification,
   signInWithEmailAndPassword,
   signInWithPopup,
-  signOut,
   type User,
 } from "firebase/auth";
 import { doc, getDoc, serverTimestamp, writeBatch } from "firebase/firestore";
@@ -20,11 +18,7 @@ type Props = { mode: "login" | "signup"; portal?: Portal };
 export default function FirebaseAuthForm({ mode, portal }: Props) {
   const navigate = useNavigate();
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
-  const [unverifiedUser, setUnverifiedUser] = useState<User | null>(null);
-  const [verificationBusy, setVerificationBusy] = useState(false);
-  const [verificationAttempted, setVerificationAttempted] = useState(false);
 
   async function provisionRestaurant(uid: string, email: string, name: string, restaurantName: string, city: string, refCode: string) {
     const { db } = getFirebaseServices();
@@ -80,9 +74,6 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
   }
 
   async function completeLogin(user: User) {
-    if (!user.emailVerified) {
-      throw new Error("Verify your email using the link sent to your inbox before signing in.");
-    }
     const { db } = getFirebaseServices();
     const snap = await getDoc(doc(db, "users", user.uid));
     if (!snap.exists()) throw new Error("No ReviewFlow profile is linked to this Firebase account. Create an account or contact your administrator.");
@@ -107,9 +98,6 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
     }
     setBusy(true);
     setError("");
-    setNotice("");
-    setUnverifiedUser(null);
-    setVerificationAttempted(false);
     try {
       const { auth } = getFirebaseServices();
       const credential = mode === "signup"
@@ -122,20 +110,6 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
           await deleteUser(credential.user).catch((cleanupError) => console.error("Could not remove incomplete Firebase signup", cleanupError));
           throw provisionError;
         }
-        try {
-          await sendEmailVerification(credential.user);
-        } catch {
-          await signOut(auth);
-          throw new Error("Account created, but the verification email could not be sent. Please try signing in again to request another link.");
-        }
-        await signOut(auth);
-        setNotice("Account created. Check your inbox and verify your email before signing in.");
-        return;
-      }
-      if (!credential.user.emailVerified) {
-        setUnverifiedUser(credential.user);
-        setNotice("Your email is not verified yet. Check your inbox, or request one new verification link below.");
-        return;
       }
       await completeLogin(credential.user);
     } catch (caught) {
@@ -153,25 +127,6 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
     }
   }
 
-  async function resendVerification() {
-    if (!unverifiedUser || verificationBusy || verificationAttempted) return;
-    setVerificationBusy(true);
-    setVerificationAttempted(true);
-    setError("");
-    setNotice("");
-    try {
-      await sendEmailVerification(unverifiedUser);
-      setNotice("Verification link sent. Check your inbox and spam folder before requesting another.");
-    } catch (caught) {
-      const code = caught && typeof caught === "object" && "code" in caught ? String(caught.code) : "";
-      setError(code === "auth/too-many-requests"
-        ? "Firebase has temporarily limited verification emails. Wait before requesting another."
-        : caught instanceof Error ? caught.message : "Could not send the verification email.");
-    } finally {
-      setVerificationBusy(false);
-    }
-  }
-
   async function googleSignIn() {
     const form = document.querySelector<HTMLFormElement>("form[data-auth-form]");
     const data = form ? Object.fromEntries(new FormData(form).entries()) : {};
@@ -181,14 +136,9 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
     }
     setBusy(true);
     setError("");
-    setNotice("");
     try {
       const { auth } = getFirebaseServices();
       const credential = await signInWithPopup(auth, new GoogleAuthProvider());
-      if (!credential.user.emailVerified) {
-        await signOut(auth);
-        throw new Error("Verify your email using the link sent to your inbox before signing in.");
-      }
       if (mode === "signup") {
         try {
           await provisionRestaurant(credential.user.uid, credential.user.email ?? "", String(data.name), String(data.restaurantName), String(data.city ?? ""), String(data.refCode ?? ""));
@@ -239,12 +189,6 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
           {field("password", mode === "signup" ? "Password (8+ characters)" : "Password", "password", true, mode === "signup" ? "new-password" : "current-password")}
           {mode === "signup" && field("refCode", "Referral code (optional)", "text", false)}
           {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-          {notice && <p role="status" className="text-sm text-green-700">{notice}</p>}
-          {unverifiedUser && (
-            <button type="button" onClick={resendVerification} disabled={verificationBusy || verificationAttempted} className="w-full text-sm font-semibold text-[#7A5826] underline disabled:opacity-60">
-              {verificationBusy ? "Sending…" : verificationAttempted ? "Verification email request sent" : "Resend verification email"}
-            </button>
-          )}
           <button className="btn w-full" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>
         </form>
         {portal !== "super_admin" && <>
@@ -261,7 +205,6 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
         </>}
         {mode === "login" && <Link to="/reset-password" className="mt-4 inline-flex text-sm font-medium text-[#7A5826] underline">Forgot password?</Link>}
         {mode === "signup" && <p className="mt-6 text-sm text-ink/70">Already have an account? <Link className="underline" to="/login">Sign in</Link></p>}
-        {mode === "login" && portal !== "super_admin" && <p className="mt-6 text-sm text-ink/70">New here? <Link className="underline" to="/signup">Create an account</Link></p>}
       </section>
     </main>
   );

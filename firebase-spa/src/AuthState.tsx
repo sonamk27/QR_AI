@@ -20,7 +20,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   async function loadProfile(current: User | null) {
-    if (!current || !current.emailVerified) {
+    if (!current) {
       setProfile(null);
       return;
     }

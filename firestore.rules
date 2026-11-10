@@ -6,7 +6,7 @@ service cloud.firestore {
     }
 
     function verifiedUser() {
-      return signedIn() && request.auth.token.email_verified == true;
+      return signedIn();
     }
 
     function isSuperAdmin() {

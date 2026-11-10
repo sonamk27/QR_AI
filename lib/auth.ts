@@ -56,7 +56,7 @@ export async function getOwnerContext() {
     include: { restaurants: { take: 1 } },
   });
   const restaurant = user?.restaurants[0];
-  if (!user || !user.emailVerifiedAt || user.role !== "restaurant_admin" || !restaurant) return null;
+  if (!user || user.role !== "restaurant_admin" || !restaurant) return null;
   return { user, restaurant };
 }
 
@@ -64,5 +64,5 @@ export async function getSuperAdmin() {
   const s = await getSession();
   if (!s || s.role !== "super_admin") return null;
   const user = await db.user.findUnique({ where: { id: s.uid } });
-  return user?.role === "super_admin" && user.emailVerifiedAt ? user : null;
+  return user?.role === "super_admin" ? user : null;
 }

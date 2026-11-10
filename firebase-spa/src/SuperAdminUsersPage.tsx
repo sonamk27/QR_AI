@@ -7,7 +7,7 @@ import { useAuthState } from "./AuthState";
 import { getBusinessType, type BusinessType } from "../../lib/business-type";
 
 type UserRow = {
-  id: string; name: string; email: string; emailVerifiedAt: string | null; phoneNumber: string | null;
+  id: string; name: string; email: string; phoneNumber: string | null;
   role: "restaurant_admin" | "super_admin"; createdAt: string;
   restaurants: { id: string; name: string; businessType: BusinessType; city: string | null; status: string }[];
 };
@@ -31,7 +31,7 @@ export default function SuperAdminUsersPage() {
       }
       setRows(userSnap.docs.map((item) => {
         const data = item.data();
-        return { id: item.id, name: String(data.name ?? ""), email: String(data.email ?? ""), emailVerifiedAt: data.emailVerifiedAt ? iso(data.emailVerifiedAt) : null,
+        return { id: item.id, name: String(data.name ?? ""), email: String(data.email ?? ""),
           phoneNumber: data.phoneNumber ?? null, role: data.role === "super_admin" ? "super_admin" as const : "restaurant_admin" as const,
           createdAt: iso(data.createdAt), restaurants: restaurantsByOwner.get(item.id) ?? [] };
       }).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)));

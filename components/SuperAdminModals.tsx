@@ -21,7 +21,6 @@ export function CreateRestaurantModal() {
   const [createdInfo, setCreatedInfo] = useState<{
     restaurantName: string;
     businessType: BusinessType;
-    verificationEmailSent: boolean;
   } | null>(null);
 
   const [form, setForm] = useState({
@@ -65,7 +64,6 @@ export function CreateRestaurantModal() {
       setCreatedInfo({
         restaurantName: form.name,
         businessType: form.businessType,
-        verificationEmailSent: Boolean(data.verificationEmailSent),
       });
       setForm({
         name: "",
@@ -111,11 +109,7 @@ export function CreateRestaurantModal() {
                   <p className="mt-1 text-sm font-medium text-emerald-900">
                     {createdInfo.restaurantName} · {BUSINESS_TYPE_LABELS[createdInfo.businessType]}
                   </p>
-                  <p className="mt-1 text-sm text-emerald-800">
-                    {createdInfo.verificationEmailSent
-                      ? "A verification link was sent to the owner. They must verify this email before signing in."
-                      : "The owner email is unverified and the verification email could not be sent. Ask them to request a link from the Verify Email page before signing in."}
-                  </p>
+                  <p className="mt-1 text-sm text-emerald-800">The owner can sign in now.</p>
                 </div>
 
                 <div className="flex justify-end pt-2">

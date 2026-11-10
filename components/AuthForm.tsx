@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { createUserWithEmailAndPassword, GoogleAuthProvider, sendEmailVerification, signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase-client";
 
 type Portal = "restaurant_admin" | "super_admin";
@@ -34,7 +34,6 @@ export function AuthForm({
       const credential = mode === "signup"
         ? await createUserWithEmailAndPassword(auth, String(body.email), String(body.password))
         : await signInWithEmailAndPassword(auth, String(body.email), String(body.password));
-      if (mode === "signup") await sendEmailVerification(credential.user);
       const response = await fetch("/api/auth/firebase", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -176,14 +175,7 @@ export function AuthForm({
         {field("email", "Email", "email", true, mode === "signup" ? "off" : "username")}
         {field("password", mode === "signup" ? "Password (8+ characters)" : "Password", "password", true, mode === "signup" ? "new-password" : "current-password")}
         {mode === "signup" && field("refCode", "Referral code (optional)", "text", false)}
-        {error && (
-          <div role="alert" className="space-y-1 text-sm text-red-700">
-            <p>{error}</p>
-            {mode === "login" && error.toLowerCase().includes("verify your email") && (
-              <Link href="/verify-email" className="inline-flex font-semibold underline">Resend verification link</Link>
-            )}
-          </div>
-        )}
+        {error && <div role="alert" className="space-y-1 text-sm text-red-700"><p>{error}</p></div>}
         <button className="btn w-full" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>
       </form>
       {mode === "login" && (
