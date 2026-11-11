@@ -1,4 +1,5 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import { connectAuthEmulator, getAuth } from "firebase/auth";
 import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 
@@ -7,15 +8,27 @@ const config = {
   authDomain: import.meta.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   appId: import.meta.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  ...(import.meta.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+    ? { measurementId: import.meta.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }
+    : {}),
 };
 
 let emulatorsConnected = false;
+let appCheckInitialized = false;
 
 export function getFirebaseServices() {
   if (Object.values(config).some((value) => !value)) {
     throw new Error("Add the Firebase web app settings to the environment before using Firebase.");
   }
   const app = getApps().length ? getApp() : initializeApp(config);
+  const appCheckSiteKey = import.meta.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY?.trim();
+  if (appCheckSiteKey && !appCheckInitialized) {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(appCheckSiteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+    appCheckInitialized = true;
+  }
   const auth = getAuth(app);
   const db = getFirestore(app);
   if (import.meta.env.DEV && import.meta.env.VITE_FIREBASE_EMULATORS === "true" && !emulatorsConnected) {

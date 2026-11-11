@@ -28,14 +28,14 @@ const config: Config = {
           950: "#1A1715",
         },
         gold: {
-          DEFAULT: "#B58A4B",
+          DEFAULT: "#8B642D",
           50: "#FCFAF6",
           100: "#F6EFE3",
           200: "#EBDFC7",
           300: "#DFCA9F",
           400: "#CBAA70",
-          500: "#B58A4B",
-          600: "#9E7438",
+          500: "#8B642D",
+          600: "#704A20",
           700: "#7A5826",
           800: "#573E1B",
           900: "#382710",
@@ -53,8 +53,8 @@ const config: Config = {
         // Mapped legacy tokens for full backward compatibility across all existing UI components
         ink: "#24211E",
         paper: "#F7F2E9",
-        leaf: "#B58A4B",
-        saffron: "#B58A4B",
+        leaf: "#8B642D",
+        saffron: "#8B642D",
         line: "#E8DFD1",
       },
       fontFamily: {

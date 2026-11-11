@@ -304,7 +304,7 @@ export function RestaurantHomeView({ slug, restaurant, program }: { slug: string
 
         {/* Footer info */}
         <div className="mt-12 flex items-center justify-center gap-2 text-xs text-[#716B64]">
-          <Image src="/logo.png" alt="ReviewFlow" width={36} height={18} className="rounded object-contain opacity-60" />
+          <Image src="/logo.svg" alt="ReviewFlow logo" width={24} height={24} className="rounded object-contain opacity-60" />
           <span>Powered by ReviewFlow • Customer &amp; Rewards Hub</span>
         </div>
       </div>

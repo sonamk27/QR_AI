@@ -118,22 +118,6 @@ export default async function DashboardPaymentsPage() {
               <span>✉️</span>
               <span>billing@reviewflow.in</span>
             </a>
-            <a
-              href="tel:+919876543210"
-              className="rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] px-3 py-1.5 text-xs font-semibold text-[#24211E] hover:bg-[#F4ECE1] transition flex items-center gap-1.5"
-            >
-              <span>📞</span>
-              <span>+91 98765 43210</span>
-            </a>
-            <a
-              href="https://wa.me/919876543210?text=Hi%20ReviewFlow,%20I%20have%20an%20inquiry%20regarding%20my%20payment%20and%20invoice."
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-xl border border-[#D1E7DC] bg-[#EEF6F2] px-3 py-1.5 text-xs font-bold text-[#2E6B4F] hover:bg-[#E2F0E8] transition flex items-center gap-1.5"
-            >
-              <span>💬</span>
-              <span>WhatsApp Desk</span>
-            </a>
           </div>
         </div>
       </div>

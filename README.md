@@ -130,6 +130,27 @@ The default `npm run dev` and `npm run build` commands target this React SPA.
 The separate legacy Next.js build remains available through `dev:next`,
 `build:next`, and `start:next` while existing PostgreSQL data is migrated.
 
+For Firebase Hosting, set `VITE_SITE_URL` to the canonical HTTPS origin of the
+custom domain before building (for example, in the deployment environment).
+When it is omitted, the SEO asset generator uses the Firebase `*.web.app`
+origin if `NEXT_PUBLIC_FIREBASE_PROJECT_ID` is configured. The build emits
+`robots.txt` and an absolute-URL `sitemap.xml`; canonical metadata uses the
+configured origin or the current browser origin. Add the custom domain to
+Firebase Hosting and Firebase Authentication's authorized domains separately.
+
+Firebase Analytics is initialized only after a visitor accepts optional
+analytics in the consent banner. Configure
+`NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` with the Firebase web app's measurement
+ID to enable it; this ID is public client configuration, not a secret.
+Optionally configure `NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY` with a public reCAPTCHA
+v3 site key registered for the Firebase app to enable Firebase App Check.
+App Check enforcement must also be enabled in the Firebase console after the
+site key is registered. Never put a reCAPTCHA secret key, service account,
+database credential, or server API key in a `VITE_*` or `NEXT_PUBLIC_*` value.
+The Firebase dev/build lifecycle generates a compressed PNG logo and a
+1200×630 PNG social preview from their SVG sources. Payment QR artwork is
+intentionally left untouched so scan reliability is preserved.
+
 The Firebase web app settings are public client configuration; the service
 account JSON is private and is only used by local migration/bootstrap scripts.
 Do not set up Functions or Firebase Storage for this Spark deployment.

@@ -118,7 +118,7 @@ export function OpenQrButton({
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={logoUrl}
-                        alt=""
+                        alt={`${restaurantName} logo`}
                         className="mx-auto mb-1.5 h-10 w-20 rounded-lg bg-[#F7F2E9] p-1 object-contain border border-[#E8DFD1] shadow-2xs"
                       />
                     )}

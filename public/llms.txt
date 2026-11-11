@@ -1,0 +1,22 @@
+# ReviewFlow
+
+> ReviewFlow helps restaurants collect guest feedback and manage digital loyalty through QR code experiences.
+
+## Public pages
+
+- [Home](/)
+- [Create a restaurant account](/signup)
+- [Sign in](/login)
+- [Privacy Policy](/privacy)
+- [Terms of Service](/terms)
+
+## Product
+
+- Guests can scan a restaurant QR code, share feedback, and access the restaurant's loyalty experience.
+- Restaurant owners can manage QR requests, feedback, loyalty, and payment history.
+- ReviewFlow creates editable review drafts; guests choose whether to post them.
+
+## Notes
+
+- Guest QR pages use the `/r/{slug}` path.
+- Dashboard and account pages require authentication and are not intended for indexing.

@@ -124,7 +124,7 @@ export function LoyaltySettingsView({
   firebaseActions?: FirebaseActions;
 }) {
   const [program, setProgram] = useState(initialProgram);
-  const [title, setTitle] = useState(initialProgram.title || "The Daily Brew Rewards");
+  const [title, setTitle] = useState(initialProgram.title || "Rewards Program");
   const [isActive, setIsActive] = useState(initialProgram.isActive);
   const [discountType, setDiscountType] = useState<"PERCENT" | "FLAT" | "FREE_ITEM">(
     (initialProgram.discountType as "PERCENT" | "FLAT" | "FREE_ITEM") || "PERCENT"
@@ -1273,7 +1273,7 @@ export function LoyaltySettingsView({
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. The Daily Brew Rewards"
+              placeholder="Enter a loyalty program name"
               className="min-h-11 w-full rounded-xl border border-[#E8DFD1] bg-white px-4 py-2.5 text-base font-semibold text-[#24211E] outline-none shadow-2xs focus:border-[#B58A4B] sm:min-h-10 sm:text-sm"
               required
             />

@@ -7,9 +7,12 @@
   },
   "scripts": {
     "dev": "vite --config vite.config.ts",
+    "predev": "node scripts/optimize-public-assets.mjs",
     "dev:firebase": "vite --config vite.config.ts",
+    "predev:firebase": "node scripts/optimize-public-assets.mjs",
     "dev:next": "next dev",
     "build": "npm run build:firebase",
+    "prebuild:firebase": "node scripts/optimize-public-assets.mjs",
     "build:next": "prisma generate && next build",
     "build:firebase": "vite build --config vite.config.ts",
     "preview:firebase": "vite preview --config vite.config.ts",

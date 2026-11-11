@@ -236,7 +236,7 @@ export function ProfileForm({ r, firebaseSavers }: { r: R; firebaseSavers?: Fire
                 required
                 defaultValue={r.name}
                 className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] px-3.5 py-2 text-xs font-medium text-[#24211E] outline-none focus:border-[#B58A4B] focus:bg-white"
-                placeholder="The Daily Brew"
+                placeholder="Enter restaurant name"
               />
             </div>
             <div>
@@ -248,7 +248,7 @@ export function ProfileForm({ r, firebaseSavers }: { r: R; firebaseSavers?: Fire
                 name="city"
                 defaultValue={r.city ?? ""}
                 className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] px-3.5 py-2 text-xs font-medium text-[#24211E] outline-none focus:border-[#B58A4B] focus:bg-white"
-                placeholder="Mumbai"
+                placeholder="Enter city"
               />
             </div>
           </div>
@@ -365,7 +365,7 @@ export function ProfileForm({ r, firebaseSavers }: { r: R; firebaseSavers?: Fire
               className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] p-3 text-xs font-medium text-[#24211E] outline-none focus:border-[#B58A4B] focus:bg-white"
               rows={2}
               maxLength={500}
-              placeholder="e.g. Follow us & tag @Restaurant to get featured in our stories!"
+              placeholder="Add an optional message for customers to share."
             />
           </div>
 

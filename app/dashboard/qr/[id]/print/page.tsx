@@ -67,7 +67,7 @@ export default async function PrintableTableTentPage({
           <div className="pt-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={r.logoUrl || "/logo.png"}
+              src={r.logoUrl || "/logo.svg"}
               alt={`${r.name} logo`}
               className="mx-auto mb-2 h-14 w-28 rounded-lg border border-zinc-200 bg-[#F7F2E9] p-1 object-contain shadow-sm"
             />

@@ -17,7 +17,7 @@ export function Shell({
       <aside className="border-b border-warmBorder bg-charcoal text-white p-5 md:border-b-0 md:border-r md:min-h-screen flex flex-col justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <Image src="/logo.png" alt="ReviewFlow" width={64} height={32} className="shrink-0 rounded-lg object-contain" />
+            <Image src="/logo.svg" alt="ReviewFlow logo" width={32} height={32} className="shrink-0 rounded-lg object-contain" />
             <p className="font-display text-xl font-bold tracking-tight text-white">ReviewFlow</p>
           </div>
           <p className="mt-1 truncate text-xs text-warmGray-light">{title}</p>

@@ -65,7 +65,7 @@ export function SuperAdminSidebar({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <span className="flex h-10 w-20 shrink-0 items-center justify-center rounded-lg bg-[#F7F2E9] px-1.5 shadow-sm">
-                <Image src="/logo.png" alt="" width={160} height={80} className="h-auto w-full object-contain" />
+                <Image src="/logo.svg" alt="ReviewFlow logo" width={48} height={48} className="h-auto w-full object-contain" />
               </span>
               <span className="font-serif text-xl font-bold tracking-tight text-white">
                 ReviewFlow

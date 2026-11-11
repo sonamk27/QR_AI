@@ -76,12 +76,6 @@ export function OwnerPaymentReceiptModal({
                     billing@reviewflow.in
                   </a>
                 </p>
-                <p>
-                  <span className="text-[#716B64]/60">Helpline: </span>
-                  <a href="tel:+919876543210" className="text-[#B58A4B] hover:underline">
-                    +91 98765 43210
-                  </a>
-                </p>
               </div>
             </div>
             <div className="text-right">

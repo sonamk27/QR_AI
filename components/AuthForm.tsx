@@ -152,7 +152,7 @@ export function AuthForm({
       <section className="screen-enter w-full">
       <Link href="/" aria-label="ReviewFlow home" className="inline-flex w-fit items-center gap-3 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#B58A4B]">
         <span className="flex h-12 w-24 items-center justify-center rounded-xl border border-[#E8DFD1] bg-white px-2 shadow-sm">
-          <Image src="/logo.png" alt="" width={160} height={80} priority className="h-auto w-full object-contain" />
+          <Image src="/logo.svg" alt="ReviewFlow logo" width={48} height={48} priority className="h-auto w-full object-contain" />
         </span>
         <span className="font-display text-xl font-semibold">ReviewFlow</span>
       </Link>

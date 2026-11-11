@@ -38,7 +38,7 @@ function ReviewPreview() {
         <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-[#FAF5ED] text-base text-[#B58A4B] border border-[#E8D8BA]">
           ☕
         </div>
-        <p className="text-[11px] font-medium text-[#716B64] uppercase tracking-wider">The Daily Brew</p>
+        <p className="text-[11px] font-medium text-[#716B64] uppercase tracking-wider">Your Restaurant</p>
         <h2 className="mt-1 font-serif text-lg font-bold text-[#24211E]">Share Your Experience</h2>
         <div className="mt-2 text-2xl text-[#B58A4B] tracking-wider" aria-label="5 out of 5 stars">
           <span aria-hidden="true">★★★★★</span>
@@ -46,13 +46,13 @@ function ReviewPreview() {
       </div>
 
       <div className="mt-4 flex flex-wrap justify-center gap-1.5 text-xs">
-        <span className="rounded-full bg-[#24211E] px-3 py-1 font-semibold text-white text-[11px]">Great coffee</span>
-        <span className="rounded-full bg-[#24211E] px-3 py-1 font-semibold text-white text-[11px]">Cozy ambience</span>
-        <span className="rounded-full border border-[#E8DFD1] bg-[#FAF7F2] px-3 py-1 text-[#716B64] text-[11px]">Friendly staff</span>
+        <span className="rounded-full bg-[#24211E] px-3 py-1 font-semibold text-white text-[11px]">Food</span>
+        <span className="rounded-full bg-[#24211E] px-3 py-1 font-semibold text-white text-[11px]">Service</span>
+        <span className="rounded-full border border-[#E8DFD1] bg-[#FAF7F2] px-3 py-1 text-[#716B64] text-[11px]">Atmosphere</span>
       </div>
 
       <blockquote className="mt-4 rounded-xl border border-[#E8D8BA] bg-[#FAF5ED] p-3 text-xs leading-relaxed italic text-[#24211E]">
-        &ldquo;The coffee was excellent, the ambience is cozy, and the staff is very friendly. Highly recommended!&rdquo;
+        An editable review draft based on a guest's visit.
       </blockquote>
 
       <div className="mt-4 rounded-xl bg-[#B58A4B] px-4 py-2.5 text-center text-xs font-bold text-white shadow-2xs">
@@ -69,7 +69,7 @@ export default function Home() {
       <div className="border-b border-[#E8DFD1] bg-[#FAF7F2]">
         <header className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-8 sm:py-4">
           <div className="flex w-full min-w-0 items-center gap-2.5 sm:w-auto">
-            <Image src="/logo.png" alt="ReviewFlow" width={128} height={64} className="shrink-0 rounded-xl object-contain" />
+            <Image src="/logo.svg" alt="ReviewFlow logo" width={52} height={52} className="shrink-0 rounded-xl object-contain" />
             <div className="min-w-0">
               <Link href="/" className="font-serif text-xl font-bold tracking-tight text-[#24211E]">
                 ReviewFlow
@@ -90,7 +90,7 @@ export default function Home() {
               href="/signup"
               className="flex-1 rounded-xl bg-[#B58A4B] px-4 py-2 text-center text-xs font-bold text-white shadow-xs transition hover:bg-[#9E7438] sm:flex-none"
             >
-              Get Your QR
+              Get Your Restaurant QR
             </Link>
           </nav>
         </header>
@@ -117,7 +117,7 @@ export default function Home() {
               href="/signup"
               className="rounded-2xl bg-[#B58A4B] px-4 py-3.5 text-center text-xs font-bold text-white shadow-xs transition hover:-translate-y-0.5 hover:bg-[#9E7438] active:scale-[0.98] sm:px-6"
             >
-              Start Free Restaurant Trial →
+              Get Your Restaurant QR →
             </Link>
             <Link
               href="/login"
@@ -156,6 +156,15 @@ export default function Home() {
           </article>
         ))}
       </section>
+      <footer className="border-t border-[#E8DFD1] bg-[#FAF7F2] px-4 py-6 sm:px-8">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 text-xs text-[#4A453F] sm:flex-row sm:items-center sm:justify-between">
+          <p>ReviewFlow helps restaurants manage guest feedback and digital loyalty.</p>
+          <nav aria-label="Legal" className="flex flex-wrap gap-4 font-semibold text-[#573E1B]">
+            <Link href="/privacy" className="underline">Privacy Policy</Link>
+            <Link href="/terms" className="underline">Terms of Service</Link>
+          </nav>
+        </div>
+      </footer>
     </main>
   );
 }

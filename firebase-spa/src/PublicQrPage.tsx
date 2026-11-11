@@ -5,6 +5,7 @@ import { signInAnonymously } from "firebase/auth";
 import { CustomerJourneyView } from "../../components/customer/CustomerJourneyView";
 import { getFirebaseServices } from "./firebase";
 import { resolveQrStatus } from "./qrStatus";
+import { getSiteOrigin, updatePageMetadata, updateStructuredData } from "./seo";
 
 export default function PublicQrPage() {
   const { slug = "" } = useParams(); const [search] = useSearchParams(); const location = useLocation();
@@ -92,6 +93,42 @@ export default function PublicQrPage() {
     })();
     return () => { live = false; };
   }, [slug]);
+  useEffect(() => {
+    if (!page) {
+      updateStructuredData("reviewflow-local-business-schema");
+      return;
+    }
+
+    const restaurant = page.restaurant;
+    const origin = getSiteOrigin();
+    const canonicalPath = location.pathname;
+    const canonicalUrl = new URL(canonicalPath, `${origin}/`).href;
+    const city = typeof restaurant.city === "string" ? restaurant.city.trim() : "";
+    updatePageMetadata({
+      title: `${restaurant.name} guest reviews and rewards | ReviewFlow`,
+      description: city
+        ? `Share feedback and explore ${restaurant.name}'s guest rewards in ${city}.`
+        : `Share feedback and explore ${restaurant.name}'s guest rewards.`,
+      noIndex: true,
+    }, canonicalPath);
+
+    if (city) {
+      updateStructuredData("reviewflow-local-business-schema", {
+        "@context": "https://schema.org",
+        "@type": restaurant.businessType === "RESTAURANT" ? "Restaurant" : "LocalBusiness",
+        "@id": canonicalUrl,
+        name: restaurant.name,
+        url: canonicalUrl,
+        ...(restaurant.logoUrl ? { image: restaurant.logoUrl } : {}),
+        address: {
+          "@type": "PostalAddress",
+          addressLocality: city,
+        },
+      });
+    } else {
+      updateStructuredData("reviewflow-local-business-schema");
+    }
+  }, [location.pathname, page]);
   if (loading) return <main className="grid min-h-screen place-items-center bg-[#FDFBF7] p-6 text-center text-sm text-[#716B64]">Loading restaurant…</main>;
   if (unavailable) return <main className="grid min-h-screen place-items-center bg-[#FDFBF7] p-6 text-center"><div className="max-w-sm"><p className="mb-4 text-4xl">🔒</p><h1 className="font-serif text-2xl font-bold text-stone-900">QR Code Unavailable</h1><p className="mx-auto mt-2 max-w-xs text-sm text-stone-600">This QR code is currently inactive. Please ask the restaurant staff for assistance.</p></div></main>;
   if (error || !page) return <main className="grid min-h-screen place-items-center bg-[#FDFBF7] p-6 text-center text-sm text-red-700">{error || "QR code not found."}</main>;

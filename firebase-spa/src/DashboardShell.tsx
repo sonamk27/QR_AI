@@ -60,12 +60,12 @@ export default function DashboardShell() {
       <aside className="flex flex-col border-b border-[#38332E] bg-[#24211E] p-4 text-stone-200 md:sticky md:top-0 md:h-screen md:border-b-0 md:border-r">
         <div className="hidden border-b border-[#38332E] pb-4 md:block">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-12 w-24 shrink-0 items-center justify-center rounded-xl bg-[#F7F2E9] px-1.5 shadow-sm"><img src="/logo.png" alt="ReviewFlow" className="h-auto w-full object-contain" /></span>
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#F7F2E9] px-1.5 shadow-sm"><img src="/logo.svg" alt="ReviewFlow logo" className="h-auto w-full object-contain" /></span>
             <div className="min-w-0 flex-1"><h2 className="truncate font-display text-base font-bold leading-tight text-white">{restaurant?.name ?? "ReviewFlow"}</h2><p className="truncate text-[11px] text-stone-400">{restaurant?.city || "Restaurant Portal"}</p></div>
           </div>
         </div>
         <div className="mb-2 flex items-center justify-between border-b border-[#38332E] pb-3 md:hidden">
-          <div className="flex items-center gap-2"><img src="/logo.png" alt="ReviewFlow" className="h-10 w-20 rounded-lg bg-[#F7F2E9] object-contain p-1" /><span className="max-w-[160px] truncate font-display text-sm font-bold text-white">{restaurant?.name ?? "ReviewFlow"}</span></div>
+          <div className="flex items-center gap-2"><img src="/logo.svg" alt="ReviewFlow logo" className="h-10 w-10 rounded-lg bg-[#F7F2E9] object-contain p-1" /><span className="max-w-[160px] truncate font-display text-sm font-bold text-white">{restaurant?.name ?? "ReviewFlow"}</span></div>
           <button onClick={logout} className="rounded-lg bg-stone-800/80 px-2.5 py-1 text-xs font-semibold text-stone-300">Sign out</button>
         </div>
         <nav aria-label="Restaurant navigation" className="flex gap-1 overflow-x-auto md:mt-4 md:min-h-0 md:flex-1 md:flex-col md:gap-3 md:overflow-y-auto md:overflow-x-hidden">

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title description">
+  <title id="title">ReviewFlow</title>
+  <desc id="description">QR reviews and digital loyalty for restaurants.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fbf8f2"/>
+      <stop offset="1" stop-color="#efe4d2"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" rx="36" fill="url(#background)"/>
+  <circle cx="1030" cy="120" r="220" fill="#b58a4b" opacity=".09"/>
+  <circle cx="1070" cy="560" r="170" fill="#24211e" opacity=".05"/>
+  <rect x="88" y="88" width="1024" height="454" rx="32" fill="#fff" stroke="#e8dfd1" stroke-width="2"/>
+  <rect x="132" y="140" width="82" height="82" rx="22" fill="#faf5ed" stroke="#e8d8ba" stroke-width="2"/>
+  <path d="M153 168h40l-4 30c-1 8-7 13-16 13s-15-5-16-13l-4-30zm-3-7h46v8h-46zm11-12h24v7h-24z" fill="#b58a4b"/>
+  <text x="238" y="196" fill="#24211e" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="700">ReviewFlow</text>
+  <text x="132" y="330" fill="#24211e" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="700">More reviews.</text>
+  <text x="132" y="407" fill="#24211e" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="700">Stronger loyalty.</text>
+  <text x="136" y="466" fill="#716b64" font-family="Arial, Helvetica, sans-serif" font-size="27">QR-powered guest feedback and digital rewards for restaurants.</text>
+  <rect x="840" y="316" width="205" height="126" rx="18" fill="#faf7f2" stroke="#e8dfd1" stroke-width="2"/>
+  <path d="M873 347h30v30h-30zm44 0h30v30h-30zm-44 44h30v30h-30zm44 8h12v-8h8v8h10v-8h-8v-8h-14v8h-8zm30-8h8v8h-8zm-8 22h8v8h-8zm16 0h14v8h-14z" fill="#24211e"/>
+</svg>

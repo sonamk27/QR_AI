@@ -88,8 +88,16 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.currentTarget).entries());
+    if (String(data.website ?? "").trim()) {
+      setError("Unable to submit this request. Please try again.");
+      return;
+    }
     if (mode === "signup" && (!String(data.name ?? "").trim() || !String(data.restaurantName ?? "").trim())) {
       setError("Enter your name and restaurant name to create an account.");
+      return;
+    }
+    if (mode === "signup" && (String(data.name).trim().length > 100 || String(data.restaurantName).trim().length > 100 || String(data.city ?? "").trim().length > 80)) {
+      setError("Names must be 100 characters or fewer and city must be 80 characters or fewer.");
       return;
     }
     if (mode === "signup" && portal) {
@@ -130,8 +138,16 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
   async function googleSignIn() {
     const form = document.querySelector<HTMLFormElement>("form[data-auth-form]");
     const data = form ? Object.fromEntries(new FormData(form).entries()) : {};
+    if (String(data.website ?? "").trim()) {
+      setError("Unable to submit this request. Please try again.");
+      return;
+    }
     if (mode === "signup" && (!String(data.name ?? "").trim() || !String(data.restaurantName ?? "").trim())) {
       setError("Enter your name and restaurant name to create an account.");
+      return;
+    }
+    if (mode === "signup" && (String(data.name).trim().length > 100 || String(data.restaurantName).trim().length > 100 || String(data.city ?? "").trim().length > 80)) {
+      setError("Names must be 100 characters or fewer and city must be 80 characters or fewer.");
       return;
     }
     setBusy(true);
@@ -164,7 +180,8 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
       <input id={name} name={name} type={type} required={required} autoComplete={autocomplete}
         autoCapitalize={type === "email" ? "none" : undefined} spellCheck={type === "email" ? false : undefined}
         className="w-full rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-2.5 text-sm text-[#24211E] outline-none transition focus:border-[#B58A4B] focus:ring-1 focus:ring-[#B58A4B]"
-        minLength={type === "password" ? 8 : undefined} />
+        minLength={type === "password" ? 8 : undefined}
+        maxLength={type === "password" ? 128 : type === "email" ? 254 : name === "city" ? 80 : name === "refCode" ? 64 : 100} />
     </div>
   );
 
@@ -173,7 +190,7 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
       <section className="w-full">
         <Link to="/" aria-label="ReviewFlow home" className="inline-flex w-fit items-center gap-3 rounded-xl">
           <span className="flex h-12 w-24 items-center justify-center rounded-xl border border-[#E8DFD1] bg-white px-2 shadow-sm">
-            <img src="/logo.png" alt="" width={160} height={80} className="h-auto w-full object-contain" />
+            <img src="/logo.svg" alt="ReviewFlow logo" width={48} height={48} className="h-auto w-full object-contain" />
           </span>
           <span className="font-display text-xl font-semibold">ReviewFlow</span>
         </Link>
@@ -182,6 +199,12 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
         </p>
         <h1 className="mt-2 text-3xl font-semibold">{mode === "login" ? portal === "super_admin" ? "Super Admin sign in" : portal === "restaurant_admin" ? "Restaurant Admin sign in" : "Sign in" : "Create your restaurant account"}</h1>
         <form data-auth-form onSubmit={submit} autoComplete={mode === "signup" ? "off" : "on"} className="mt-6 space-y-4">
+          {mode === "signup" && (
+            <div aria-hidden="true" className="absolute -left-[10000px] h-px w-px overflow-hidden">
+              <label htmlFor="website">Leave this field empty</label>
+              <input id="website" name="website" type="text" tabIndex={-1} autoComplete="off" />
+            </div>
+          )}
           {mode === "signup" && field("name", "Your name", "text", true, "name")}
           {mode === "signup" && field("restaurantName", "Restaurant name", "text", true, "organization")}
           {mode === "signup" && field("city", "City", "text", false, "address-level2")}

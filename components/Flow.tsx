@@ -260,7 +260,7 @@ export function Flow({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={logoUrl}
-            alt=""
+            alt={`${name} logo`}
             className="mx-auto mb-2 h-14 w-14 rounded-full object-cover"
           />
         )}
@@ -756,7 +756,7 @@ export function Flow({
       )}
       <footer className="mt-4 flex items-center justify-center gap-1.5 text-center text-xs text-ink/40">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="ReviewFlow" className="h-5 w-10 rounded object-contain opacity-50" />
+        <img src="/logo.svg" alt="ReviewFlow logo" className="h-5 w-5 rounded object-contain opacity-50" />
         Powered by ReviewFlow
       </footer>
     </main>

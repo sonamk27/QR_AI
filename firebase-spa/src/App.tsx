@@ -1,6 +1,12 @@
-import { lazy, Suspense, useLayoutEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import HomePage from "../../app/page";
+import { PageLoadingScreen } from "../../components/PageLoadingScreen";
+import CookieConsent from "./CookieConsent";
+import { PrivacyPolicyPage, TermsOfServicePage } from "./LegalPages";
+import NotFoundPage from "./NotFoundPage";
+import { trackConsentedPageView } from "./consent";
+import { getPageMetadata, getSiteOrigin, updatePageMetadata, updateStructuredData } from "./seo";
 
 const FirebaseAuthForm = lazy(() => import("./FirebaseAuthForm"));
 const FirebaseResetPasswordPage = lazy(() => import("./FirebaseResetPasswordPage"));
@@ -28,7 +34,7 @@ const SuperAdminRestaurantsPage = lazy(() => import("./SuperAdminRestaurantsPage
 const FirebaseMigrationNotice = lazy(() => import("./FirebaseMigrationNotice"));
 
 function LoadingPage() {
-  return <main className="mx-auto max-w-md p-8 text-center text-sm text-[#716B64]">Loading…</main>;
+  return <PageLoadingScreen />;
 }
 
 export default function App() {
@@ -43,6 +49,39 @@ function RouteAnimatedContent() {
   const location = useLocation();
   const contentRef = useRef<HTMLDivElement>(null);
   const previousPath = useRef(location.pathname);
+
+  useEffect(() => {
+    updatePageMetadata(getPageMetadata(location.pathname), location.pathname);
+    void trackConsentedPageView(location.pathname).catch((error) => {
+      console.error("Could not record the consented page view", error);
+    });
+    const origin = getSiteOrigin();
+    if (location.pathname === "/") {
+      updateStructuredData("reviewflow-website-schema", {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": `${origin}/#organization`,
+            name: "ReviewFlow",
+            url: `${origin}/`,
+            logo: `${origin}/logo.svg`,
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": `${origin}/#software`,
+            name: "ReviewFlow",
+            applicationCategory: "BusinessApplication",
+            operatingSystem: "Web",
+            description: getPageMetadata("/").description,
+            url: `${origin}/`,
+          },
+        ],
+      });
+    } else {
+      updateStructuredData("reviewflow-website-schema");
+    }
+  }, [location.pathname]);
 
   useLayoutEffect(() => {
     if (previousPath.current === location.pathname) return;
@@ -63,6 +102,8 @@ function RouteAnimatedContent() {
           <Route path="/admin/login" element={<FirebaseAuthForm mode="login" portal="restaurant_admin" />} />
           <Route path="/signup" element={<FirebaseAuthForm mode="signup" />} />
           <Route path="/reset-password" element={<FirebaseResetPasswordPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsOfServicePage />} />
           <Route path="/r/:slug" element={<PublicQrPage />} />
           <Route path="/r/:slug/review" element={<PublicQrPage />} />
           <Route path="/r/:slug/home" element={<PublicQrPage />} />
@@ -97,9 +138,10 @@ function RouteAnimatedContent() {
           </Route>
           <Route path="/admin" element={<Navigate to="/dashboard" replace />} />
           <Route path="/superadmin/*" element={<Navigate to="/super-admin" replace />} />
-          <Route path="*" element={<HomePage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
+      <CookieConsent />
     </div>
   );
 }

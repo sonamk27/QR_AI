@@ -82,7 +82,7 @@ export function AdminSidebar({
       <div className="hidden md:block pb-4 border-b border-[#38332E]">
         <div className="flex items-center gap-2.5">
           <span className="flex h-12 w-24 shrink-0 items-center justify-center rounded-xl bg-[#F7F2E9] px-1.5 shadow-sm">
-            <Image src="/logo.png" alt="ReviewLoop" width={160} height={80} className="h-auto w-full object-contain" priority />
+            <Image src="/logo.svg" alt="ReviewFlow logo" width={48} height={48} className="h-auto w-full object-contain" priority />
           </span>
           <div className="min-w-0 flex-1">
             <h2 className="font-display text-base font-bold text-white truncate leading-tight">
@@ -99,7 +99,7 @@ export function AdminSidebar({
       <div className="flex items-center justify-between md:hidden pb-3 border-b border-[#38332E] mb-2">
         <div className="flex items-center gap-2">
           <span className="flex h-10 w-20 shrink-0 items-center justify-center rounded-lg bg-[#F7F2E9] px-1 shadow-sm">
-            <Image src="/logo.png" alt="ReviewLoop" width={160} height={80} className="h-auto w-full object-contain" priority />
+            <Image src="/logo.svg" alt="ReviewFlow logo" width={48} height={48} className="h-auto w-full object-contain" priority />
           </span>
           <span className="font-display text-sm font-bold text-white truncate max-w-[160px]">
             {restaurant.name}

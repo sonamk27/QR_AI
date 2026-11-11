@@ -90,6 +90,7 @@ export function CustomerJourneyView({
 }: CustomerJourneyProps) {
   const businessType = getBusinessType(restaurant.businessType);
   const businessFeedback = getBusinessFeedbackConfig(businessType);
+  const isCafeFeedback = businessFeedback.layout === "cafe";
 
   function updateReviewRating(index: number, rating: number) {
     setReviewRatings((current) => {
@@ -961,7 +962,7 @@ export function CustomerJourneyView({
                     type="tel"
                     inputMode="numeric"
                     maxLength={10}
-                    placeholder="98765 43210"
+                    placeholder="Enter your phone number"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
                     className="w-full bg-transparent py-3 pr-4 text-sm font-medium text-[#24211E] outline-none"
@@ -1160,13 +1161,21 @@ export function CustomerJourneyView({
               {/* STAMP CARD (Matching Phone 5 Mockup) */}
               <div className="rounded-3xl border border-[#E8DFD1] bg-white p-5 shadow-subtle">
                 <div className="flex items-center justify-between border-b border-[#E8DFD1]/60 pb-3">
-                  <div>
-                    <h3 className="font-serif text-sm font-bold text-[#24211E]">
-                      {restaurant.name}
-                    </h3>
-                    <p className="text-[11px] text-[#716B64]">
-                      {customer?.name || "Valued Customer"}
-                    </p>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] text-xl text-[#B58A4B]">
+                      {restaurant.logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={restaurant.logoUrl} alt={`${restaurant.name} logo`} className="h-full w-full bg-white object-contain p-1" />
+                      ) : businessFeedback.heroIcon}
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="truncate font-serif text-sm font-bold text-[#24211E]">
+                        {restaurant.name}
+                      </h3>
+                      <p className="text-[11px] text-[#716B64]">
+                        {customer?.name || "Valued Customer"}
+                      </p>
+                    </div>
                   </div>
                   <div className="text-right">
                     <span className="font-serif text-2xl font-black text-[#B58A4B]">
@@ -1444,16 +1453,27 @@ export function CustomerJourneyView({
       ───────────────────────────────────────────────────────────── */}
       {currentView === "review" && (
         <main className="mx-auto min-h-screen max-w-sm px-5 py-6">
-          {/* Header Bar */}
-          <div className="flex items-center justify-between border-b border-[#E8DFD1] pb-3.5">
+          <div
+            className={`flex items-center justify-between border-b pb-3.5 ${
+              isCafeFeedback ? "border-[#D2E0D3]" : "border-[#E8DFD1]"
+            }`}
+          >
             <button
               onClick={() => setCurrentView("welcome")}
-              className="text-xs font-semibold text-[#716B64] hover:text-[#24211E] transition flex items-center gap-1"
+              aria-label="Back to welcome page"
+              className={isCafeFeedback
+                ? "flex h-10 w-10 items-center justify-center rounded-full border border-[#D2E0D3] bg-white text-lg text-[#557A65] shadow-sm transition hover:bg-[#E6EFE6]"
+                : "flex items-center gap-1 text-xs font-semibold text-[#716B64] transition hover:text-[#24211E]"}
             >
-              <span>←</span>
+              <span aria-hidden="true">←</span>
             </button>
-            <div className="text-center">
-              <h2 className="font-serif text-base font-bold text-[#24211E] leading-tight">
+            <div className="min-w-0 text-center">
+              {isCafeFeedback && (
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#557A65]">
+                  A little pause in your day
+                </p>
+              )}
+              <h2 className="font-serif text-base font-bold leading-tight text-[#24211E]">
                 {businessFeedback.reviewTopbar}
               </h2>
               <p className="text-[11px] text-[#716B64]">{restaurant.name}</p>
@@ -1461,27 +1481,71 @@ export function CustomerJourneyView({
             <div className="w-6" />
           </div>
 
-          <div className="mt-5 text-center">
-            {restaurant.logoUrl ? (
+          <div
+            className={isCafeFeedback
+              ? "mt-5 rounded-[2rem] border p-5 text-center shadow-sm"
+              : "mt-5 text-center"}
+            style={isCafeFeedback
+              ? {
+                  borderColor: businessFeedback.borderColor,
+                  background: `linear-gradient(145deg, #FFFFFF 0%, ${businessFeedback.softColor} 100%)`,
+                }
+              : undefined}
+          >
+            {isCafeFeedback ? (
+              <div
+                className="mx-auto mb-4 grid h-16 w-16 place-items-center overflow-hidden rounded-[1.25rem] border bg-white text-3xl shadow-sm"
+                style={{ borderColor: businessFeedback.borderColor, color: businessFeedback.accentColor }}
+              >
+                {restaurant.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={restaurant.logoUrl} alt={`${restaurant.name} logo`} className="h-full w-full object-cover" />
+                ) : businessFeedback.heroIcon}
+              </div>
+            ) : restaurant.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={restaurant.logoUrl} alt="" className="mx-auto mb-3 h-14 w-14 rounded-full border-2 border-white object-cover shadow-sm" />
+              <img src={restaurant.logoUrl} alt={`${restaurant.name} logo`} className="mx-auto mb-3 h-14 w-14 rounded-full border-2 border-white object-cover shadow-sm" />
             ) : (
               <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-[#F6EFE3] font-serif text-xl font-bold text-[#B58A4B] shadow-sm">
                 {restaurant.name.trim().charAt(0).toUpperCase() || "R"}
               </div>
             )}
-            <h3 className="font-serif text-2xl font-bold text-[#24211E]">
+            {isCafeFeedback && (
+              <p className="mb-2 text-[9px] font-bold uppercase tracking-[0.2em] text-[#557A65]">
+                Your visit, your way
+              </p>
+            )}
+            <h3 className={`font-serif font-bold text-[#24211E] ${isCafeFeedback ? "text-3xl leading-tight" : "text-2xl"}`}>
               {businessFeedback.layout === "restaurant"
                 ? `How was your visit to ${restaurant.name}?`
                 : businessFeedback.reviewHeading}
             </h3>
-            <p className="mx-auto mt-1 max-w-xs text-xs text-[#716B64]">
+            <p className={`mx-auto mt-2 max-w-xs text-xs leading-relaxed text-[#716B64] ${isCafeFeedback ? "text-sm" : ""}`}>
               {restaurant.shareCaption || businessFeedback.reviewPrompt}
             </p>
 
-            <div className="my-5">
-              <p className="mb-3 text-sm font-semibold text-[#24211E]">{businessFeedback.reviewInstruction}</p>
-              <div className="space-y-2.5 text-left">
+            <div className={isCafeFeedback ? "mt-6 text-left" : "my-5"}>
+              <p className={`mb-3 font-semibold text-[#24211E] ${isCafeFeedback ? "text-xs uppercase tracking-wide" : "text-sm"}`}>
+                {businessFeedback.reviewInstruction}
+              </p>
+              {isCafeFeedback && (
+                <div className="mb-4 rounded-2xl border bg-white/80 px-4 py-3" style={{ borderColor: businessFeedback.borderColor }}>
+                  <div className="mb-2 flex items-center justify-between text-[10px] font-semibold">
+                    <span className="text-[#716B64]">Your tasting notes</span>
+                    <span style={{ color: businessFeedback.accentColor }}>{reviewRatings.filter(Boolean).length} of 3 rated</span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-[#E6EFE6]">
+                    <div
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{
+                        width: `${(reviewRatings.filter(Boolean).length / 3) * 100}%`,
+                        backgroundColor: businessFeedback.accentColor,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="space-y-3 text-left">
                 {businessFeedback.questions.map((question, index) => (
                   businessFeedback.layout === "salon" ? (
                     <div key={question} className="rounded-2xl border bg-white p-4 shadow-sm" style={{ borderColor: businessFeedback.borderColor }}>
@@ -1498,11 +1562,21 @@ export function CustomerJourneyView({
                       </div>
                     </div>
                   ) : businessFeedback.layout === "cafe" ? (
-                    <div key={question} className="flex min-h-[76px] items-center gap-3 rounded-2xl border bg-white px-3 py-3 shadow-sm" style={{ borderColor: businessFeedback.borderColor }}>
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-lg" style={{ backgroundColor: businessFeedback.softColor }} aria-hidden="true">{businessFeedback.questionIcons[index]}</span>
-                      <div className="min-w-0 flex-1">
-                          <p className="mb-1.5 text-xs font-semibold text-[#24211E]">{question}</p>
-                          <Stars size={29} value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
+                    <div key={question} className="rounded-[1.35rem] border bg-white p-4 shadow-sm transition-shadow hover:shadow-md" style={{ borderColor: businessFeedback.borderColor }}>
+                      <div className="flex items-center gap-3">
+                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-xl" style={{ backgroundColor: businessFeedback.softColor }} aria-hidden="true">{businessFeedback.questionIcons[index]}</span>
+                        <div className="min-w-0">
+                          <p className="text-[9px] font-bold uppercase tracking-[0.16em]" style={{ color: businessFeedback.accentColor }}>
+                            {businessFeedback.aspectLabels[index]}
+                          </p>
+                          <p className="mt-1 text-xs font-semibold leading-relaxed text-[#24211E]">{question}</p>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-2 border-t pt-2" style={{ borderColor: businessFeedback.borderColor }}>
+                        <span className="shrink-0 text-[10px] font-medium text-[#716B64]">
+                          {reviewRatings[index] ? `${reviewRatings[index]} / 5` : "Tap to rate"}
+                        </span>
+                        <Stars size={30} value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
                       </div>
                     </div>
                   ) : businessFeedback.layout === "general-store" ? (
@@ -1528,12 +1602,19 @@ export function CustomerJourneyView({
                 ))}
               </div>
               <p className="mt-2 text-[11px] text-[#716B64]" aria-live="polite">
-                {reviewRatings.filter(Boolean).length === 3 ? businessFeedback.ratingThankYou : `Tap 1–5 stars for ${businessFeedback.aspectLabels.map((aspect) => aspect.toLowerCase()).join(", and ")}.`}
+                {reviewRatings.filter(Boolean).length === 3
+                  ? businessFeedback.ratingThankYou
+                  : isCafeFeedback
+                    ? "A quick rating for each part of your visit helps us make your next cup even better."
+                    : `Tap 1–5 stars for ${businessFeedback.aspectLabels.map((aspect) => aspect.toLowerCase()).join(", and ")}.`}
               </p>
             </div>
           </div>
 
-          <div className="space-y-4 rounded-3xl border bg-white p-5 shadow-subtle" style={{ borderColor: businessFeedback.borderColor }}>
+          <div
+            className={`space-y-4 border bg-white p-5 shadow-subtle ${isCafeFeedback ? "rounded-[1.75rem]" : "rounded-3xl"}`}
+            style={{ borderColor: businessFeedback.borderColor }}
+          >
             {aiGenerated && (
               <div>
                 <label htmlFor="generated-review" className="mb-2 block text-xs font-semibold text-[#716B64]">
@@ -1565,7 +1646,7 @@ export function CustomerJourneyView({
             <button
               onClick={aiGenerated ? handleCopyAndGoogleReview : handleGenerateAiReview}
               disabled={generatingAi || reviewRatings.some((rating) => rating === 0)}
-              className="sticky bottom-3 z-20 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/40 py-3 text-sm font-bold text-white shadow-lg transition active:scale-[0.98] disabled:opacity-60"
+              className={`sticky bottom-3 z-20 flex min-h-12 w-full items-center justify-center gap-2 border border-white/40 py-3 text-sm font-bold text-white shadow-lg transition active:scale-[0.98] disabled:opacity-60 ${isCafeFeedback ? "rounded-full" : "rounded-2xl"}`}
               style={{ backgroundColor: businessFeedback.accentColor }}
               onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentHoverColor; }}
               onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentColor; }}
@@ -1612,7 +1693,7 @@ export function CustomerJourneyView({
           </div>
 
           {/* Bottom Stamp CTA */}
-          {(firebaseContext ? program.isActive : true) && <div className="mt-5 rounded-2xl border border-[#E8DFD1] bg-white p-4 text-center">
+          {(firebaseContext ? program.isActive : true) && <div className={`mt-5 rounded-2xl border p-4 text-center ${isCafeFeedback ? "bg-white/85" : "bg-white"}`} style={{ borderColor: businessFeedback.borderColor }}>
             <p className="text-xs font-semibold text-[#716B64]">
               Want to collect a loyalty stamp for your visit?
             </p>
@@ -1644,6 +1725,18 @@ export function CustomerJourneyView({
               >
                 ✕
               </button>
+            </div>
+
+            <div className="mt-4 flex items-center justify-center gap-2">
+              {restaurant.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={restaurant.logoUrl} alt={`${restaurant.name} logo`} className="h-10 w-10 rounded-lg border border-[#E8DFD1] bg-white object-contain p-1" />
+              ) : (
+                <span className="grid h-10 w-10 place-items-center rounded-lg border border-[#E8DFD1] bg-[#FAF7F2] text-lg" aria-hidden="true">
+                  {businessFeedback.heroIcon}
+                </span>
+              )}
+              <span className="text-xs font-semibold text-[#716B64]">{restaurant.name}</span>
             </div>
 
             <h4 className="mt-3 font-serif text-2xl font-bold text-[#24211E]">
@@ -1699,6 +1792,10 @@ export function CustomerJourneyView({
       {/* SCREEN 3: REWARD REDEEMED CELEBRATION */}
       {currentView === "reward_redeemed" && (
         <main className="mx-auto flex min-h-screen max-w-sm flex-col items-center justify-center px-5 py-8 text-center">
+          {restaurant.logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={restaurant.logoUrl} alt={`${restaurant.name} logo`} className="mb-4 h-12 w-12 rounded-xl border border-[#E8DFD1] bg-white object-contain p-1" />
+          )}
           <div className="relative mb-6 flex h-28 w-28 items-center justify-center rounded-full bg-[#FAF5ED] text-5xl shadow-subtle border-4 border-white text-[#B58A4B]">
             ✓
           </div>
