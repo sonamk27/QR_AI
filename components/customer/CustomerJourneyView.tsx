@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { Stars } from "@/components/Stars";
+import { CafeCupIllustration } from "@/components/customer/CafeCupIllustration";
+import { SalonDecorativeIllustration } from "@/components/customer/SalonDecorativeIllustration";
 import { addDoc, collection, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { getFirebaseServices } from "@/firebase-spa/src/firebase";
 import { getBusinessFeedbackConfig, getBusinessType, type BusinessType } from "@/lib/business-type";
@@ -91,6 +93,7 @@ export function CustomerJourneyView({
   const businessType = getBusinessType(restaurant.businessType);
   const businessFeedback = getBusinessFeedbackConfig(businessType);
   const isCafeFeedback = businessFeedback.layout === "cafe";
+  const isSalonFeedback = businessFeedback.layout === "salon";
 
   function updateReviewRating(index: number, rating: number) {
     setReviewRatings((current) => {
@@ -745,14 +748,14 @@ export function CustomerJourneyView({
 
   return (
     <div
-      className="min-h-screen font-sans text-[#24211E] antialiased"
+      className={`customer-journey min-h-screen font-sans text-[#24211E] antialiased ${isCafeFeedback ? "cafe-journey" : ""} ${isSalonFeedback ? "customer-journey--salon" : ""}`}
       style={{ backgroundColor: businessFeedback.pageColor }}
     >
       {/* ─────────────────────────────────────────────────────────────
           STEP 2: WELCOME PAGE (Branded Landing Page with Two Clear Options)
       ───────────────────────────────────────────────────────────── */}
       {currentView === "welcome" && (
-        <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-between px-5 py-7">
+        <main className={`mx-auto flex min-h-screen max-w-sm flex-col justify-between px-5 py-7 ${isCafeFeedback ? "cafe-welcome" : ""}`}>
           {/* Top Brand Header */}
           <div className="text-center pt-1">
             <div className="inline-flex items-center justify-center">
@@ -761,15 +764,15 @@ export function CustomerJourneyView({
                 <img
                   src={restaurant.logoUrl}
                   alt={restaurant.name}
-                  className="h-12 w-12 rounded-full border object-cover shadow-2xs"
+                  className={`h-12 w-12 rounded-full border object-cover shadow-2xs ${isCafeFeedback ? "cafe-logo-ring" : ""}`}
                   style={{ borderColor: businessFeedback.borderColor }}
                 />
               ) : (
                 <div
-                  className="flex h-12 w-12 items-center justify-center rounded-full border bg-white font-serif text-xl font-bold shadow-2xs"
+                  className={`flex h-12 w-12 items-center justify-center rounded-full border bg-white font-serif text-xl font-bold shadow-2xs ${isCafeFeedback ? "cafe-logo-ring" : ""}`}
                   style={{ borderColor: businessFeedback.borderColor, color: businessFeedback.accentColor }}
                 >
-                  {restaurant.name.trim().charAt(0).toUpperCase() || "R"}
+                  {isCafeFeedback ? "☕" : restaurant.name.trim().charAt(0).toUpperCase() || "R"}
                 </div>
               )}
             </div>
@@ -831,7 +834,7 @@ export function CustomerJourneyView({
               </div>
             ) : (
               <div
-                className={`mx-auto mb-6 flex h-48 w-full max-w-[300px] flex-col justify-between rounded-[2rem] border p-5 text-left shadow-subtle ${businessFeedback.layout === "salon" ? "rotate-[-1deg]" : ""}`}
+                className={`mx-auto mb-6 flex h-48 w-full max-w-[300px] flex-col justify-between rounded-[2rem] border p-5 text-left shadow-subtle ${businessFeedback.layout === "salon" ? "rotate-[-1deg]" : ""} ${isCafeFeedback ? "cafe-welcome-ticket" : ""}`}
                 style={{ borderColor: businessFeedback.borderColor, background: `linear-gradient(145deg, #FFFFFF 0%, ${businessFeedback.softColor} 100%)` }}
               >
                 <div className="flex items-start justify-between">
@@ -839,7 +842,11 @@ export function CustomerJourneyView({
                     <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: businessFeedback.accentColor }}>{businessFeedback.heroEyebrow}</p>
                     <p className="mt-2 max-w-[175px] font-serif text-xl font-bold leading-tight text-[#24211E]">{businessFeedback.heroMessage}</p>
                   </div>
-                  <span className="grid h-14 w-14 place-items-center rounded-2xl bg-white text-3xl shadow-sm" aria-hidden="true">{businessFeedback.heroIcon}</span>
+                  {isCafeFeedback ? (
+                    <CafeCupIllustration className="cafe-ticket-illustration" />
+                  ) : (
+                    <span className="grid h-14 w-14 place-items-center rounded-2xl bg-white text-3xl shadow-sm" aria-hidden="true">{businessFeedback.heroIcon}</span>
+                  )}
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   {businessFeedback.layout === "salon" ? (
@@ -869,7 +876,7 @@ export function CustomerJourneyView({
               <button
                 onClick={() => handleCollectStampClick()}
                 disabled={collectingStamp}
-                className="w-full rounded-2xl py-3.5 text-sm font-bold text-white shadow-xs transition active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
+                className={`w-full rounded-2xl py-3.5 text-sm font-bold text-white shadow-xs transition active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2 ${isCafeFeedback ? "cafe-pill-button" : ""}`}
                 style={{ backgroundColor: businessFeedback.accentColor }}
                 onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentHoverColor; }}
                 onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentColor; }}
@@ -880,7 +887,7 @@ export function CustomerJourneyView({
 
               <button
                 onClick={() => setCurrentView("review")}
-                className="w-full rounded-2xl border bg-white py-3.5 text-sm font-bold text-[#24211E] shadow-2xs transition active:scale-[0.98] flex items-center justify-center gap-2"
+                className={`w-full rounded-2xl border bg-white py-3.5 text-sm font-bold text-[#24211E] shadow-2xs transition active:scale-[0.98] flex items-center justify-center gap-2 ${isCafeFeedback ? "cafe-pill-button" : ""}`}
                 style={{ borderColor: businessFeedback.borderColor }}
                 onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.softColor; }}
                 onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = "#FFFFFF"; }}
@@ -913,7 +920,7 @@ export function CustomerJourneyView({
           STEP 3: ENTER DETAILS ("Join Our Rewards" — matching Phone 3)
       ───────────────────────────────────────────────────────────── */}
       {currentView === "register" && (
-        <main className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center px-5 py-6">
+        <main className={`customer-register-screen mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center px-5 py-6 ${isSalonFeedback ? "customer-salon-screen" : ""}`}>
           <div>
             <button
               onClick={() => setCurrentView("welcome")}
@@ -923,8 +930,8 @@ export function CustomerJourneyView({
             </button>
 
             <div className="mt-4 text-center">
-              <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-[#F6EFE3] text-xl text-[#B58A4B] border border-[#E8D8BA]">
-                🌿
+              <div className="customer-register-icon mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-[#F6EFE3] text-xl text-[#B58A4B] border border-[#E8D8BA]">
+                {isSalonFeedback ? businessFeedback.heroIcon : "🌿"}
               </div>
               <h1 className="mt-3 font-serif text-2xl font-bold text-[#24211E]">
                 Join Our Rewards
@@ -935,7 +942,7 @@ export function CustomerJourneyView({
             </div>
 
             {/* Registration Form */}
-            <form onSubmit={handleRegister} className="mt-7 space-y-4">
+            <form onSubmit={handleRegister} className="customer-register-form mt-7 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-[#716B64] mb-1.5">
                   Full Name
@@ -1004,14 +1011,15 @@ export function CustomerJourneyView({
           <p className="mt-6 text-center text-[11px] text-[#716B64]/70">
             🔒 Fast 1-click registration • Secure &amp; confidential.
           </p>
+          {isSalonFeedback && <SalonDecorativeIllustration className="salon-corner-art" />}
         </main>
       )}
 
       {/* STEP 4: Waiting for owner approval */}
       {currentView === "request_pending" && (
-        <main className="request-pending-screen mx-auto flex min-h-screen max-w-sm flex-col justify-between px-5 py-7">
+        <main className={`customer-pending-screen request-pending-screen mx-auto flex min-h-screen max-w-sm flex-col justify-between px-5 py-7 ${isCafeFeedback ? "request-pending-screen--cafe" : ""} ${isSalonFeedback ? "customer-salon-screen" : ""}`}>
           <div className="pt-2">
-            <span className="request-pending-restaurant font-mono text-xs font-bold uppercase tracking-wider">
+            <span className={`request-pending-restaurant font-mono text-xs font-bold uppercase tracking-wider ${isCafeFeedback ? "request-pending-restaurant--cafe" : ""}`}>
               {restaurant.name}
             </span>
 
@@ -1079,6 +1087,12 @@ export function CustomerJourneyView({
             <p className="request-pending-hint mx-auto max-w-xs text-[11px]">
               Approval checks automatically every 2.5 seconds.
             </p>
+            {isCafeFeedback && (
+              <CafeCupIllustration className="request-pending-illustration mx-auto mt-3 w-56" />
+            )}
+            {isSalonFeedback && (
+              <SalonDecorativeIllustration className="salon-corner-art salon-pending-art" />
+            )}
           </div>
 
           <div className="w-full max-w-xs space-y-3 mx-auto pb-2">
@@ -1096,9 +1110,9 @@ export function CustomerJourneyView({
           STEP 5: MY LOYALTY CARD (Matching Phone 5 in reference mockup)
       ───────────────────────────────────────────────────────────── */}
       {currentView === "card" && (
-        <main className="mx-auto min-h-screen max-w-sm px-5 py-6">
+        <main className={`customer-rewards-screen mx-auto min-h-screen max-w-sm px-5 py-6 ${isCafeFeedback ? "cafe-rewards" : ""} ${isSalonFeedback ? "customer-salon-screen" : ""}`}>
           {/* Header Bar */}
-          <div className="flex items-center justify-between border-b pb-3.5" style={{ borderColor: businessFeedback.borderColor }}>
+          <div className={`customer-rewards-header flex items-center justify-between border-b pb-3.5 ${isCafeFeedback ? "cafe-rewards-header" : ""}`} style={{ borderColor: businessFeedback.borderColor }}>
             {!firebaseContext && <button
               onClick={() => setCurrentView("welcome")}
               className="text-xs font-semibold text-[#716B64] hover:text-[#24211E] transition flex items-center gap-1"
@@ -1133,7 +1147,7 @@ export function CustomerJourneyView({
 
           {/* Pending Stamp Request Banner on Card */}
           {pendingRequestId && (
-            <div className="mt-3.5 flex items-center justify-between rounded-2xl border border-[#E8D8BA] bg-[#FAF5ED] p-3 text-xs text-[#7A5826] shadow-2xs">
+            <div className={`customer-pending-banner mt-3.5 flex items-center justify-between rounded-2xl border border-[#E8D8BA] bg-[#FAF5ED] p-3 text-xs text-[#7A5826] shadow-2xs ${isCafeFeedback ? "cafe-pending-banner" : ""}`}>
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-[#B58A4B] animate-ping shrink-0" />
                 <span>Stamp request sent to staff! Waiting for approval...</span>
@@ -1164,7 +1178,7 @@ export function CustomerJourneyView({
           ) : (
             <div className="mt-5 space-y-4">
               {/* STAMP CARD (Matching Phone 5 Mockup) */}
-              <div className="rounded-3xl border border-[#E8DFD1] bg-white p-5 shadow-subtle">
+              <div className={`customer-stamp-card rounded-3xl border border-[#E8DFD1] bg-white p-5 shadow-subtle ${isCafeFeedback ? "cafe-stamp-card" : ""}`}>
                 <div className="flex items-center justify-between border-b border-[#E8DFD1]/60 pb-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] text-xl text-[#B58A4B]">
@@ -1208,11 +1222,11 @@ export function CustomerJourneyView({
                           }`}
                       >
                         {isStamped ? (
-                          <span className="text-lg">☕</span>
+                          <span className="text-lg">{isSalonFeedback ? businessFeedback.heroIcon : "☕"}</span>
                         ) : isTarget ? (
                           <span className="text-lg">🎁</span>
                         ) : (
-                          <span className="text-sm font-medium">☕</span>
+                          <span className="text-sm font-medium">{isSalonFeedback ? businessFeedback.heroIcon : "☕"}</span>
                         )}
                         <span
                           className={`text-[8px] font-bold ${isStamped ? "text-white/90" : "text-[#716B64]"
@@ -1226,12 +1240,12 @@ export function CustomerJourneyView({
                 </div>
 
                 {/* Progress Subtitle */}
-                <div className="rounded-2xl bg-[#FAF5ED] border border-[#E8D8BA] p-3 text-center">
+                <div className={`customer-rewards-info rounded-2xl bg-[#FAF5ED] border border-[#E8D8BA] p-3 text-center ${isCafeFeedback ? "cafe-rewards-info" : ""}`}>
                   <p className="text-xs font-bold text-[#7A5826]">
                     {currentStamps >= stampsRequired
                       ? "🎉 Goal Reached! Your reward voucher is ready to redeem!"
                       : stampsRemaining === 1
-                        ? "4/5 Stamps — One more visit to unlock your reward!"
+                      ? "4/5 Stamps — One more visit to unlock your reward!"
                         : `${currentStamps}/${stampsRequired} Stamps — ${stampsRemaining} more visits to unlock your reward!`}
                   </p>
                   {customer?.cycleEndsAt && customer.currentStamps > 0 && (
@@ -1261,7 +1275,7 @@ export function CustomerJourneyView({
                       disabled={collectingStamp}
                       className="w-full rounded-2xl bg-[#B58A4B] py-3 text-xs font-bold text-white shadow-xs transition hover:bg-[#9E7438] active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
                     >
-                      <span>☕</span>
+                      <span>{isSalonFeedback ? businessFeedback.heroIcon : "☕"}</span>
                       <span>
                         {pendingRequestId
                           ? "Approval Pending with Staff →"
@@ -1275,7 +1289,7 @@ export function CustomerJourneyView({
               </div>
 
               {/* NEXT REWARD CARD (Golden Gift Box Banner matching Phone 5) */}
-              <div className="rounded-3xl border border-[#E8D8BA] bg-gradient-to-br from-[#FAF5ED] via-[#F4ECE1] to-[#FAF7F2] p-5 shadow-subtle">
+              <div className={`customer-next-reward rounded-3xl border border-[#E8D8BA] bg-gradient-to-br from-[#FAF5ED] via-[#F4ECE1] to-[#FAF7F2] p-5 shadow-subtle ${isCafeFeedback ? "cafe-next-reward" : ""}`}>
                 <div className="flex items-center justify-between">
                   <span className="inline-block rounded-md bg-[#F4ECDD] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#7A5826]">
                     Next Reward
@@ -1333,7 +1347,7 @@ export function CustomerJourneyView({
               )}
 
               {/* Links: View Reward Details & Visit History */}
-              <div className="divide-y divide-[#E8DFD1]/60 rounded-2xl border border-[#E8DFD1] bg-white shadow-subtle overflow-hidden">
+              <div className={`customer-rewards-history divide-y divide-[#E8DFD1]/60 rounded-2xl border border-[#E8DFD1] bg-white shadow-subtle overflow-hidden ${isCafeFeedback ? "cafe-reward-history" : ""}`}>
                 <button
                   onClick={() => {
                     if (activeRewards[0]) {
@@ -1379,7 +1393,7 @@ export function CustomerJourneyView({
               {/* Action: Share Your Experience */}
               <button
                 onClick={() => setCurrentView("review")}
-                className="w-full rounded-2xl border border-[#E8DFD1] bg-white py-3 text-xs font-bold text-[#24211E] shadow-2xs hover:bg-[#FAF7F2] transition flex items-center justify-center gap-2"
+                className={`customer-share-review w-full rounded-2xl border border-[#E8DFD1] bg-white py-3 text-xs font-bold text-[#24211E] shadow-2xs hover:bg-[#FAF7F2] transition flex items-center justify-center gap-2 ${isCafeFeedback ? "cafe-review-pill" : ""}`}
               >
                 <span>⭐</span>
                 <span>Share Your Experience &amp; Review</span>
@@ -1391,6 +1405,7 @@ export function CustomerJourneyView({
               </p>
             </div>
           )}
+          {isSalonFeedback && <SalonDecorativeIllustration className="salon-corner-art" />}
         </main>
       )}
 
@@ -1457,9 +1472,9 @@ export function CustomerJourneyView({
           STEP 7: SHARE YOUR EXPERIENCE (Matching Phone 7 in reference mockup)
       ───────────────────────────────────────────────────────────── */}
       {currentView === "review" && (
-        <main className="mx-auto min-h-screen max-w-sm px-5 py-6">
+        <main className={`customer-review-screen mx-auto min-h-screen max-w-sm px-5 py-6 ${isSalonFeedback ? "customer-salon-screen" : ""}`}>
           <div
-            className={`flex items-center justify-between border-b pb-3.5 ${
+            className={`customer-review-header flex items-center justify-between border-b pb-3.5 ${
               isCafeFeedback ? "border-[#D2E0D3]" : "border-[#E8DFD1]"
             }`}
           >
@@ -1488,8 +1503,8 @@ export function CustomerJourneyView({
 
           <div
             className={isCafeFeedback
-              ? "mt-5 rounded-[2rem] border p-5 text-center shadow-sm"
-              : "mt-5 text-center"}
+              ? "customer-review-intro cafe-review-hero mt-5 rounded-[2rem] border p-5 text-center shadow-sm"
+              : "customer-review-intro mt-5 text-center"}
             style={isCafeFeedback
               ? {
                   borderColor: businessFeedback.borderColor,
@@ -1498,6 +1513,11 @@ export function CustomerJourneyView({
               : undefined}
           >
             {isCafeFeedback ? (
+              <>
+              <div className="cafe-review-art">
+                <CafeCupIllustration className="w-full" />
+                <span className="cafe-review-cup-badge" aria-hidden="true">☕</span>
+              </div>
               <div
                 className="mx-auto mb-4 grid h-16 w-16 place-items-center overflow-hidden rounded-[1.25rem] border bg-white text-3xl shadow-sm"
                 style={{ borderColor: businessFeedback.borderColor, color: businessFeedback.accentColor }}
@@ -1507,6 +1527,7 @@ export function CustomerJourneyView({
                   <img src={restaurant.logoUrl} alt={`${restaurant.name} logo`} className="h-full w-full object-cover" />
                 ) : businessFeedback.heroIcon}
               </div>
+              </>
             ) : restaurant.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={restaurant.logoUrl} alt={`${restaurant.name} logo`} className="mx-auto mb-3 h-14 w-14 rounded-full border-2 border-white object-cover shadow-sm" />
@@ -1529,8 +1550,9 @@ export function CustomerJourneyView({
               {restaurant.shareCaption || businessFeedback.reviewPrompt}
             </p>
 
-            <div className={isCafeFeedback ? "mt-6 text-left" : "my-5"}>
+            <div className={`customer-review-ratings ${isCafeFeedback ? "mt-6 text-left" : "my-5"}`}>
               <p className={`mb-3 font-semibold text-[#24211E] ${isCafeFeedback ? "text-xs uppercase tracking-wide" : "text-sm"}`}>
+                {isCafeFeedback && <span className="mr-1 text-[#F7D154]" aria-hidden="true">★</span>}
                 {businessFeedback.reviewInstruction}
               </p>
               {isCafeFeedback && (
@@ -1617,7 +1639,7 @@ export function CustomerJourneyView({
           </div>
 
           <div
-            className={`space-y-4 border bg-white p-5 shadow-subtle ${isCafeFeedback ? "rounded-[1.75rem]" : "rounded-3xl"}`}
+            className={`customer-review-actions space-y-4 border bg-white p-5 shadow-subtle ${isCafeFeedback ? "cafe-review-actions rounded-[1.75rem]" : "rounded-3xl"}`}
             style={{ borderColor: businessFeedback.borderColor }}
           >
             {aiGenerated && (
@@ -1651,13 +1673,13 @@ export function CustomerJourneyView({
             <button
               onClick={aiGenerated ? handleCopyAndGoogleReview : handleGenerateAiReview}
               disabled={generatingAi || reviewRatings.some((rating) => rating === 0)}
-              className={`sticky bottom-3 z-20 flex min-h-12 w-full items-center justify-center gap-2 border border-white/40 py-3 text-sm font-bold text-white shadow-lg transition active:scale-[0.98] disabled:opacity-60 ${isCafeFeedback ? "rounded-full" : "rounded-2xl"}`}
+              className={`customer-review-submit sticky bottom-3 z-20 flex min-h-12 w-full items-center justify-center gap-2 border border-white/40 py-3 text-sm font-bold text-white shadow-lg transition active:scale-[0.98] disabled:opacity-60 ${isCafeFeedback ? "rounded-full cafe-pill-button" : "rounded-2xl"}`}
               style={{ backgroundColor: businessFeedback.accentColor }}
               onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentHoverColor; }}
               onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentColor; }}
               aria-live="polite"
             >
-              <span>{businessFeedback.heroIcon}</span>
+              <span>{isCafeFeedback ? "✎" : businessFeedback.heroIcon}</span>
               <span>
                 {generatingAi
                   ? firebaseContext ? "Creating your review draft..." : "Crafting Review with AI..."
@@ -1698,7 +1720,7 @@ export function CustomerJourneyView({
           </div>
 
           {/* Bottom Stamp CTA */}
-          {(firebaseContext ? program.isActive : true) && <div className={`mt-5 rounded-2xl border p-4 text-center ${isCafeFeedback ? "bg-white/85" : "bg-white"}`} style={{ borderColor: businessFeedback.borderColor }}>
+          {(firebaseContext ? program.isActive : true) && <div className={`customer-review-stamp-link mt-5 rounded-2xl border p-4 text-center ${isCafeFeedback ? "bg-white/85 cafe-review-stamp-link" : "bg-white"}`} style={{ borderColor: businessFeedback.borderColor }}>
             <p className="text-xs font-semibold text-[#716B64]">
               Want to collect a loyalty stamp for your visit?
             </p>
@@ -1710,6 +1732,7 @@ export function CustomerJourneyView({
               {newCustomerReviewRequired && !reviewSubmitted ? "Complete your review to continue" : "Collect My Stamp Now →"}
             </button>
           </div>}
+          {isSalonFeedback && <SalonDecorativeIllustration className="salon-corner-art" />}
         </main>
       )}
 
