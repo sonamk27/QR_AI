@@ -1,20 +1,32 @@
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Figtree:wght@400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   color-scheme: light;
-  --bg-ivory: #F7F2E9;
+  --bg-ivory: #F6F1E8;
   --text-charcoal: #24211E;
   --accent-gold: #8B642D;
   --border-warm: #E8DFD1;
 }
 
 body {
-  background-color: #F7F2E9;
+  background-color: #F6F1E8;
   color: #24211E;
   font-family: var(--font-body), "DM Sans", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 h1, h2, h3, .font-serif {
@@ -217,6 +229,222 @@ h1, h2, h3, .font-serif {
 /* Dark Charcoal Button */
 .btn-dark {
   @apply inline-flex items-center justify-center rounded-xl bg-charcoal px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-charcoal-800 active:scale-[0.98] disabled:opacity-50;
+}
+
+.request-pending-screen {
+  --pending-bg: #eaf6ee;
+  --pending-surface: #f7fbf7;
+  --pending-ink: #173b2b;
+  --pending-muted: #55705f;
+  --pending-border: #c9dfcf;
+  --pending-ring: #8eae98;
+  --pending-accent: #f2a900;
+  --pending-error-bg: #fff1ef;
+  --pending-error-border: #edc7be;
+  --pending-error-ink: #913f32;
+  color-scheme: light;
+  background-color: var(--pending-bg);
+  color: var(--pending-ink);
+  font-family: "Figtree", var(--font-body), system-ui, sans-serif;
+}
+
+.request-pending-screen .request-pending-heading {
+  color: var(--pending-ink);
+  font-family: "Bricolage Grotesque", var(--font-display), system-ui, sans-serif;
+}
+
+.request-pending-restaurant,
+.request-pending-copy,
+.request-pending-hint,
+.request-ticket__label {
+  color: var(--pending-muted);
+}
+
+.request-pending-chip {
+  border: 1px solid var(--pending-border);
+  background: var(--pending-surface);
+  color: var(--pending-ink);
+}
+
+.request-pending-chip__dot,
+.request-ticket__pulse {
+  position: relative;
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  flex: 0 0 auto;
+  border-radius: 9999px;
+  background: var(--pending-accent);
+}
+
+.request-pending-chip__dot::after,
+.request-ticket__pulse::after {
+  position: absolute;
+  inset: -0.2rem;
+  border: 1px solid var(--pending-accent);
+  border-radius: inherit;
+  animation: pending-status-pulse 1.8s ease-out infinite;
+  content: "";
+}
+
+.pending-stamp {
+  position: relative;
+  display: grid;
+  width: 10.5rem;
+  height: 10.5rem;
+  place-items: center;
+}
+
+.pending-stamp__orbit,
+.pending-stamp__arc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.pending-stamp__orbit {
+  border: 2px dashed var(--pending-ring);
+  animation: pending-stamp-orbit 22s linear infinite;
+}
+
+.pending-stamp__arc {
+  background: conic-gradient(from 0deg, transparent 0deg 298deg, var(--pending-accent) 305deg 346deg, transparent 354deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+  animation: pending-stamp-sweep 2.5s linear infinite;
+}
+
+.pending-stamp__seal {
+  display: flex;
+  width: 7.5rem;
+  height: 7.5rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--pending-border);
+  border-radius: 50%;
+  background: var(--pending-surface);
+  box-shadow: 0 8px 24px rgb(23 59 43 / 10%), inset 0 0 0 5px var(--pending-bg);
+}
+
+.pending-stamp__letters {
+  color: var(--pending-ink);
+  font-family: "Bricolage Grotesque", system-ui, sans-serif;
+  font-size: 2.3rem;
+  font-weight: 800;
+  letter-spacing: -0.08em;
+  line-height: 1;
+}
+
+.pending-stamp__caption {
+  margin-top: 0.35rem;
+  color: var(--pending-muted);
+  font-family: "Figtree", system-ui, sans-serif;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.request-ticket {
+  position: relative;
+  border-color: var(--pending-border);
+  background: var(--pending-surface);
+  color: var(--pending-ink);
+}
+
+.request-ticket__value {
+  color: var(--pending-ink);
+}
+
+.request-ticket__location,
+.request-ticket__checking {
+  color: #8b5a00;
+}
+
+.request-ticket__tear {
+  position: relative;
+  height: 0;
+  margin: 1rem -1rem;
+  border-top: 2px dashed var(--pending-border);
+}
+
+.request-ticket__tear::before,
+.request-ticket__tear::after {
+  position: absolute;
+  top: -0.55rem;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--pending-border);
+  border-radius: 50%;
+  background: var(--pending-bg);
+  content: "";
+}
+
+.request-ticket__tear::before {
+  left: -0.55rem;
+}
+
+.request-ticket__tear::after {
+  right: -0.55rem;
+}
+
+.request-ticket__status {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.request-pending-error {
+  border-color: var(--pending-error-border);
+  background: var(--pending-error-bg);
+  color: var(--pending-error-ink);
+}
+
+.request-pending-button {
+  background: var(--pending-accent);
+  color: #25341e;
+}
+
+.request-pending-button:hover {
+  background: #e69f00;
+}
+
+@keyframes pending-stamp-orbit {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pending-stamp-sweep {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pending-status-pulse {
+  0% { opacity: 0.8; transform: scale(0.7); }
+  100% { opacity: 0; transform: scale(1.7); }
+}
+
+@media (prefers-color-scheme: dark) {
+  .request-pending-screen {
+    --pending-bg: #0b2f20;
+    --pending-surface: #143d2b;
+    --pending-ink: #f0f7f1;
+    --pending-muted: #b6cbbb;
+    --pending-border: #2b5b40;
+    --pending-ring: #4b7659;
+    --pending-error-bg: #40251f;
+    --pending-error-border: #744237;
+    --pending-error-ink: #ffd2c9;
+    color-scheme: dark;
+  }
+
+  .request-ticket__location,
+  .request-ticket__checking {
+    color: #f2c56b;
+  }
+
+  .pending-stamp__seal {
+    box-shadow: 0 8px 24px rgb(0 0 0 / 22%), inset 0 0 0 5px var(--pending-bg);
+  }
 }
 
 /* Form inputs: Warm beige border, white surface, accessible gold focus ring */

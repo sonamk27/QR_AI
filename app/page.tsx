@@ -1,62 +1,67 @@
 import Link from "next/link";
 import Image from "next/image";
 
-const features = [
+const photos = [
   {
-    icon: "💬",
-    title: "Review Draft Assistance",
-    description:
-      "Guests rate their visit, pick what they enjoyed, and receive a rating-based draft in seconds. They can edit it and post it on Google themselves.",
+    number: "01",
+    label: "Candlelight & conversation",
+    image: "https://images.pexels.com/photos/16548526/pexels-photo-16548526.jpeg?auto=compress&cs=tinysrgb&w=1000",
+    alt: "Candlelit wooden restaurant table with glasses and a menu",
   },
   {
-    icon: "☕",
-    title: "Digital Loyalty Stamps",
-    description:
-      "Replace easily lost paper punch cards with instant, frictionless digital stamps tracked directly on customer smartphones.",
+    number: "02",
+    label: "A thoughtful scan",
+    image: "https://images.pexels.com/photos/16345589/pexels-photo-16345589.jpeg?auto=compress&cs=tinysrgb&w=1000",
+    alt: "Guest using a smartphone to scan a QR code",
   },
   {
-    icon: "🎁",
-    title: "Customizable Rewards",
-    description:
-      "Set stamp milestones, percent discounts, fixed deductions, or free menu items with flexible expiry windows.",
-  },
-  {
-    icon: "📊",
-    title: "Real-Time Business Dashboard",
-    description:
-      "Monitor new customer acquisition, stamp requests, voucher redemptions, and review conversions live.",
+    number: "03",
+    label: "Physical Craft",
+    image: "https://images.pexels.com/photos/10032377/pexels-photo-10032377.jpeg?auto=compress&cs=tinysrgb&w=1000",
+    alt: "Wooden restaurant table with a QR menu card beside the place setting",
   },
 ];
 
-function ReviewPreview() {
+const features = [
+  {
+    number: "01",
+    title: "Guest feedback, made easy",
+    description:
+      "Guests share what stood out, then shape an editable review draft they can choose to post on Google.",
+  },
+  {
+    number: "02",
+    title: "Loyalty that stays at hand",
+    description:
+      "Digital stamps and thoughtful rewards replace paper cards that get left behind.",
+  },
+  {
+    number: "03",
+    title: "A clearer view of service",
+    description:
+      "Follow feedback, stamp requests, and reward redemptions from one simple restaurant dashboard.",
+  },
+];
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      aria-label="Preview of the guest review experience"
-      className="landing-preview mx-auto w-full max-w-xs rounded-3xl border border-[#E8DFD1] bg-white p-5 shadow-subtle"
-    >
-      <div className="text-center">
-        <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-[#FAF5ED] text-base text-[#B58A4B] border border-[#E8D8BA]">
-          ☕
-        </div>
-        <p className="text-[11px] font-medium text-[#716B64] uppercase tracking-wider">Your Restaurant</p>
-        <h2 className="mt-1 font-serif text-lg font-bold text-[#24211E]">Share Your Experience</h2>
-        <div className="mt-2 text-2xl text-[#B58A4B] tracking-wider" aria-label="5 out of 5 stars">
-          <span aria-hidden="true">★★★★★</span>
-        </div>
+    <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#A98A59] sm:text-[11px]">
+      {children}
+    </p>
+  );
+}
+
+function ReviewCard() {
+  return (
+    <div className="landing-review-card absolute -bottom-5 left-4 right-4 rounded-2xl border border-white/60 bg-[#FBF8F1] p-4 shadow-[0_20px_60px_rgba(20,15,10,0.28)] sm:bottom-8 sm:left-auto sm:right-[-2rem] sm:w-64 sm:p-5">
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#776B5B]">A better kind of follow-up</span>
+        <span className="text-sm tracking-[0.12em] text-[#9A7537]" aria-label="5 out of 5 stars">★★★★★</span>
       </div>
-
-      <div className="mt-4 flex flex-wrap justify-center gap-1.5 text-xs">
-        <span className="rounded-full bg-[#24211E] px-3 py-1 font-semibold text-white text-[11px]">Food</span>
-        <span className="rounded-full bg-[#24211E] px-3 py-1 font-semibold text-white text-[11px]">Service</span>
-        <span className="rounded-full border border-[#E8DFD1] bg-[#FAF7F2] px-3 py-1 text-[#716B64] text-[11px]">Atmosphere</span>
-      </div>
-
-      <blockquote className="mt-4 rounded-xl border border-[#E8D8BA] bg-[#FAF5ED] p-3 text-xs leading-relaxed italic text-[#24211E]">
-        An editable review draft based on a guest's visit.
-      </blockquote>
-
-      <div className="mt-4 rounded-xl bg-[#B58A4B] px-4 py-2.5 text-center text-xs font-bold text-white shadow-2xs">
-        Copy &amp; Review on Google
+      <p className="mt-3 font-serif text-lg leading-snug text-[#24211E]">“We’ll be back for the little things.”</p>
+      <div className="mt-4 flex items-center justify-between border-t border-[#E8DFD1] pt-3">
+        <span className="text-[11px] text-[#716B64]">Feedback that brings guests closer</span>
+        <span className="rounded-full bg-[#24211E] px-2.5 py-1 font-mono text-[9px] uppercase tracking-wider text-[#E8D8BA]">RF</span>
       </div>
     </div>
   );
@@ -64,104 +69,161 @@ function ReviewPreview() {
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#F7F2E9] text-[#24211E]">
-      {/* Top Banner Header matching Reference Mockup */}
-      <div className="border-b border-[#E8DFD1] bg-[#FAF7F2]">
-        <header className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-8 sm:py-4">
-          <div className="flex w-full min-w-0 items-center gap-2.5 sm:w-auto">
-            <Image src="/logo.svg" alt="ReviewFlow logo" width={52} height={52} className="shrink-0 rounded-xl object-contain" />
-            <div className="min-w-0">
-              <Link href="/" className="font-serif text-xl font-bold tracking-tight text-[#24211E]">
-                ReviewFlow
-              </Link>
-              <span className="hidden sm:inline-block ml-2 text-[11px] font-semibold text-[#716B64] uppercase tracking-wider">
-                • QR Review &amp; Loyalty System
-              </span>
-            </div>
-          </div>
-          <nav aria-label="Main navigation" className="flex w-full items-center gap-2.5 sm:w-auto">
-            <Link
-              href="/login"
-              className="flex-1 rounded-xl border border-[#E8DFD1] bg-white px-3.5 py-2 text-center text-xs font-semibold text-[#24211E] shadow-2xs transition hover:bg-[#FAF7F2] sm:flex-none"
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/signup"
-              className="flex-1 rounded-xl bg-[#B58A4B] px-4 py-2 text-center text-xs font-bold text-white shadow-xs transition hover:bg-[#9E7438] sm:flex-none"
-            >
-              Get Your Restaurant QR
-            </Link>
+    <main className="min-h-screen overflow-hidden bg-[#F6F1E8] text-[#24211E]">
+      <header className="relative z-10 border-b border-[#DCD2C2] bg-[#F6F1E8]/95">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-5 py-4 sm:px-8 lg:px-12">
+          <Link href="/" aria-label="ReviewFlow home" className="flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#24211E] font-serif text-lg font-bold tracking-tight text-[#D4B77F] shadow-sm">RF</span>
+            <span>
+              <span className="block font-serif text-lg font-semibold leading-none tracking-tight">ReviewFlow</span>
+              <span className="mt-1 hidden font-mono text-[8px] uppercase tracking-[0.16em] text-[#776B5B] sm:block">A more memorable visit</span>
+            </span>
+          </Link>
+          <nav aria-label="Main navigation" className="flex items-center gap-2 sm:gap-6">
+            <Link href="#experience" className="hidden text-xs font-medium text-[#514A43] transition hover:text-[#8B642D] sm:inline">The experience</Link>
+            <Link href="#craft" className="hidden text-xs font-medium text-[#514A43] transition hover:text-[#8B642D] sm:inline">Our approach</Link>
+            <Link href="/login" className="rounded-full px-3 py-2 text-xs font-semibold text-[#24211E] transition hover:bg-[#EBE4D9]">Sign in</Link>
+            <Link href="/signup" className="rounded-full bg-[#24211E] px-4 py-2.5 text-center text-xs font-semibold text-[#FBF8F1] shadow-sm transition hover:bg-[#3B3630] sm:px-5">Get started <span aria-hidden="true">↗</span></Link>
           </nav>
-        </header>
-      </div>
+        </div>
+      </header>
 
-      {/* Hero Section */}
-      <section className="mx-auto grid w-full max-w-6xl items-center gap-8 px-4 pb-12 pt-8 sm:gap-10 sm:px-8 sm:pb-16 sm:pt-14 lg:grid-cols-[1.2fr_0.8fr] lg:gap-14 lg:pb-20">
-        <div>
-          <span className="landing-hero-item landing-hero-badge inline-flex max-w-full items-center gap-1.5 rounded-full border border-[#E8D8BA] bg-[#FAF5ED] px-3 py-1 text-[11px] font-bold leading-relaxed text-[#7A5826] sm:px-3.5 sm:text-xs">
-            <span>✨</span>
-            <span>More Reviews. Happier Customers. Stronger Loyalty.</span>
-          </span>
-
-          <h1 className="landing-hero-item landing-hero-title mt-4 font-serif text-3xl font-extrabold leading-tight tracking-tight text-[#24211E] sm:text-5xl">
-            QR Review System for Restaurants
+      <section className="mx-auto grid w-full max-w-7xl items-center gap-12 px-5 pb-20 pt-12 sm:px-8 sm:pb-28 sm:pt-16 lg:grid-cols-[0.92fr_1.08fr] lg:gap-20 lg:px-12 lg:pt-20">
+        <div className="relative z-[1]">
+          <SectionLabel>ReviewFlow&nbsp; / &nbsp;Hospitality, remembered</SectionLabel>
+          <h1 className="mt-5 max-w-xl font-serif text-[clamp(3.1rem,7vw,5.8rem)] font-medium leading-[0.98] tracking-[-0.045em] text-[#24211E]">
+            Make every table feel <span className="italic text-[#8B642D]">remembered.</span>
           </h1>
-          <p className="landing-hero-item landing-hero-description mt-4 max-w-lg text-sm sm:text-base leading-relaxed text-[#716B64]">
-            A simple, seamless and delightful experience — from scan to reward.
-            Guests scan table QRs, collect digital stamps, unlock customizable vouchers, and create editable rating-based review drafts.
+          <p className="mt-6 max-w-lg text-sm leading-7 text-[#625B52] sm:text-base">
+            Give every guest a graceful way to share feedback and a reason to return—with one simple QR experience for reviews and digital rewards.
           </p>
-
-          <div className="landing-hero-item landing-hero-actions mt-6 flex flex-col items-stretch gap-2.5 sm:mt-8 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-            <Link
-              href="/signup"
-              className="rounded-2xl bg-[#B58A4B] px-4 py-3.5 text-center text-xs font-bold text-white shadow-xs transition hover:-translate-y-0.5 hover:bg-[#9E7438] active:scale-[0.98] sm:px-6"
-            >
-              Get Your Restaurant QR →
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Link href="/signup" className="inline-flex min-h-12 items-center justify-center gap-3 rounded-full bg-[#24211E] px-6 text-sm font-semibold text-[#FBF8F1] shadow-[0_8px_24px_rgba(36,33,30,0.16)] transition hover:-translate-y-0.5 hover:bg-[#3B3630]">
+              Get your restaurant QR <span aria-hidden="true" className="text-[#D4B77F]">↗</span>
             </Link>
-            <Link
-              href="/login"
-              className="rounded-2xl border border-[#E8DFD1] bg-white px-4 py-3.5 text-center text-xs font-bold text-[#24211E] shadow-2xs transition hover:-translate-y-0.5 hover:bg-[#FAF7F2] sm:px-5"
-            >
-              Owner Portal Sign In
+            <Link href="#experience" className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#CFC3B1] px-6 text-sm font-semibold text-[#3B3630] transition hover:bg-white/60">
+              See how it feels
             </Link>
           </div>
-
-          <p className="landing-hero-item landing-hero-note mt-4 text-xs text-[#716B64]/70">
-            ₹999 per QR code per year • Seamless table stand activation
-          </p>
+          <div className="mt-7 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-[#776B5B]">
+            <span className="font-mono uppercase tracking-[0.12em]">QR reviews</span>
+            <span className="h-1 w-1 rounded-full bg-[#A98A59]" aria-hidden="true" />
+            <span className="font-mono uppercase tracking-[0.12em]">Digital loyalty</span>
+            <span className="h-1 w-1 rounded-full bg-[#A98A59]" aria-hidden="true" />
+            <span className="font-mono uppercase tracking-[0.12em]">Made for hospitality</span>
+          </div>
         </div>
 
-        <ReviewPreview />
+        <div className="landing-hero-photo relative mx-auto w-full max-w-[42rem]">
+          <div className="relative h-[25rem] overflow-hidden rounded-[1.75rem] bg-[#30251D] sm:h-[34rem] sm:rounded-[2rem]">
+            <Image
+              src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1600&q=85"
+              alt="Warmly lit contemporary restaurant interior with wood tables prepared for evening service"
+              width={1600}
+              height={1100}
+              sizes="(min-width: 1024px) 52vw, 100vw"
+              priority
+              className="h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#17120F]/75 via-[#17120F]/10 to-[#17120F]/10" aria-hidden="true" />
+            <div className="absolute left-5 top-5 flex items-center gap-2 rounded-full border border-white/25 bg-[#201914]/50 px-3 py-2 text-[9px] font-mono uppercase tracking-[0.14em] text-white backdrop-blur-sm sm:left-7 sm:top-7">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#D4B77F]" aria-hidden="true" />
+              A small touch. A lasting impression.
+            </div>
+            <div className="absolute bottom-7 left-6 max-w-xs text-[#FBF8F1] sm:bottom-10 sm:left-8">
+              <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#E2C892]">For the moments around the meal</p>
+              <p className="mt-2 font-serif text-2xl leading-tight sm:text-3xl">The experience continues after the last bite.</p>
+            </div>
+          </div>
+          <ReviewCard />
+          <div className="absolute -left-4 top-1/3 hidden h-24 w-24 rounded-full border border-[#B99A65]/50 sm:block" aria-hidden="true" />
+        </div>
       </section>
 
-      {/* Features Grid */}
-      <section
-        aria-label="Features"
-        className="mx-auto grid w-full max-w-6xl gap-4 border-t border-[#E8DFD1] px-4 py-10 sm:grid-cols-2 sm:gap-6 sm:px-8 sm:py-12 lg:grid-cols-4"
-      >
-        {features.map((feature, index) => (
-          <article
-            key={feature.title}
-            className="landing-feature rounded-2xl border border-[#E8DFD1] bg-white p-4 shadow-subtle transition duration-300 hover:-translate-y-1 hover:border-[#B58A4B] hover:shadow-elevated sm:p-5"
-            style={{ animationDelay: `${index * 90}ms` }}
-          >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FAF5ED] text-xl border border-[#E8D8BA]">
-              {feature.icon}
-            </span>
-            <h2 className="mt-3 font-serif text-base font-bold text-[#24211E]">{feature.title}</h2>
-            <p className="mt-1.5 text-xs leading-relaxed text-[#716B64]">
-              {feature.description}
-            </p>
-          </article>
-        ))}
+      <section id="experience" className="bg-[#24211E] px-5 py-16 text-[#F6F1E8] sm:px-8 sm:py-24 lg:px-12">
+        <div className="mx-auto max-w-7xl">
+          <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
+            <div>
+              <SectionLabel>01. The experience</SectionLabel>
+              <h2 className="mt-4 max-w-2xl font-serif text-3xl leading-tight tracking-tight sm:text-5xl">Thoughtful by design.<br /><span className="italic text-[#D4B77F]">Simple at the table.</span></h2>
+            </div>
+            <p className="max-w-sm text-sm leading-6 text-[#D0C6B8]">A scan opens a warm, easy path from guest feedback to a little thank-you for coming back.</p>
+          </div>
+          <div className="mt-12 grid gap-4 md:grid-cols-3">
+            {features.map((feature) => (
+              <article key={feature.number} className="rounded-2xl border border-white/15 bg-white/[0.04] p-6 transition hover:border-[#B99A65]/70 hover:bg-white/[0.07] sm:p-7">
+                <p className="font-mono text-[10px] tracking-[0.16em] text-[#D4B77F]">{feature.number} <span className="ml-1 uppercase">/ ReviewFlow</span></p>
+                <h3 className="mt-7 font-serif text-xl font-medium text-[#FBF8F1] sm:text-2xl">{feature.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-[#C7BEB2]">{feature.description}</p>
+              </article>
+            ))}
+          </div>
+        </div>
       </section>
-      <footer className="border-t border-[#E8DFD1] bg-[#FAF7F2] px-4 py-6 sm:px-8">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 text-xs text-[#4A453F] sm:flex-row sm:items-center sm:justify-between">
-          <p>ReviewFlow helps restaurants manage guest feedback and digital loyalty.</p>
-          <nav aria-label="Legal" className="flex flex-wrap gap-4 font-semibold text-[#573E1B]">
-            <Link href="/privacy" className="underline">Privacy Policy</Link>
-            <Link href="/terms" className="underline">Terms of Service</Link>
+
+      <section id="craft" className="mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 sm:py-24 lg:px-12">
+        <div className="grid gap-8 md:grid-cols-[0.8fr_1.2fr] md:items-end">
+          <div>
+            <SectionLabel>02. The setting</SectionLabel>
+            <h2 className="mt-4 font-serif text-3xl leading-tight tracking-tight sm:text-5xl">Made to belong<br />at your table.</h2>
+          </div>
+          <p className="max-w-xl text-sm leading-7 text-[#625B52] md:justify-self-end">From the first hello to the next visit, the digital experience should feel as considered as the room around it.</p>
+        </div>
+
+        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {photos.map((photo) => (
+            <figure key={photo.number} className="group overflow-hidden rounded-2xl border border-[#E1D8CA] bg-[#FBF8F1] shadow-[0_8px_28px_rgba(36,33,30,0.05)]">
+              <div className="relative h-64 overflow-hidden bg-[#D8CBB6] sm:h-72">
+                <Image
+                  src={photo.image}
+                  alt={photo.alt}
+                  width={1000}
+                  height={720}
+                  sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                  loading="lazy"
+                  decoding="async"
+                  className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.04]"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#17120F]/50 to-transparent" aria-hidden="true" />
+                {photo.number !== "02" && (
+                  <div aria-hidden="true" className="absolute left-1/2 top-1/2 z-[1] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
+                    <div className="rounded-t-md border border-white/80 bg-white/40 px-4 pb-3 pt-2 shadow-[0_8px_24px_rgba(20,15,10,0.28)] backdrop-blur-[2px]">
+                      <p className="mb-2 text-center font-mono text-[8px] uppercase tracking-[0.15em] text-[#3B3630]">ReviewFlow</p>
+                      <svg viewBox="0 0 54 54" className="h-14 w-14 rounded-sm border border-white/80 bg-white p-1" focusable="false">
+                        <path fill="#24211E" d="M2 2h18v18H2zm4 4v10h10V6zm28-4h18v18H34zm4 4v10h10V6zM2 34h18v18H2zm4 4v10h10V38zm24-14h6v6h-6zm8 0h6v6h-6zm8 0h4v8h-4zm-18 8h6v6h-6zm8 2h6v6h-6zm10 0h6v4h-6zm-18 8h6v6h-6zm8 4h6v6h-6zm8-4h8v6h-8z" />
+                      </svg>
+                    </div>
+                    <span className="h-8 w-24 border-x border-white/70 bg-white/25 shadow-[0_4px_12px_rgba(20,15,10,0.18)] backdrop-blur-[2px]" />
+                    <span className="h-2 w-28 rounded-b-sm border border-[#D4B77F]/70 bg-[#B99A65]/90 shadow-[0_5px_12px_rgba(20,15,10,0.24)]" />
+                  </div>
+                )}
+                <span className="absolute bottom-4 left-4 rounded-full border border-white/35 bg-[#201914]/45 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.13em] text-white backdrop-blur-sm">{photo.number}. {photo.label}</span>
+              </div>
+            </figure>
+          ))}
+        </div>
+      </section>
+
+      <section className="px-5 pb-16 sm:px-8 sm:pb-24 lg:px-12">
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 rounded-[1.75rem] bg-[#EAE1D2] p-7 sm:p-10 md:flex-row md:items-center md:justify-between md:p-12">
+          <div>
+            <SectionLabel>03. A warmer way to return</SectionLabel>
+            <h2 className="mt-3 max-w-2xl font-serif text-3xl leading-tight sm:text-4xl">Turn a lovely visit into the beginning of a habit.</h2>
+            <p className="mt-3 text-sm leading-6 text-[#625B52]">One clear QR experience for reviews and rewards, ready for your restaurant.</p>
+          </div>
+          <Link href="/signup" className="inline-flex min-h-12 shrink-0 items-center justify-center gap-3 rounded-full bg-[#24211E] px-6 text-sm font-semibold text-[#FBF8F1] transition hover:bg-[#3B3630]">Get your restaurant QR <span className="text-[#D4B77F]" aria-hidden="true">↗</span></Link>
+        </div>
+      </section>
+
+      <footer className="border-t border-[#DCD2C2] bg-[#F1EADF] px-5 py-7 sm:px-8 lg:px-12">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 text-xs text-[#625B52] sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#24211E] font-serif text-xs font-bold text-[#D4B77F]">RF</span>
+            <p>ReviewFlow helps restaurants nurture guest feedback and loyalty.</p>
+          </div>
+          <nav aria-label="Legal" className="flex flex-wrap gap-5 font-semibold text-[#3B3630]">
+            <Link href="/privacy" className="transition hover:text-[#8B642D]">Privacy Policy</Link>
+            <Link href="/terms" className="transition hover:text-[#8B642D]">Terms of Service</Link>
           </nav>
         </div>
       </footer>

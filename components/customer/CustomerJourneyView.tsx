@@ -376,7 +376,7 @@ export function CustomerJourneyView({
     }
 
     checkStatus();
-      const interval = setInterval(checkStatus, 1500);
+    const interval = setInterval(checkStatus, 2500);
     return () => {
       isCancelled = true;
       clearInterval(interval);
@@ -1007,82 +1007,87 @@ export function CustomerJourneyView({
         </main>
       )}
 
-      {/* ─────────────────────────────────────────────────────────────
-          STEP 4: WAITING FOR OWNER APPROVAL (Pulsing Shield / Request Sent)
-      ───────────────────────────────────────────────────────────── */}
+      {/* STEP 4: Waiting for owner approval */}
       {currentView === "request_pending" && (
-        <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-between px-5 py-7 text-center">
+        <main className="request-pending-screen mx-auto flex min-h-screen max-w-sm flex-col justify-between px-5 py-7">
           <div className="pt-2">
-            <span className="font-serif text-xs font-bold uppercase tracking-wider text-[#716B64]">
+            <span className="request-pending-restaurant font-mono text-xs font-bold uppercase tracking-wider">
               {restaurant.name}
             </span>
 
-            {/* Pulsing Animated Stamp Cup */}
-            <div className="relative mx-auto my-6 flex h-28 w-28 items-center justify-center">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#B58A4B]/20" />
-              <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-[#FAF5ED] text-4xl shadow-subtle border-2 border-[#E8D8BA]">
-                🛡️
+            <div className="pending-stamp mx-auto my-7" role="img" aria-label="Stamp request verification in progress">
+              <span className="pending-stamp__orbit" />
+              <span className="pending-stamp__arc" />
+              <div className="pending-stamp__seal">
+                <span className="pending-stamp__letters">RF</span>
+                <span className="pending-stamp__caption">Visit stamp</span>
               </div>
             </div>
 
-            <span className="inline-flex items-center gap-2 rounded-full bg-[#FAF5ED] px-3.5 py-1 text-xs font-bold text-[#7A5826] border border-[#E8D8BA]">
-              <span className="h-2 w-2 rounded-full bg-[#B58A4B] animate-pulse" />
+            <span className="request-pending-chip inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-xs font-bold">
+              <span className="request-pending-chip__dot" />
               Stamp Request Sent to Staff
             </span>
 
-            <h1 className="mt-4 font-serif text-2xl font-extrabold text-[#24211E]">
+            <h1 className="request-pending-heading mt-4 text-2xl font-extrabold">
               Verify Your Visit
             </h1>
-            <p className="mx-auto mt-2 max-w-xs text-xs text-[#716B64] leading-relaxed">
+            <p className="request-pending-copy mt-2 max-w-xs text-xs leading-relaxed">
               We notified the counter at <strong>{restaurant.name}</strong>. Once verified, your stamp will appear automatically on your card!
             </p>
 
             {requestError && (
-              <div className="mt-4 rounded-xl border border-[#F7D6D6] bg-[#FDF2F2] p-3 text-xs font-semibold text-[#A83B3B]">
+              <div className="request-pending-error mt-4 rounded-xl border p-3 text-xs font-semibold">
                 {requestError}
               </div>
             )}
 
-            {/* Visit Details Box */}
-            <div className="mx-auto my-6 w-full max-w-xs rounded-2xl border border-[#E8DFD1] bg-white p-4 text-left shadow-2xs space-y-2.5">
-              <div className="flex justify-between text-xs">
-                <span className="text-[#716B64]">Guest:</span>
-                <span className="font-bold text-[#24211E]">
-                  {fullName || customer?.name || "Guest"}
-                </span>
+            <div className="request-ticket mx-auto my-6 w-full max-w-xs rounded-2xl border p-4 text-left shadow-sm">
+              <div className="request-ticket__details space-y-3">
+                <div className="flex items-start justify-between gap-4 text-xs">
+                  <span className="request-ticket__label">Guest</span>
+                  <span className="request-ticket__value font-bold text-right">
+                    {fullName || customer?.name || "Guest"}
+                  </span>
+                </div>
+                <div className="flex items-start justify-between gap-4 text-xs">
+                  <span className="request-ticket__label">Mobile</span>
+                  <span className="request-ticket__value font-mono font-medium text-right">
+                    +91 {phoneNumber}
+                  </span>
+                </div>
+                <div className="flex items-start justify-between gap-4 text-xs">
+                  <span className="request-ticket__label">Location</span>
+                  <span className="request-ticket__location font-semibold text-right">
+                    {pendingTableNo || "Table Visit"}
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-[#716B64]">Mobile:</span>
-                <span className="font-mono font-medium text-[#24211E]">
-                  +91 {phoneNumber}
-                </span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-[#716B64]">Location:</span>
-                <span className="font-semibold text-[#7A5826]">
-                  {pendingTableNo || "Table Visit"}
-                </span>
-              </div>
-              <div className="flex justify-between text-xs border-t border-[#E8DFD1]/60 pt-2.5">
-                <span className="text-[#716B64]">Status:</span>
-                <span className="font-bold text-[#B58A4B] flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-[#B58A4B] animate-ping" />
-                  Awaiting Staff Confirmation
+              <div className="request-ticket__tear" aria-hidden="true" />
+              <div className="request-ticket__status" role="status" aria-live="polite">
+                <span className="request-ticket__pulse" aria-hidden="true" />
+                <div>
+                  <p className="request-ticket__label font-mono text-[9px] uppercase tracking-[0.12em]">Status</p>
+                  <p className="request-ticket__value mt-0.5 text-xs font-bold">Awaiting staff confirmation</p>
+                </div>
+                <span className="request-ticket__checking ml-auto font-mono text-[9px] font-semibold uppercase tracking-wide">
+                  Checking
                 </span>
               </div>
             </div>
+
+            <p className="request-pending-hint mx-auto max-w-xs text-[11px]">
+              Approval checks automatically every 2.5 seconds.
+            </p>
           </div>
 
           <div className="w-full max-w-xs space-y-3 mx-auto pb-2">
             <button
               onClick={() => setCurrentView("card")}
-              className="w-full rounded-2xl border border-stone-300 bg-white py-3 text-xs font-bold text-stone-700 shadow-2xs hover:bg-stone-50 transition"
+              className="request-pending-button w-full rounded-2xl py-3.5 text-sm font-bold shadow-sm transition"
             >
               View My Loyalty Card Meanwhile →
             </button>
-            <p className="text-[11px] text-[#716B64]/70">
-              ⚡ Checking for approval automatically every 2.5 seconds.
-            </p>
           </div>
         </main>
       )}
