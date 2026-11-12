@@ -14,6 +14,12 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin';
     }
 
+    function validLogoSize() {
+      return !('logoUrl' in request.resource.data)
+        || request.resource.data.logoUrl == null
+        || (request.resource.data.logoUrl is string && request.resource.data.logoUrl.size() <= 150000);
+    }
+
     function readableQr(data) {
       return data.status in ['ACTIVE', 'GRACE']
         && (!('validUntil' in data) || data.validUntil == null || request.time <= data.validUntil + duration.value(7, 'd'));
@@ -50,21 +56,23 @@ service cloud.firestore {
         && request.resource.data.ownerUid == request.auth.uid
         && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'restaurant_admin'
         && request.resource.data.keys().hasOnly([
-          'ownerUid', 'name', 'city', 'referredByName', 'brandColor', 'status', 'aiEnabled', 'createdAt',
+          'ownerUid', 'name', 'city', 'logoUrl', 'referredByName', 'brandColor', 'status', 'aiEnabled', 'createdAt',
           'googleReviewUrl', 'instagramUrl', 'facebookUrl', 'shareCaption', 'businessType'
         ])
         && (!('businessType' in request.resource.data) || request.resource.data.businessType in ['RESTAURANT', 'CAFE', 'SALON', 'GENERAL_STORE'])
         && (!('googleReviewUrl' in request.resource.data) || request.resource.data.googleReviewUrl == null || request.resource.data.googleReviewUrl is string)
         && (!('instagramUrl' in request.resource.data) || request.resource.data.instagramUrl == null || request.resource.data.instagramUrl is string)
         && (!('facebookUrl' in request.resource.data) || request.resource.data.facebookUrl == null || request.resource.data.facebookUrl is string)
-        && (!('shareCaption' in request.resource.data) || request.resource.data.shareCaption == null || request.resource.data.shareCaption is string);
+        && (!('shareCaption' in request.resource.data) || request.resource.data.shareCaption == null || request.resource.data.shareCaption is string)
+        && validLogoSize();
       allow read: if (verifiedUser()
         && (resource.data.ownerUid == request.auth.uid || isSuperAdmin()));
       allow update: if (isSuperAdmin()
           && request.resource.data.ownerUid == resource.data.ownerUid
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'name', 'city', 'logoUrl', 'brandColor', 'googleReviewUrl', 'instagramUrl', 'facebookUrl', 'shareCaption', 'referredByName', 'status', 'statusUpdatedAt', 'businessType'
-          ]))
+          ])
+          && validLogoSize())
         || (isSuperAdmin()
           && request.resource.data.ownerUid == resource.data.ownerUid
           && resource.data.openQrRequestId is string
@@ -93,7 +101,8 @@ service cloud.firestore {
           && request.resource.data.ownerUid == resource.data.ownerUid
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'name', 'city', 'logoUrl', 'brandColor', 'googleReviewUrl', 'instagramUrl', 'facebookUrl', 'shareCaption'
-          ]))
+          ])
+          && validLogoSize())
         || (verifiedUser()
           && resource.data.ownerUid == request.auth.uid
           && (!('openQrRequestId' in resource.data) || resource.data.openQrRequestId == null)
@@ -111,17 +120,20 @@ service cloud.firestore {
         && request.resource.data.restaurantId == restaurantId
         && getAfter(/databases/$(database)/documents/restaurants/$(restaurantId)).data.ownerUid == request.auth.uid
         && request.resource.data.keys().hasOnly(['restaurantId', 'name', 'businessType', 'city', 'logoUrl', 'brandColor', 'googleReviewUrl', 'instagramUrl', 'facebookUrl', 'shareCaption', 'status'])
-        && (!('businessType' in request.resource.data) || request.resource.data.businessType in ['RESTAURANT', 'CAFE', 'SALON', 'GENERAL_STORE']);
+        && (!('businessType' in request.resource.data) || request.resource.data.businessType in ['RESTAURANT', 'CAFE', 'SALON', 'GENERAL_STORE'])
+        && validLogoSize();
       allow update: if (isSuperAdmin()
           && request.resource.data.restaurantId == resource.data.restaurantId
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'businessType', 'city', 'logoUrl', 'brandColor', 'googleReviewUrl', 'instagramUrl', 'facebookUrl', 'shareCaption', 'status'])
-          && (!('businessType' in request.resource.data) || request.resource.data.businessType in ['RESTAURANT', 'CAFE', 'SALON', 'GENERAL_STORE']))
+          && (!('businessType' in request.resource.data) || request.resource.data.businessType in ['RESTAURANT', 'CAFE', 'SALON', 'GENERAL_STORE'])
+          && validLogoSize())
         || (verifiedUser()
           && get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.ownerUid == request.auth.uid
           && request.resource.data.restaurantId == resource.data.restaurantId
           && request.resource.data.status == resource.data.status
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'businessType', 'city', 'logoUrl', 'brandColor', 'googleReviewUrl', 'instagramUrl', 'facebookUrl', 'shareCaption'])
-          && (!('businessType' in request.resource.data) || request.resource.data.businessType in ['RESTAURANT', 'CAFE', 'SALON', 'GENERAL_STORE']));
+          && (!('businessType' in request.resource.data) || request.resource.data.businessType in ['RESTAURANT', 'CAFE', 'SALON', 'GENERAL_STORE'])
+          && validLogoSize());
       allow delete: if isSuperAdmin();
     }
 

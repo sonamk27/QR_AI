@@ -6,6 +6,7 @@ import { randomBytes } from "node:crypto";
 import { db } from "@/lib/db";
 import { createSessionToken, setSessionCookie } from "@/lib/auth";
 import { clientIp, rateLimit } from "@/lib/ratelimit";
+import { isSupportedLogo, MAX_LOGO_DATA_URL_LENGTH } from "@/lib/logo-url";
 
 const schema = z.object({
   idToken: z.string().min(1).max(10_000),
@@ -13,6 +14,8 @@ const schema = z.object({
   name: z.string().trim().min(2).max(80).optional(),
   restaurantName: z.string().trim().min(2).max(100).optional(),
   city: z.string().trim().max(80).optional(),
+  logoUrl: z.string().trim().max(MAX_LOGO_DATA_URL_LENGTH).optional().nullable().or(z.literal(""))
+    .refine((logo) => !logo || isSupportedLogo(logo), "Use a secure logo image URL or upload a supported image."),
   refCode: z.string().trim().max(40).optional(),
   portal: z.enum(["restaurant_admin", "super_admin"]).optional(),
 });
@@ -53,7 +56,7 @@ export async function POST(req: Request) {
 
     if (parsed.data.mode === "signup") {
       if (parsed.data.portal || !parsed.data.name || !parsed.data.restaurantName) {
-        return NextResponse.json({ error: "Enter your name and restaurant name to create an account." }, { status: 400 });
+        return NextResponse.json({ error: "Enter your name and business name to create an account." }, { status: 400 });
       }
       if (!user) {
         user = await db.user.create({
@@ -65,6 +68,7 @@ export async function POST(req: Request) {
             restaurants: { create: {
               name: parsed.data.restaurantName,
               city: parsed.data.city || null,
+              logoUrl: parsed.data.logoUrl || null,
               referredByName: parsed.data.refCode || null,
             } },
           },

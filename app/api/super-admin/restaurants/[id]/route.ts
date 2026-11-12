@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { getSuperAdmin } from "@/lib/auth";
 import { isGoogleBusinessUrl } from "@/lib/google-business-url";
-import { isSupportedLogoUrl } from "@/lib/logo-url";
+import { isSupportedLogoUrl, MAX_LOGO_URL_LENGTH } from "@/lib/logo-url";
 
 const schema = z.union([
   z.object({ status: z.enum(["ACTIVE", "SUSPENDED"]) }),
@@ -12,8 +12,8 @@ const schema = z.union([
     name: z.string().trim().min(2).max(100),
     businessType: z.enum(["RESTAURANT", "CAFE", "SALON", "GENERAL_STORE"]).optional(),
     city: z.string().trim().max(80).optional().or(z.literal("")),
-    logoUrl: z.string().trim().url().max(1000).optional().or(z.literal(""))
-      .refine((url) => !url || isSupportedLogoUrl(url), "Logo URL must point to a PNG or SVG image."),
+    logoUrl: z.string().trim().url().max(MAX_LOGO_URL_LENGTH).optional().or(z.literal(""))
+      .refine((url) => !url || isSupportedLogoUrl(url), "Logo URL must point to a secure image."),
     brandColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
     googleReviewUrl: z.string().trim().max(500).optional().or(z.literal("")).refine(
       (url) => !url || isGoogleBusinessUrl(url),

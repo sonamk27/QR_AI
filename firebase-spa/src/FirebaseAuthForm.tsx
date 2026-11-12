@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   createUserWithEmailAndPassword,
@@ -10,6 +10,8 @@ import {
   type User,
 } from "firebase/auth";
 import { doc, getDoc, serverTimestamp, writeBatch } from "firebase/firestore";
+import { BusinessLogoInput } from "../../components/BusinessLogoInput";
+import { isSupportedLogo } from "../../lib/logo-url";
 import { getFirebaseServices } from "./firebase";
 
 type Portal = "restaurant_admin" | "super_admin";
@@ -19,8 +21,11 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [logoUrl, setLogoUrl] = useState("");
+  const [logoProcessing, setLogoProcessing] = useState(false);
+  const authAttemptInProgress = useRef(false);
 
-  async function provisionRestaurant(uid: string, email: string, name: string, restaurantName: string, city: string, refCode: string) {
+  async function provisionRestaurant(uid: string, email: string, name: string, restaurantName: string, city: string, refCode: string, logo: string) {
     const { db } = getFirebaseServices();
     const userRef = doc(db, "users", uid);
     const existing = await getDoc(userRef);
@@ -41,6 +46,7 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
       name: restaurantName,
       businessType: "RESTAURANT",
       city: city || null,
+      logoUrl: logo || null,
       referredByName: refCode || null,
       brandColor: "#1F6F5C",
       status: "ACTIVE",
@@ -52,6 +58,7 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
       name: restaurantName,
       businessType: "RESTAURANT",
       city: city || null,
+      logoUrl: logo || null,
       brandColor: "#1F6F5C",
       status: "ACTIVE",
     });
@@ -93,7 +100,15 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
       return;
     }
     if (mode === "signup" && (!String(data.name ?? "").trim() || !String(data.restaurantName ?? "").trim())) {
-      setError("Enter your name and restaurant name to create an account.");
+      setError("Enter your name and business name to create an account.");
+      return;
+    }
+    if (mode === "signup" && String(data.logoUrl ?? "").trim() && !isSupportedLogo(String(data.logoUrl).trim())) {
+      setError("Upload a PNG, JPG, or WebP logo, or enter a secure HTTPS image URL up to 2,000 characters.");
+      return;
+    }
+    if (mode === "signup" && logoProcessing) {
+      setError("Wait for the logo to finish processing before creating your account.");
       return;
     }
     if (mode === "signup" && (String(data.name).trim().length > 100 || String(data.restaurantName).trim().length > 100 || String(data.city ?? "").trim().length > 80)) {
@@ -104,6 +119,8 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
       setError("Sign-up is only available for restaurant accounts.");
       return;
     }
+    if (authAttemptInProgress.current) return;
+    authAttemptInProgress.current = true;
     setBusy(true);
     setError("");
     try {
@@ -113,7 +130,7 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
         : await signInWithEmailAndPassword(auth, String(data.email).trim(), String(data.password));
       if (mode === "signup") {
         try {
-          await provisionRestaurant(credential.user.uid, credential.user.email ?? String(data.email), String(data.name), String(data.restaurantName), String(data.city ?? ""), String(data.refCode ?? ""));
+          await provisionRestaurant(credential.user.uid, credential.user.email ?? String(data.email), String(data.name), String(data.restaurantName), String(data.city ?? ""), String(data.refCode ?? ""), String(data.logoUrl ?? ""));
         } catch (provisionError) {
           await deleteUser(credential.user).catch((cleanupError) => console.error("Could not remove incomplete Firebase signup", cleanupError));
           throw provisionError;
@@ -122,6 +139,10 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
       await completeLogin(credential.user);
     } catch (caught) {
       const code = caught && typeof caught === "object" && "code" in caught ? String(caught.code) : "";
+      if (mode === "signup" && code === "permission-denied") {
+        setError("Firebase denied saving the business profile. Deploy the latest Firestore rules, then try again.");
+        return;
+      }
       const mapped: Record<string, string> = {
         "auth/email-already-in-use": "An account with this email already exists. Sign in instead.",
         "auth/invalid-credential": "Email or password is incorrect.",
@@ -131,6 +152,7 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
       };
       setError(mapped[code] ?? (caught instanceof Error ? caught.message : "Unable to sign in. Please try again."));
     } finally {
+      authAttemptInProgress.current = false;
       setBusy(false);
     }
   }
@@ -143,13 +165,23 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
       return;
     }
     if (mode === "signup" && (!String(data.name ?? "").trim() || !String(data.restaurantName ?? "").trim())) {
-      setError("Enter your name and restaurant name to create an account.");
+      setError("Enter your name and business name to create an account.");
+      return;
+    }
+    if (mode === "signup" && String(data.logoUrl ?? "").trim() && !isSupportedLogo(String(data.logoUrl).trim())) {
+      setError("Upload a PNG, JPG, or WebP logo, or enter a secure HTTPS image URL up to 2,000 characters.");
+      return;
+    }
+    if (mode === "signup" && logoProcessing) {
+      setError("Wait for the logo to finish processing before creating your account.");
       return;
     }
     if (mode === "signup" && (String(data.name).trim().length > 100 || String(data.restaurantName).trim().length > 100 || String(data.city ?? "").trim().length > 80)) {
       setError("Names must be 100 characters or fewer and city must be 80 characters or fewer.");
       return;
     }
+    if (authAttemptInProgress.current) return;
+    authAttemptInProgress.current = true;
     setBusy(true);
     setError("");
     try {
@@ -157,7 +189,7 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
       const credential = await signInWithPopup(auth, new GoogleAuthProvider());
       if (mode === "signup") {
         try {
-          await provisionRestaurant(credential.user.uid, credential.user.email ?? "", String(data.name), String(data.restaurantName), String(data.city ?? ""), String(data.refCode ?? ""));
+          await provisionRestaurant(credential.user.uid, credential.user.email ?? "", String(data.name), String(data.restaurantName), String(data.city ?? ""), String(data.refCode ?? ""), String(data.logoUrl ?? ""));
         } catch (provisionError) {
           if (getAdditionalUserInfo(credential)?.isNewUser) {
             await deleteUser(credential.user).catch((cleanupError) => console.error("Could not remove incomplete Google signup", cleanupError));
@@ -170,6 +202,7 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
       const message = caught instanceof Error ? caught.message : "Google sign-in failed.";
       if (!message.includes("popup-closed-by-user") && !message.includes("cancelled-popup-request")) setError(message);
     } finally {
+      authAttemptInProgress.current = false;
       setBusy(false);
     }
   }
@@ -197,7 +230,7 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
         <p className="mt-6 text-xs font-semibold uppercase tracking-wider text-ink/50">
           {portal === "super_admin" ? "Platform management" : portal === "restaurant_admin" ? "Restaurant portal" : "Secure account access"}
         </p>
-        <h1 className="mt-2 text-3xl font-semibold">{mode === "login" ? portal === "super_admin" ? "Super Admin sign in" : portal === "restaurant_admin" ? "Restaurant Admin sign in" : "Sign in" : "Create your restaurant account"}</h1>
+        <h1 className="mt-2 text-3xl font-semibold">{mode === "login" ? portal === "super_admin" ? "Super Admin sign in" : portal === "restaurant_admin" ? "Restaurant Admin sign in" : "Sign in" : "Create your business account"}</h1>
         <form data-auth-form onSubmit={submit} autoComplete={mode === "signup" ? "off" : "on"} className="mt-6 space-y-4">
           {mode === "signup" && (
             <div aria-hidden="true" className="absolute -left-[10000px] h-px w-px overflow-hidden">
@@ -206,17 +239,25 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
             </div>
           )}
           {mode === "signup" && field("name", "Your name", "text", true, "name")}
-          {mode === "signup" && field("restaurantName", "Restaurant name", "text", true, "organization")}
+          {mode === "signup" && field("restaurantName", "Business name", "text", true, "organization")}
+          {mode === "signup" && (
+            <BusinessLogoInput
+              value={logoUrl}
+              onChange={setLogoUrl}
+              disabled={busy}
+              onProcessingChange={setLogoProcessing}
+            />
+          )}
           {mode === "signup" && field("city", "City", "text", false, "address-level2")}
           {field("email", "Email", "email", true, mode === "signup" ? "off" : "username")}
           {field("password", mode === "signup" ? "Password (8+ characters)" : "Password", "password", true, mode === "signup" ? "new-password" : "current-password")}
           {mode === "signup" && field("refCode", "Referral code (optional)", "text", false)}
           {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-          <button className="btn w-full" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>
+          <button className="btn w-full" disabled={busy || logoProcessing}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>
         </form>
         {portal !== "super_admin" && <>
           <div className="my-5 flex items-center gap-3 text-xs text-ink/45"><span className="h-px flex-1 bg-line" /><span>OR</span><span className="h-px flex-1 bg-line" /></div>
-          <button type="button" onClick={googleSignIn} disabled={busy} className="flex w-full items-center justify-center gap-3 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-medium text-ink shadow-sm transition hover:bg-paper disabled:opacity-60">
+          <button type="button" onClick={googleSignIn} disabled={busy || logoProcessing} className="flex w-full items-center justify-center gap-3 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-medium text-ink shadow-sm transition hover:bg-paper disabled:opacity-60">
             <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" aria-hidden="true">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
               <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />

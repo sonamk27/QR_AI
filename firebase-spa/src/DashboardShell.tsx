@@ -26,7 +26,7 @@ const groups = [
   ] },
   { label: "Account", items: [
     { href: "/dashboard/payments", label: "Invoices & Billing", icon: "🧾" },
-    { href: "/dashboard/profile", label: "Restaurant Settings", icon: "⚙️" },
+    { href: "/dashboard/profile", label: "Business Settings", icon: "⚙️" },
   ] },
 ];
 

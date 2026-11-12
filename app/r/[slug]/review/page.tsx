@@ -19,7 +19,7 @@ export default async function CustomerReviewPage({ params }: { params: Promise<{
           <p className="mb-4 text-4xl">🔒</p>
           <h1 className="text-2xl font-serif font-bold text-stone-900">QR Code Unavailable</h1>
           <p className="mx-auto mt-2 max-w-xs text-sm text-stone-600">
-            This QR code is currently inactive. Please ask the restaurant staff for assistance.
+            This QR code is currently inactive. Please contact the business team for assistance.
           </p>
         </div>
       </main>

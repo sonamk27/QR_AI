@@ -6,8 +6,8 @@ const display = Playfair_Display({ subsets: ["latin"], variable: "--font-display
 const body = DM_Sans({ subsets: ["latin"], variable: "--font-body" });
 
 export const metadata: Metadata = {
-  title: "ReviewFlow — QR AI Review & Loyalty System",
-  description: "A QR code on the table. Customers collect stamps, unlock rewards, and post reviews effortlessly.",
+  title: "ReviewFlow — QR Reviews & Loyalty for Local Businesses",
+  description: "Help customers share feedback, write reviews, and earn rewards with one simple QR experience for your business.",
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
 

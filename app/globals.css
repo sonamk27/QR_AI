@@ -467,7 +467,8 @@ h1, h2, h3, .font-serif {
 .cafe-welcome {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .cafe-welcome::before,
@@ -525,6 +526,33 @@ h1, h2, h3, .font-serif {
 
 .cafe-pill-button {
   border-radius: 9999px !important;
+}
+
+.customer-collect-stamp-button {
+  min-height: 3.25rem;
+  border: 1px solid rgb(255 255 255 / 55%);
+  padding: 0.5rem 1rem;
+  box-shadow: 0 10px 24px rgb(52 48 36 / 18%), inset 0 1px 0 rgb(255 255 255 / 25%);
+}
+
+.customer-collect-stamp-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgb(52 48 36 / 22%), inset 0 1px 0 rgb(255 255 255 / 30%);
+}
+
+.customer-collect-stamp-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.customer-collect-stamp-button:disabled {
+  cursor: wait;
+}
+
+.customer-collect-stamp-icon {
+  flex: 0 0 auto;
+  background: #f7d154;
+  color: #4a6b47;
+  box-shadow: 0 2px 7px rgb(52 48 36 / 18%);
 }
 
 .cafe-welcome .cafe-pill-button:first-child {
@@ -798,7 +826,8 @@ h1, h2, h3, .font-serif {
   height: min(844px, calc(100svh - 3rem));
   min-height: min(844px, calc(100svh - 3rem));
   max-height: 844px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   border: 1px solid rgb(232 216 186 / 82%);
   border-radius: 30px;
   background-color: #fbf4e6;
@@ -807,12 +836,18 @@ h1, h2, h3, .font-serif {
 }
 
 .customer-journey > main::-webkit-scrollbar {
-  width: 0;
+  width: 5px;
   height: 0;
 }
 
+.customer-journey > main::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: rgb(74 107 71 / 28%);
+}
+
 .customer-journey > main {
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(74 107 71 / 28%) transparent;
 }
 
 .customer-register-screen,
@@ -827,7 +862,8 @@ h1, h2, h3, .font-serif {
 .customer-register-screen,
 .customer-review-screen,
 .customer-rewards-screen {
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .customer-register-screen::before,
@@ -1075,7 +1111,8 @@ h1, h2, h3, .font-serif {
   --pending-border: #e8d8ba;
   --pending-ring: #cad7bf;
   --pending-accent: #4a6b47;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   background:
     radial-gradient(ellipse at 100% 65%, rgb(238 193 169 / 25%), transparent 16rem),
     #fbf4e6;
@@ -1437,7 +1474,8 @@ h1, h2, h3, .font-serif {
     min-height: 100vh;
     min-height: 100svh;
     max-height: 100svh;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     border: 0;
     border-radius: 0;
     box-shadow: none;

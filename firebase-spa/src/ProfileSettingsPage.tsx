@@ -2,7 +2,7 @@ import { useOutletContext } from "react-router-dom";
 import { doc, writeBatch } from "firebase/firestore";
 import { ProfileForm } from "../../components/ProfileForm";
 import { isGoogleBusinessUrl } from "../../lib/google-business-url";
-import { isSupportedLogoUrl } from "../../lib/logo-url";
+import { isSupportedLogo } from "../../lib/logo-url";
 import { getFirebaseServices } from "./firebase";
 import type { DashboardOutletContext } from "./DashboardShell";
 
@@ -22,12 +22,12 @@ export default function ProfileSettingsPage() {
   const firebaseSavers = {
     onSaved: refreshRestaurant,
     saveIdentity: async (values: { name: string; city: string | null; logoUrl: string | null; brandColor: string }) => {
-      if (values.name.length < 2 || values.name.length > 100) throw new Error("Restaurant name must be 2–100 characters.");
+      if (values.name.length < 2 || values.name.length > 100) throw new Error("Business name must be 2–100 characters.");
       if ((values.city?.length ?? 0) > 80) throw new Error("City must be 80 characters or fewer.");
       if (!/^#[0-9a-fA-F]{6}$/.test(values.brandColor)) throw new Error("Enter a valid 6-digit brand colour.");
       if (values.logoUrl) {
-        if (values.logoUrl.length > 300 || !isSupportedLogoUrl(values.logoUrl)) {
-          throw new Error("Enter a valid PNG or SVG logo URL (300 characters or fewer).");
+        if (!isSupportedLogo(values.logoUrl)) {
+          throw new Error("Upload a PNG, JPG, or WebP logo, or enter a secure HTTPS image URL up to 2,000 characters.");
         }
       }
       const batch = writeBatch(db);
@@ -57,7 +57,7 @@ export default function ProfileSettingsPage() {
   };
 
   return <div className="space-y-5">
-    <h1 className="text-3xl font-semibold">Restaurant profile</h1>
+    <h1 className="text-3xl font-semibold">Business profile</h1>
     <ProfileForm r={{
       name: restaurant.name,
       city: restaurant.city ?? null,

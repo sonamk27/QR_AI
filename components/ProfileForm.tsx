@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { BusinessLogoInput } from "./BusinessLogoInput";
 
 type R = {
   name: string;
@@ -19,11 +20,11 @@ type FirebaseSavers = {
   saveSocial?: (values: { instagramUrl: string | null; facebookUrl: string | null; shareCaption: string | null }) => Promise<void>;
 };
 
-function SaveButton({ busy, label }: { busy: boolean; label: string }) {
+function SaveButton({ busy, label, disabled = busy }: { busy: boolean; label: string; disabled?: boolean }) {
   return (
     <button
       type="submit"
-      disabled={busy}
+      disabled={disabled}
       className="inline-flex items-center gap-2 rounded-xl bg-[#B58A4B] px-5 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-[#9E7438] active:scale-[0.98] disabled:opacity-60"
     >
       {busy && (
@@ -54,7 +55,8 @@ export function ProfileForm({ r, firebaseSavers }: { r: R; firebaseSavers?: Fire
   const [msg, setMsg] = useState("");
   const [msgIsError, setMsgIsError] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [logoPreview, setLogoPreview] = useState(r.logoUrl ?? "");
+  const [logoValue, setLogoValue] = useState(r.logoUrl ?? "");
+  const [logoUploading, setLogoUploading] = useState(false);
 
   const [googleBusinessUrl, setGoogleBusinessUrl] = useState(r.googleReviewUrl ?? "");
   const [googleUrlError, setGoogleUrlError] = useState("");
@@ -78,7 +80,7 @@ export function ProfileForm({ r, firebaseSavers }: { r: R; firebaseSavers?: Fire
         await firebaseSavers.saveIdentity({
           name: String(body.name ?? "").trim(),
           city: String(body.city ?? "").trim() || null,
-          logoUrl: String(body.logoUrl ?? "").trim() || null,
+          logoUrl: logoValue.trim() || null,
           brandColor: String(body.brandColor ?? ""),
         });
         await firebaseSavers.onSaved?.();
@@ -92,16 +94,22 @@ export function ProfileForm({ r, firebaseSavers }: { r: R; firebaseSavers?: Fire
       }
       return;
     }
-    const res = await fetch("/api/restaurant", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json().catch(() => ({}));
-    setBusy(false);
-    setMsgIsError(!res.ok);
-    setMsg(res.ok ? "Changes saved!" : data.error ?? "Could not save.");
-    if (res.ok) router.refresh();
+    try {
+      const res = await fetch("/api/restaurant", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...body, logoUrl: logoValue.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setMsgIsError(!res.ok);
+      setMsg(res.ok ? "Changes saved!" : data.error ?? "Could not save.");
+      if (res.ok) router.refresh();
+    } catch {
+      setMsgIsError(true);
+      setMsg("Unable to reach the server. Check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function saveGoogleBusinessUrl(e: React.FormEvent<HTMLFormElement>) {
@@ -174,7 +182,7 @@ export function ProfileForm({ r, firebaseSavers }: { r: R; firebaseSavers?: Fire
 
   return (
     <div className="max-w-xl space-y-6">
-      {/* ── Card 1: Restaurant Identity ──────────────────────────── */}
+      {/* ── Card 1: Business Identity ───────────────────────────── */}
       <form
         onSubmit={submit}
         className="overflow-hidden rounded-2xl border border-[#E8DFD1] bg-white shadow-subtle"
@@ -184,51 +192,27 @@ export function ProfileForm({ r, firebaseSavers }: { r: R; firebaseSavers?: Fire
             🏪
           </span>
           <div>
-            <h2 className="font-serif font-bold text-sm text-[#24211E]">Restaurant Identity</h2>
+            <h2 className="font-serif font-bold text-sm text-[#24211E]">Business Identity</h2>
             <p className="text-xs text-[#716B64]">Name, city, logo and brand colour</p>
           </div>
         </div>
 
         <div className="space-y-4 p-6">
-          {/* Logo preview + URL */}
-          <div className="flex items-start gap-4">
-            <div className="shrink-0">
-              {logoPreview ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={logoPreview}
-                  alt="Logo preview"
-                  onError={() => setLogoPreview("")}
-                  className="h-16 w-16 rounded-xl object-cover ring-2 ring-[#E8DFD1]"
-                />
-              ) : (
-                <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-[#FAF7F2] ring-2 ring-dashed ring-[#E8DFD1] text-2xl">
-                  🖼
-                </div>
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <label className="block text-xs font-semibold text-[#716B64] mb-1" htmlFor="logoUrl">
-                Logo URL <span className="font-normal text-[#716B64]/60">(optional)</span>
-              </label>
-              <input
-                id="logoUrl"
-                name="logoUrl"
-                type="url"
-                defaultValue={r.logoUrl ?? ""}
-                className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] px-3.5 py-2 text-xs font-medium text-[#24211E] outline-none focus:border-[#B58A4B] focus:bg-white"
-                placeholder="https://example.com/logo.png or logo.svg"
-                onChange={(e) => setLogoPreview(e.target.value)}
-              />
-              <p className="mt-1 text-[11px] text-[#716B64]">Use a PNG or SVG image URL. Leave blank to use no logo.</p>
-            </div>
-          </div>
+          <BusinessLogoInput
+            value={logoValue}
+            onChange={(value) => {
+              setLogoValue(value);
+              setMsg("");
+            }}
+            disabled={busy}
+            onProcessingChange={setLogoUploading}
+          />
 
           {/* Name + City grid */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-xs font-semibold text-[#716B64] mb-1" htmlFor="name">
-                Restaurant Name
+                Business Name
               </label>
               <input
                 id="name"
@@ -236,7 +220,7 @@ export function ProfileForm({ r, firebaseSavers }: { r: R; firebaseSavers?: Fire
                 required
                 defaultValue={r.name}
                 className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] px-3.5 py-2 text-xs font-medium text-[#24211E] outline-none focus:border-[#B58A4B] focus:bg-white"
-                placeholder="Enter restaurant name"
+                placeholder="Enter business name"
               />
             </div>
             <div>
@@ -254,7 +238,7 @@ export function ProfileForm({ r, firebaseSavers }: { r: R; firebaseSavers?: Fire
           </div>
 
           <div className="flex items-center gap-3 border-t border-[#E8DFD1]/60 pt-4">
-            <SaveButton busy={busy} label="Save Changes" />
+            <SaveButton busy={busy} disabled={busy || logoUploading} label="Save Changes" />
             <StatusBadge msg={msg} isError={msgIsError} />
           </div>
         </div>
@@ -293,7 +277,7 @@ export function ProfileForm({ r, firebaseSavers }: { r: R; firebaseSavers?: Fire
               aria-describedby="googleBusinessUrl-help"
             />
             <p id="googleBusinessUrl-help" className="mt-1.5 text-xs text-[#716B64]">
-              Paste your restaurant&apos;s Google Maps / Business Profile URL. Customers will be directed here after their visit.
+              Paste your business&apos;s Google Maps / Business Profile URL. Customers will be directed here after their visit.
             </p>
           </div>
           {googleUrlError && <p role="alert" className="text-xs font-semibold text-[#A83B3B]">{googleUrlError}</p>}
@@ -321,7 +305,7 @@ export function ProfileForm({ r, firebaseSavers }: { r: R; firebaseSavers?: Fire
 
         <div className="space-y-4 p-6">
           <p className="text-xs text-[#716B64]">
-            Guests can follow your Instagram &amp; Facebook pages, copy their review draft, and share on social media.
+            Customers can follow your Instagram &amp; Facebook pages, copy their review draft, and share on social media.
           </p>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

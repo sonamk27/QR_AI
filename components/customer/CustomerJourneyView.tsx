@@ -876,12 +876,12 @@ export function CustomerJourneyView({
               <button
                 onClick={() => handleCollectStampClick()}
                 disabled={collectingStamp}
-                className={`w-full rounded-2xl py-3.5 text-sm font-bold text-white shadow-xs transition active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2 ${isCafeFeedback ? "cafe-pill-button" : ""}`}
+                className={`customer-collect-stamp-button flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-bold text-white shadow-xs transition active:scale-[0.98] disabled:opacity-60 ${isCafeFeedback ? "cafe-pill-button" : ""}`}
                 style={{ backgroundColor: businessFeedback.accentColor }}
                 onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentHoverColor; }}
                 onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentColor; }}
               >
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-sm">✓</span>
+                <span className="customer-collect-stamp-icon flex h-7 w-7 items-center justify-center rounded-full text-sm" aria-hidden="true">★</span>
                 <span>{collectingStamp ? "Collecting Stamp..." : "Collect My Stamp"}</span>
               </button>
 

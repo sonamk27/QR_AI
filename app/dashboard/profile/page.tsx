@@ -7,7 +7,7 @@ export default async function Profile() {
   const { restaurant } = (await getOwnerContext())!;
   return (
     <div className="space-y-5">
-      <h1 className="text-3xl font-semibold">Restaurant profile</h1>
+      <h1 className="text-3xl font-semibold">Business profile</h1>
       <ProfileForm
         r={{
           name: restaurant.name,

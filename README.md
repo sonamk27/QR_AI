@@ -165,9 +165,10 @@ Firebase project.
 
 Cloud Storage for Firebase requires a Blaze billing account, even when usage
 would otherwise fit a no-cost storage allowance. This project currently has no
-user-upload feature, so keep bundled public assets in `public/` and avoid adding
-Firebase Storage while remaining strictly on Spark. See [Cloud Storage billing
-requirements](https://firebase.google.com/docs/storage/faqs-storage-changes-announced-sept-2024).
+Firebase Storage integration, so keep bundled public assets in `public/` and
+avoid adding Firebase Storage while remaining strictly on Spark. Business
+profile logo uploads are resized to WebP and stored inline in Firestore with a
+strict size limit. See [Cloud Storage billing requirements](https://firebase.google.com/docs/storage/faqs-storage-changes-announced-sept-2024).
 
 The legacy app still uses PostgreSQL/Prisma; its data can be copied with the
 one-time migration script

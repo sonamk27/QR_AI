@@ -3,8 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { BusinessLogoInput } from "./BusinessLogoInput";
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase-client";
+import { isSupportedLogo } from "@/lib/logo-url";
 
 type Portal = "restaurant_admin" | "super_admin";
 
@@ -18,6 +20,9 @@ export function AuthForm({
   const router = useRouter();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [logoUrl, setLogoUrl] = useState("");
+  const [logoProcessing, setLogoProcessing] = useState(false);
+  const authAttemptInProgress = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -26,10 +31,18 @@ export function AuthForm({
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (authAttemptInProgress.current) return;
+    authAttemptInProgress.current = true;
     setBusy(true);
     setError("");
     try {
       const body = Object.fromEntries(new FormData(e.currentTarget).entries());
+      if (mode === "signup" && String(body.logoUrl ?? "").trim() && !isSupportedLogo(String(body.logoUrl).trim())) {
+        throw new Error("Upload a PNG, JPG, or WebP logo, or enter a secure HTTPS image URL up to 2,000 characters.");
+      }
+      if (mode === "signup" && logoProcessing) {
+        throw new Error("Wait for the logo to finish processing before creating your account.");
+      }
       const auth = getFirebaseAuth();
       const credential = mode === "signup"
         ? await createUserWithEmailAndPassword(auth, String(body.email), String(body.password))
@@ -39,7 +52,7 @@ export function AuthForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           idToken: await credential.user.getIdToken(true), mode, portal,
-          name: body.name, restaurantName: body.restaurantName, city: body.city, refCode: body.refCode,
+          name: body.name, restaurantName: body.restaurantName, city: body.city, refCode: body.refCode, logoUrl: body.logoUrl,
         }),
       });
       const data = await response.json().catch(() => ({}));
@@ -60,6 +73,7 @@ export function AuthForm({
       const message = caught instanceof Error ? caught.message : "";
       setError(firebaseErrors[code] ?? (message || "Unable to reach the server. Check your connection and try again."));
     } finally {
+      authAttemptInProgress.current = false;
       setBusy(false);
     }
   }
@@ -74,7 +88,17 @@ export function AuthForm({
       setError("Enter your name and restaurant name to create an account.");
       return;
     }
+    if (mode === "signup" && String(formData.get("logoUrl") ?? "").trim() && !isSupportedLogo(String(formData.get("logoUrl")).trim())) {
+      setError("Upload a PNG, JPG, or WebP logo, or enter a secure HTTPS image URL up to 2,000 characters.");
+      return;
+    }
+    if (mode === "signup" && logoProcessing) {
+      setError("Wait for the logo to finish processing before creating your account.");
+      return;
+    }
 
+    if (authAttemptInProgress.current) return;
+    authAttemptInProgress.current = true;
     setBusy(true);
     setError("");
     try {
@@ -95,6 +119,7 @@ export function AuthForm({
         body.restaurantName = String(formData.get("restaurantName") ?? "");
         body.city = String(formData.get("city") ?? "");
         body.refCode = String(formData.get("refCode") ?? "");
+        body.logoUrl = String(formData.get("logoUrl") ?? "");
       }
       if (portal) body.portal = portal;
 
@@ -118,6 +143,7 @@ export function AuthForm({
       }
       setError(err.includes("not configured") ? "Firebase Authentication is not configured yet." : err);
     } finally {
+      authAttemptInProgress.current = false;
       setBusy(false);
     }
   }
@@ -170,13 +196,21 @@ export function AuthForm({
       </h1>
       <form ref={formRef} onSubmit={submit} autoComplete={mode === "signup" ? "off" : "on"} className="mt-6 space-y-4">
         {mode === "signup" && field("name", "Your name", "text", true, "name")}
-        {mode === "signup" && field("restaurantName", "Restaurant name", "text", true, "organization")}
+        {mode === "signup" && field("restaurantName", "Business name", "text", true, "organization")}
+        {mode === "signup" && (
+          <BusinessLogoInput
+            value={logoUrl}
+            onChange={setLogoUrl}
+            disabled={busy}
+            onProcessingChange={setLogoProcessing}
+          />
+        )}
         {mode === "signup" && field("city", "City", "text", false, "address-level2")}
         {field("email", "Email", "email", true, mode === "signup" ? "off" : "username")}
         {field("password", mode === "signup" ? "Password (8+ characters)" : "Password", "password", true, mode === "signup" ? "new-password" : "current-password")}
         {mode === "signup" && field("refCode", "Referral code (optional)", "text", false)}
         {error && <div role="alert" className="space-y-1 text-sm text-red-700"><p>{error}</p></div>}
-        <button className="btn w-full" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>
+        <button className="btn w-full" disabled={busy || logoProcessing}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>
       </form>
       {mode === "login" && (
         <Link href="/reset-password" className="mt-3 inline-flex text-sm font-medium text-[#7A5826] underline">
@@ -193,7 +227,7 @@ export function AuthForm({
           <button
             type="button"
             onClick={signInWithGoogle}
-            disabled={busy}
+            disabled={busy || logoProcessing}
             className="flex w-full items-center justify-center gap-3 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-medium text-ink shadow-sm transition hover:bg-paper hover:shadow-md active:scale-[0.98] disabled:opacity-60"
           >
             <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" aria-hidden="true">

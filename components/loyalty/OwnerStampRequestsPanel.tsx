@@ -40,6 +40,7 @@ export function OwnerStampRequestsPanel({
   const [pendingRequests, setPendingRequests] = useState<PendingStampRequest[]>([]);
   const [recentRequests, setRecentRequests] = useState<PendingStampRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [activeTab, setActiveTab] = useState<"pending" | "recent">("pending");
@@ -59,16 +60,18 @@ export function OwnerStampRequestsPanel({
         const data = await firebaseActions.load();
         setPendingRequests(data.pending);
         setRecentRequests(data.recent);
+        setLoadError(null);
         return;
       }
       const res = await fetch("/api/loyalty/requests");
       const data = await res.json();
-      if (res.ok) {
-        setPendingRequests(data.pending || []);
-        setRecentRequests(data.recent || []);
-      }
+      if (!res.ok) throw new Error(data.error || "Failed to fetch stamp requests");
+      setPendingRequests(data.pending || []);
+      setRecentRequests(data.recent || []);
+      setLoadError(null);
     } catch (err) {
       console.error("Failed to fetch stamp requests:", err);
+      setLoadError(err instanceof Error ? err.message : "Failed to fetch stamp requests");
     } finally {
       if (!silent) setLoading(false);
     }
@@ -240,6 +243,11 @@ export function OwnerStampRequestsPanel({
         >
           {actionMessage.type === "success" ? "✓ " : "⚠️ "}
           {actionMessage.text}
+        </div>
+      )}
+      {loadError && (
+        <div role="alert" className="mt-3 rounded-xl border border-[#F7D6D6] bg-[#FDF2F2] p-3 text-xs font-semibold text-[#A83B3B]">
+          Could not load stamp requests: {loadError}
         </div>
       )}
 

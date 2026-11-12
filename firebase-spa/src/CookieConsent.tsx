@@ -25,22 +25,17 @@ export default function CookieConsent() {
   }, []);
 
   async function chooseAnalytics(allowed: boolean) {
-    window.localStorage.setItem(CONSENT_STORAGE_KEY, allowed ? "granted" : "denied");
     try {
+      window.localStorage.setItem(CONSENT_STORAGE_KEY, allowed ? "granted" : "denied");
       const available = await applyAnalyticsConsent(allowed);
-      setMessage(
-        allowed && !available
-          ? "Analytics are not configured for this site, so no optional analytics were started."
-          : "",
-      );
-      setVisible(allowed && !available);
       if (allowed && available) {
         await trackConsentedPageView(window.location.pathname);
       }
-      if (!allowed) setVisible(false);
+      setMessage("");
+      setVisible(false);
     } catch (error) {
       console.error("Could not update analytics consent", error);
-      setMessage("Your preference was saved, but analytics could not be updated. Please try again.");
+      setMessage("Could not save or update your analytics preference. Please try again.");
       setVisible(true);
     }
   }

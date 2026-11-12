@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { getFirebaseServices } from "./firebase";
 import { useAuthState } from "./AuthState";
+import { PendingStampRequestsSummary } from "./PendingStampRequestsSummary";
 
 type Summary = {
   qrCount: number; scans: number; sessions: number; googleClicks: number;
@@ -89,6 +90,7 @@ export default function OwnerDashboardPage() {
       <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center"><button onClick={() => void load()} disabled={busy} className="min-h-11 rounded-xl border border-[#E8DFD1] bg-white px-3.5 text-xs font-semibold text-[#24211E]">{busy ? "Loading…" : "Refresh"}</button><Link to="/dashboard/feedback" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#E8DFD1] bg-white px-3.5 text-xs font-semibold text-[#24211E]">View feedback</Link>      <Link to="/dashboard/qr" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#B58A4B] px-3.5 text-xs font-bold text-white">View QR code</Link></div>
     </header>
     {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+    <PendingStampRequestsSummary />
     <section aria-label="Last 30 days metrics" className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-5">
       <MetricCard label="Average rating" value={summary.avgOverall != null ? summary.avgOverall.toFixed(1) : "—"} detail={`${summary.sessions} guest responses`} />
       <MetricCard label="QR scans" value={summary.scans} detail="Guest visits from your QR codes" />
