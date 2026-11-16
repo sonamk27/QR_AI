@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { BusinessLogoInput } from "./BusinessLogoInput";
+import { RatingStarsStatic } from "@/components/RatingStars";
 
 type R = {
   name: string;
@@ -250,9 +251,7 @@ export function ProfileForm({ r, firebaseSavers }: { r: R; firebaseSavers?: Fire
         className="overflow-hidden rounded-2xl border border-[#E8DFD1] bg-white shadow-subtle"
       >
         <div className="flex items-center gap-3 px-6 py-4 bg-[#FAF7F2] border-b border-[#E8DFD1]">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FAF5ED] text-lg text-[#B58A4B] border border-[#E8D8BA]">
-            ⭐
-          </span>
+          <RatingStarsStatic n={5} size="sm" />
           <div>
             <h2 className="font-serif font-bold text-sm text-[#24211E]">Google Reviews</h2>
             <p className="text-xs text-[#716B64]">Drive more reviews with a direct link</p>

@@ -10,6 +10,7 @@ import { BUSINESS_TYPE_LABELS, BUSINESS_TYPES, getBusinessType, type BusinessTyp
 type RestaurantRow = {
   id: string;
   name: string;
+  logoUrl: string | null;
   businessType: BusinessType;
   city: string | null;
   brandColor: string;
@@ -606,10 +607,19 @@ export function RestaurantsAdminTable({
                 <tr key={r.id} className="hover:bg-paper/40 transition">
                   <td className="td font-medium">
                     <div className="flex items-center gap-2">
-                      <div
-                        className="h-3 w-3 rounded-full shrink-0"
-                        style={{ backgroundColor: r.brandColor || "#1F6F5C" }}
-                      />
+                      {r.logoUrl ? (
+                        <img
+                          src={r.logoUrl}
+                          alt={`${r.name} logo`}
+                          className="h-8 w-8 shrink-0 rounded-lg border border-zinc-200 bg-white p-0.5 object-contain shadow-sm"
+                        />
+                      ) : (
+                        <div
+                          className="h-8 w-8 shrink-0 rounded-lg flex items-center justify-center border border-zinc-200 bg-white text-xs font-bold text-ink/40"
+                        >
+                          {r.name.trim().charAt(0).toUpperCase()}
+                        </div>
+                      )}
                       <div>
                         <p className="font-semibold text-ink">{r.name}</p>
                         <p className="text-xs font-normal text-ink/60">{BUSINESS_TYPE_LABELS[getBusinessType(r.businessType)]} · {r.city || "No city"}</p>

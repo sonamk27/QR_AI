@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { RatingStarsStatic } from "@/components/RatingStars";
 import { extractSocialHandle } from "@/lib/social-format";
 
 export function OpenQrButton({
@@ -173,7 +174,7 @@ export function OpenQrButton({
                         <span className="font-semibold text-[#24211E] flex items-center gap-1.5">
                           Google Reviews
                         </span>
-                        <span className="text-[10px] font-medium text-[#B58A4B]">★ ★ ★ ★ ★</span>
+                        <RatingStarsStatic n={5} size="sm" />
                       </div>
                     )}
                   </div>

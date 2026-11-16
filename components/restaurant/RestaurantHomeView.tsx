@@ -73,7 +73,7 @@ export function RestaurantHomeView({ slug, restaurant, program }: { slug: string
             <img
               src={restaurant.logoUrl}
               alt={restaurant.name}
-              className="mx-auto -mt-16 h-24 w-24 rounded-full border-4 border-white object-cover shadow-md"
+              className="mx-auto -mt-16 h-24 w-24 rounded-full border-4 border-white object-contain p-1 shadow-md"
             />
           ) : (
             <div

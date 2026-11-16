@@ -1,5 +1,6 @@
 "use client";
 
+import { RatingStarsStatic } from "@/components/RatingStars";
 import { useEffect, useState } from "react";
 
 type GoogleReview = {
@@ -146,7 +147,7 @@ export function GooglePlacesReviews({
         {typeof data?.rating === "number" && (
           <div className="shrink-0 text-right">
             <p className="text-sm font-bold text-[#24211E]">
-              <span className="mr-1 text-amber-500" aria-hidden="true">★</span>
+              <RatingStarsStatic n={Math.round(data.rating)} size="sm" />
               {data.rating.toFixed(1)}
             </p>
             {typeof data.userRatingCount === "number" && (

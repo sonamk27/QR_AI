@@ -21,6 +21,7 @@ export default async function SuperAdminRestaurantsPage() {
   const serialized = restaurants.map((r) => ({
     id: r.id,
     name: r.name,
+    logoUrl: r.logoUrl ?? null,
     businessType: getBusinessType(r.businessType),
     city: r.city,
     brandColor: r.brandColor,

@@ -1,3 +1,4 @@
+import { PageLoadingScreen } from "../../components/PageLoadingScreen";
 import { useEffect, useState } from "react";
 import { useLocation, useParams, useSearchParams } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
@@ -129,7 +130,7 @@ export default function PublicQrPage() {
       updateStructuredData("reviewflow-local-business-schema");
     }
   }, [location.pathname, page]);
-  if (loading) return <main className="grid min-h-screen place-items-center bg-[#FDFBF7] p-6 text-center text-sm text-[#716B64]">Loading your experience…</main>;
+  if (loading) return <PageLoadingScreen />;
   if (unavailable) return <main className="grid min-h-screen place-items-center bg-[#FDFBF7] p-6 text-center"><div className="max-w-sm"><p className="mb-4 text-4xl">🔒</p><h1 className="font-serif text-2xl font-bold text-stone-900">QR Code Unavailable</h1><p className="mx-auto mt-2 max-w-xs text-sm text-stone-600">This QR code is currently inactive. Please contact the business team for assistance.</p></div></main>;
   if (error || !page) return <main className="grid min-h-screen place-items-center bg-[#FDFBF7] p-6 text-center text-sm text-red-700">{error || "QR code not found."}</main>;
   const initialView = location.pathname.endsWith("/review") || search.get("view") === "review" ? "review" : location.pathname.endsWith("/loyalty") ? "card" : "welcome";

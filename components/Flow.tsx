@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Stars } from "./Stars";
+import { RatingStars } from "@/components/RatingStars";
 import { extractSocialHandle, formatReviewWithTag, getSocialFollowUrls } from "@/lib/social-format";
 
 type Rec = { stop: () => void };
@@ -261,7 +261,7 @@ export function Flow({
           <img
             src={logoUrl}
             alt={`${name} logo`}
-            className="mx-auto mb-2 h-14 w-14 rounded-full object-cover"
+            className="mx-auto mb-2 h-14 w-14 rounded-full object-contain p-1"
           />
         )}
         <p className="font-display text-xl font-semibold">{name}</p>
@@ -280,7 +280,7 @@ export function Flow({
             <p className="text-center text-sm text-ink/70">
               First, rate your overall experience.
             </p>
-            <Stars value={overall} onChange={rate(setOverall)} label="Overall experience rating" />
+            <RatingStars value={overall} onChange={(n) => rate(setOverall)(n)} label="Overall experience rating" size="lg" />
           </>
         )}
 
@@ -290,7 +290,7 @@ export function Flow({
             <p className="text-center text-sm text-ink/70">
               Rate the food based on your experience.
             </p>
-            <Stars value={food} onChange={rate(setFood)} label="Food rating" />
+            <RatingStars value={food} onChange={(n) => rate(setFood)(n)} label="Food rating" size="lg" />
           </>
         )}
 
@@ -300,7 +300,7 @@ export function Flow({
             <p className="text-center text-sm text-ink/70">
               Rate the service you received.
             </p>
-            <Stars value={service} onChange={rate(setService)} label="Service rating" />
+            <RatingStars value={service} onChange={(n) => rate(setService)(n)} label="Service rating" size="lg" />
           </>
         )}
 

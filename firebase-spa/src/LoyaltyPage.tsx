@@ -1,3 +1,4 @@
+import { PageLoadingScreen } from "../../components/PageLoadingScreen";
 import { useEffect, useState } from "react";
 import { collection, doc, getCountFromServer, getDoc, getDocs, limit, orderBy, query, runTransaction, serverTimestamp, where } from "firebase/firestore";
 import { LoyaltySettingsView } from "../../components/loyalty/LoyaltySettingsView";
@@ -183,7 +184,7 @@ export default function LoyaltyPage() {
     await runTransaction(db, async (tx) => { const [customerSnap, programSnap] = await Promise.all([tx.get(customerRef), tx.get(doc(db, "loyaltyPrograms", program.id))]); if (!customerSnap.exists() || customerSnap.data().ownerUid !== user.uid || !programSnap.exists() || programSnap.data().ownerUid !== user.uid) throw new Error("Customer not found for this restaurant."); tx.set(rewardRef, { id: rewardRef.id, ownerUid: user.uid, ...(isAnon ? { guestUid: customerSnap.data().guestUid ?? null } : {}), programId: program.id, customerId, code, rewardTitle: String(programSnap.data().rewardTitle ?? "Reward"), discountAmount: Number(programSnap.data().rewardDiscount ?? 0), status: "UNREDEEMED", expiresAt: expiry, createdAt: serverTimestamp(), ...(isAnon ? { idempotencyKey: `manual_${rewardRef.id}` } : {}) }); });
     return { message: "Extra voucher issued successfully.", code };
   }
-  if (loading) return <div className="p-8 text-sm text-[#716B64]">Loading loyalty program…</div>;
+  if (loading) return <PageLoadingScreen />;
   if (error || !program) return <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error || "Loyalty program unavailable."}</div>;
   const empty = { totalCustomers: 0, totalTransactions: 0, unredeemedRewards: 0, redeemedRewards: 0, reviewClicks: 0 };
   return <LoyaltySettingsView initialProgram={program} stats={empty} qrSlug={undefined} businessType={restaurant?.businessType} firebaseActions={{ loadDashboardData, saveProgram, stampRequests: { load: loadStampRequests, approve: approveStampRequest, reject: rejectStampRequest }, issueStamp, redeemVoucher, issueExtraVoucher }} />;

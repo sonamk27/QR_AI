@@ -59,11 +59,26 @@ export default async function Overview() {
     <div className="space-y-6 sm:space-y-7">
       <header className="flex flex-col gap-4 border-b border-[#E8DFD1] pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9A7441]">Restaurant overview · Last 30 days</p>
-          <h1 className="mt-1 font-serif text-2xl font-bold tracking-tight text-[#24211E] sm:text-3xl">
-            {greeting}, {user.name.split(" ")[0]}
-          </h1>
-          <p className="mt-1 text-sm text-[#716B64]">Here’s how {restaurant.name} is doing.</p>
+          <div className="flex items-center gap-3">
+            {restaurant.logoUrl ? (
+              <img
+                src={restaurant.logoUrl}
+                alt={`${restaurant.name} logo`}
+                className="h-10 w-10 shrink-0 rounded-lg border border-zinc-200 bg-white p-0.5 object-contain shadow-sm"
+              />
+            ) : (
+              <div className="h-10 w-10 shrink-0 rounded-lg flex items-center justify-center border border-zinc-200 bg-white text-xs font-bold text-ink/40">
+                {restaurant.name.trim().charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9A7441]">Restaurant overview · Last 30 days</p>
+              <h1 className="mt-1 font-serif text-2xl font-bold tracking-tight text-[#24211E] sm:text-3xl">
+                {greeting}, {user.name.split(" ")[0]}
+              </h1>
+              <p className="mt-1 text-sm text-[#716B64]">Here’s how {restaurant.name} is doing.</p>
+            </div>
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
           <RefreshDashboardButton />

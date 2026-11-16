@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { Stars } from "@/components/Stars";
+import { RatingStars } from "@/components/RatingStars";
 import { SalonDecorativeIllustration } from "@/components/customer/SalonDecorativeIllustration";
+import { PageLoadingScreen } from "@/components/PageLoadingScreen";
 import { addDoc, collection, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { getFirebaseServices } from "@/firebase-spa/src/firebase";
 import { getBusinessFeedbackConfig, getBusinessType, type BusinessType } from "@/lib/business-type";
@@ -896,11 +897,26 @@ export function CustomerJourneyView({
     })
   );
 
+  if (!journeyReady) {
+    const brandColor = restaurant.brandColor || "#B58A4B";
+    const accentColor = businessFeedback.accentColor;
+    const softColor = businessFeedback.softColor;
+    return (
+      <PageLoadingScreen
+        restaurantName={restaurant.name}
+        brandColor={brandColor}
+        accentColor={accentColor}
+        softColor={softColor}
+      />
+    );
+  }
+
   return (
     <div
       className={`customer-journey min-h-screen font-sans text-[#24211E] antialiased ${isCafeFeedback ? "cafe-journey" : ""} ${isSalonFeedback ? "customer-journey--salon" : ""}`}
       style={{ backgroundColor: businessFeedback.pageColor }}
     >
+
       {/* ─────────────────────────────────────────────────────────────
           STEP 2: WELCOME PAGE (Branded Landing Page with Two Clear Options)
       ───────────────────────────────────────────────────────────── */}
@@ -914,7 +930,7 @@ export function CustomerJourneyView({
                 <img
                   src={restaurant.logoUrl}
                   alt={restaurant.name}
-                  className={`h-12 w-12 rounded-full border object-cover shadow-2xs ${isCafeFeedback ? "cafe-logo-ring" : ""}`}
+                  className={`h-12 w-12 rounded-full border object-contain p-1 shadow-2xs ${isCafeFeedback ? "cafe-logo-ring" : ""}`}
                   style={{ borderColor: businessFeedback.borderColor }}
                 />
               ) : (
@@ -1730,13 +1746,13 @@ export function CustomerJourneyView({
               >
                 {restaurant.logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={restaurant.logoUrl} alt={`${restaurant.name} logo`} className="h-full w-full object-cover" />
+                  <img src={restaurant.logoUrl} alt={`${restaurant.name} logo`} className="h-full w-full object-contain p-1" />
                 ) : businessFeedback.heroIcon}
               </div>
               </>
             ) : restaurant.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={restaurant.logoUrl} alt={`${restaurant.name} logo`} className="mx-auto mb-3 h-14 w-14 rounded-full border-2 border-white object-cover shadow-sm" />
+              <img src={restaurant.logoUrl} alt={`${restaurant.name} logo`} className="mx-auto mb-3 h-14 w-14 rounded-full border-2 border-white object-contain p-1 shadow-sm" />
             ) : (
               <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-[#F6EFE3] font-serif text-xl font-bold text-[#B58A4B] shadow-sm">
                 {restaurant.name.trim().charAt(0).toUpperCase() || "R"}
@@ -1791,7 +1807,7 @@ export function CustomerJourneyView({
                       </div>
                       <div className="mt-3 flex items-center justify-between border-t pt-3" style={{ borderColor: businessFeedback.borderColor }}>
                           <span className="text-[10px] font-medium text-[#716B64]">Tap to rate</span>
-                          <Stars size={32} value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
+                          <RatingStars value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} size="md" activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
                       </div>
                     </div>
                   ) : businessFeedback.layout === "cafe" ? (
@@ -1809,7 +1825,7 @@ export function CustomerJourneyView({
                         <span className="shrink-0 text-[10px] font-medium text-[#716B64]">
                           {reviewRatings[index] ? `${reviewRatings[index]} / 5` : "Tap to rate"}
                         </span>
-                        <Stars size={30} value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
+                        <RatingStars value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} size="md" activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
                       </div>
                     </div>
                   ) : businessFeedback.layout === "general-store" ? (
@@ -1823,13 +1839,13 @@ export function CustomerJourneyView({
                       </div>
                       <div className="mt-3 flex items-center justify-between border-t pt-2" style={{ borderColor: businessFeedback.borderColor }}>
                         <span className="text-[10px] font-medium text-[#716B64]">Tap to rate</span>
-                        <Stars size={30} value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
+                        <RatingStars value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} size="md" activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
                       </div>
                     </div>
                   ) : (
                     <div key={question} className="flex min-h-[68px] items-center justify-between gap-2 rounded-xl border bg-white px-3 py-2" style={{ borderColor: businessFeedback.borderColor }}>
                       <span className="min-w-0 text-xs font-semibold text-[#24211E]">{question}</span>
-                      <Stars size={34} value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
+                      <RatingStars value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} size="lg" activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
                     </div>
                   )
                 ))}

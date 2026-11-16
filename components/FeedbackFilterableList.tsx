@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { StarsStatic } from "@/components/Stars";
+import { RatingStarsStatic } from "@/components/RatingStars";
 import { Empty } from "@/components/Shell";
 
 type FeedbackItem = {
@@ -166,7 +166,7 @@ export function FeedbackFilterableList({
             <li key={r.id} className="rounded-2xl border border-[#E8DFD1] bg-white p-5 shadow-subtle hover:border-[#B58A4B] transition">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm">
                 <div className="flex items-center gap-2">
-                  <StarsStatic n={r.overallRating} />
+                  <RatingStarsStatic n={r.overallRating} />
                   <span className="font-serif font-bold text-xs text-[#24211E]">{r.overallRating}/5 Stars</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-[#716B64]">
