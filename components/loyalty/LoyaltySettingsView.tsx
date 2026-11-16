@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { OwnerStampRequestsPanel, type FirebaseStampActions } from "./OwnerStampRequestsPanel";
+import { getBusinessType } from "@/lib/business-type";
 
 export type DailyGrowthPoint = {
   date: string;
@@ -113,6 +114,7 @@ export function LoyaltySettingsView({
   initialMonthlyGrowth = [],
   qrSlug,
   firebaseActions,
+  businessType,
 }: {
   initialProgram: Program;
   stats: Stats;
@@ -122,7 +124,11 @@ export function LoyaltySettingsView({
   initialMonthlyGrowth?: MonthlyGrowthPoint[];
   qrSlug?: string;
   firebaseActions?: FirebaseActions;
+  businessType?: string;
 }) {
+  const isCafeBusiness = getBusinessType(businessType) === "CAFE";
+  const loyaltyStampIcon = isCafeBusiness ? "🌿" : "☕";
+  const loyaltyRewardIcon = isCafeBusiness ? "✦" : "🎁";
   const [program, setProgram] = useState(initialProgram);
   const [title, setTitle] = useState(initialProgram.title || "Rewards Program");
   const [isActive, setIsActive] = useState(initialProgram.isActive);
@@ -633,8 +639,8 @@ export function LoyaltySettingsView({
         {/* KPI 2: Stamps Issued */}
         <div className="rounded-2xl border border-[#E8DFD1] bg-white p-3 shadow-subtle transition hover:border-[#B58A4B] sm:p-5">
           <div className="flex items-center justify-between">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FAF5ED] text-lg text-[#B58A4B] border border-[#E8D8BA]">
-              ☕
+            <span className={`flex h-9 w-9 items-center justify-center rounded-xl bg-[#FAF5ED] text-lg text-[#B58A4B] border border-[#E8D8BA] ${isCafeBusiness ? "cafe-loyalty-kpi-mark cafe-loyalty-kpi-mark--stamps" : ""}`} aria-hidden="true">
+              {loyaltyStampIcon}
             </span>
             <span className="rounded-full bg-[#EEF6F2] px-2 py-0.5 text-[10px] font-bold text-[#2E6B4F]">
               +18%
@@ -649,8 +655,8 @@ export function LoyaltySettingsView({
         {/* KPI 3: Rewards Redeemed */}
         <div className="rounded-2xl border border-[#E8DFD1] bg-white p-3 shadow-subtle transition hover:border-[#B58A4B] sm:p-5">
           <div className="flex items-center justify-between">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FAF5ED] text-lg text-[#B58A4B] border border-[#E8D8BA]">
-              🎁
+            <span className={`flex h-9 w-9 items-center justify-center rounded-xl bg-[#FAF5ED] text-lg text-[#B58A4B] border border-[#E8D8BA] ${isCafeBusiness ? "cafe-loyalty-kpi-mark cafe-loyalty-kpi-mark--rewards" : ""}`} aria-hidden="true">
+              {loyaltyRewardIcon}
             </span>
             <span className="rounded-full bg-[#EEF6F2] px-2 py-0.5 text-[10px] font-bold text-[#2E6B4F]">
               +22%
@@ -985,21 +991,21 @@ export function LoyaltySettingsView({
                 No customers registered yet. When diners scan your QR code at tables, they appear here live!
               </div>
             ) : (
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-[#E8DFD1] text-[10px] font-bold text-[#716B64] uppercase tracking-wider">
-                    <th className="py-2.5">Name</th>
-                    <th className="py-2.5">Phone</th>
-                    <th className="py-2.5 text-center">Visits</th>
-                    <th className="py-2.5 text-center">Stamps</th>
-                    <th className="py-2.5 text-right">Last Visit</th>
-                    <th className="py-2.5 text-right">Actions</th>
+                    <th className="py-2.5 pr-3">Name</th>
+                    <th className="py-2.5 pr-3">Phone</th>
+                    <th className="py-2.5 px-3 text-center w-14">Visits</th>
+                    <th className="py-2.5 px-3 text-center">Stamps</th>
+                    <th className="py-2.5 pl-3 text-right">Last Visit</th>
+                    <th className="py-2.5 pl-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E8DFD1]/50">
                   {displayCustomers.map((c) => (
                     <tr key={c.id} className="hover:bg-[#FAF7F2] transition">
-                      <td className="py-3 font-semibold text-[#24211E]">
+                      <td className="py-3 pr-3 font-semibold text-[#24211E]">
                         <div className="flex items-center gap-2">
                           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FAF5ED] text-[10px] font-bold text-[#7A5826] border border-[#E8D8BA]">
                             {c.name.slice(0, 1).toUpperCase()}
@@ -1007,15 +1013,15 @@ export function LoyaltySettingsView({
                           <span className="truncate">{c.name}</span>
                         </div>
                       </td>
-                      <td className="py-3 font-mono text-[#716B64]">+91 {c.phone}</td>
-                      <td className="py-3 text-center font-bold text-[#24211E]">{c.visits}</td>
-                      <td className="py-3 text-center">
-                        <span className="inline-block rounded-md bg-[#FAF5ED] border border-[#E8D8BA] px-2 py-0.5 font-bold text-[#7A5826]">
-                          ☕ {c.stamps}/{stampsRequired}
+                      <td className="py-3 pr-3 font-mono text-[#716B64]">+91 {c.phone}</td>
+                      <td className="py-3 px-3 text-center font-bold text-[#24211E] tabular-nums">{c.visits}</td>
+                      <td className="py-3 px-3 text-center">
+                        <span className="inline-flex items-center justify-center rounded-md bg-[#FAF5ED] border border-[#E8D8BA] px-2 py-0.5 font-bold text-[#7A5826] tabular-nums">
+                          {loyaltyStampIcon} {c.stamps}/{stampsRequired}
                         </span>
                       </td>
-                      <td className="py-3 text-right text-[11px] text-[#716B64]">{c.lastVisit}</td>
-                      <td className="py-3 text-right">
+                      <td className="py-3 pl-3 text-right text-[11px] text-[#716B64] whitespace-nowrap">{c.lastVisit}</td>
+                      <td className="py-3 pl-3 text-right">
                         {(!firebaseActions || firebaseActions.issueStamp) && <button
                           onClick={() => handleQuickStamp(c.phone, c.name)}
                           disabled={quickStampLoadingPhone === c.phone}
@@ -1055,7 +1061,9 @@ export function LoyaltySettingsView({
               displayActivity.map((act) => (
                 <div key={act.id} className="flex items-start gap-2.5 p-2.5 rounded-xl bg-[#FAF7F2] border border-[#E8DFD1] text-xs hover:bg-[#F4ECE1] transition">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white border border-[#E8DFD1] text-sm shadow-2xs">
-                    {act.icon || (act.stampsCount && act.stampsCount > 0 ? "☕" : "🎁")}
+                    {isCafeBusiness
+                      ? act.stampsCount && act.stampsCount > 0 ? loyaltyStampIcon : loyaltyRewardIcon
+                      : act.icon || (act.stampsCount && act.stampsCount > 0 ? "☕" : "🎁")}
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
@@ -1241,7 +1249,7 @@ export function LoyaltySettingsView({
         <div className="border-b border-[#E8DFD1] bg-gradient-to-r from-[#FAF5ED] via-white to-[#FAF7F2] p-4 sm:p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#E8D8BA] bg-white text-xl">☕</span>
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#E8D8BA] bg-white text-xl" aria-hidden="true">{loyaltyStampIcon}</span>
               <div>
               <h2 className="font-serif text-xl font-bold text-[#24211E]">Loyalty Program Settings</h2>
               <p className="text-xs text-[#716B64] mt-0.5">
@@ -1286,7 +1294,7 @@ export function LoyaltySettingsView({
                 Stamps Required
               </label>
               <span className="rounded-lg bg-[#FAF5ED] border border-[#E8D8BA] px-2.5 py-0.5 text-xs font-bold text-[#7A5826]">
-                ☕ {stampsRequired} Stamps
+                {loyaltyStampIcon} {stampsRequired} Stamps
               </span>
             </div>
             <input

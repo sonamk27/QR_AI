@@ -39,6 +39,7 @@ export default async function LoyaltyPage({ params }: { params: Promise<{ slug: 
         logoUrl: qr.restaurant.logoUrl,
         brandColor: qr.restaurant.brandColor,
         googleReviewUrl: qr.restaurant.googleReviewUrl,
+        googlePlaceId: qr.restaurant.googlePlaceId,
         instagramUrl: qr.restaurant.instagramUrl,
         facebookUrl: qr.restaurant.facebookUrl,
         shareCaption: qr.restaurant.shareCaption,

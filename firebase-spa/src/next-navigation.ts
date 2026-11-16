@@ -6,7 +6,7 @@ export function useRouter() {
     push: (path: string) => navigate(path),
     replace: (path: string) => navigate(path, { replace: true }),
     back: () => navigate(-1),
-    refresh: () => undefined,
+    refresh: () => navigate(0),
   };
 }
 

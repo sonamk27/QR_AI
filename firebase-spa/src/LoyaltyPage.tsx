@@ -186,5 +186,5 @@ export default function LoyaltyPage() {
   if (loading) return <div className="p-8 text-sm text-[#716B64]">Loading loyalty program…</div>;
   if (error || !program) return <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error || "Loyalty program unavailable."}</div>;
   const empty = { totalCustomers: 0, totalTransactions: 0, unredeemedRewards: 0, redeemedRewards: 0, reviewClicks: 0 };
-  return <LoyaltySettingsView initialProgram={program} stats={empty} qrSlug={undefined} firebaseActions={{ loadDashboardData, saveProgram, stampRequests: { load: loadStampRequests, approve: approveStampRequest, reject: rejectStampRequest }, issueStamp, redeemVoucher, issueExtraVoucher }} />;
+  return <LoyaltySettingsView initialProgram={program} stats={empty} qrSlug={undefined} businessType={restaurant?.businessType} firebaseActions={{ loadDashboardData, saveProgram, stampRequests: { load: loadStampRequests, approve: approveStampRequest, reject: rejectStampRequest }, issueStamp, redeemVoucher, issueExtraVoucher }} />;
 }

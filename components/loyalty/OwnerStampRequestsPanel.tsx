@@ -418,20 +418,20 @@ export function OwnerStampRequestsPanel({
           ) : (
             <div className="divide-y divide-[#E8DFD1]/60 max-h-64 overflow-y-auto pr-1">
               {recentRequests.map((req) => (
-                <div key={req.id} className="flex items-center justify-between py-2.5 text-xs">
-                  <div>
-                    <span className="font-semibold text-[#24211E]">
+                <div key={req.id} className="flex items-center gap-3 py-2.5 text-xs">
+                  <div className="flex-1 min-w-0">
+                    <span className="font-semibold text-[#24211E] truncate">
                       {req.customerName || req.customerPhone}
                     </span>
                     <span className="text-[#716B64] ml-1.5">
                       ({req.tableNo || "Visit"})
                     </span>
-                    <span className="text-[#716B64]/60 text-[10px] ml-2">
+                    <span className="text-[#716B64]/60 text-[10px] ml-2 whitespace-nowrap">
                       {formatTimeAgo(req.createdAt)}
                     </span>
                   </div>
                   <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold whitespace-nowrap ${
                       req.status === "APPROVED"
                         ? "bg-[#EEF6F2] text-[#2E6B4F] border border-[#D1E7DC]"
                         : "bg-[#FAF7F2] text-[#716B64] border border-[#E8DFD1]"

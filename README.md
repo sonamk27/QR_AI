@@ -47,13 +47,22 @@ script described in the Firebase deployment section below. Existing PostgreSQL
 users need Firebase Auth accounts; their old password hashes are not imported,
 so they set a Firebase password through the password reset flow.
 
-### Google Business Profile URL
+### Google reviews
 
-The app does not retrieve data from Google Business Profile. The owner pastes a
-public Maps or Business Profile URL into **Dashboard → Profile**; the app
-validates the URL format locally and saves it to the restaurant's Firestore
-document. Super Admin can review it from **Restaurants & Owners**. No Google
-Cloud OAuth credentials, Business Profile API access, or Google API key is used.
+Owners can add their Google Maps review URL and Google Place ID in
+**Dashboard → Business Settings**. The guest review page fetches the current
+public rating and reviews from Google Places when opened; review content is not
+stored by ReviewFlow. The Place ID can be found with Google's
+[Place ID finder](https://developers.google.com/maps/documentation/places/web-service/place-id).
+
+Set `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` in the local environment or deployment
+environment before building the app. Enable billing and the Maps JavaScript API
+and Places API (New) in Google Cloud. Restrict the key to the deployed site
+origins (including Firebase Hosting/custom domains) and those APIs. This is a
+public browser key, not a secret; do not use an unrestricted key. Google Maps
+attribution and review-author attribution are shown with the reviews.
+For the Next.js/PostgreSQL deployment, apply the schema update with
+`npx prisma migrate deploy` before deploying this version.
 
 ```text
 Firebase Authentication
@@ -62,9 +71,9 @@ Restaurant Owner Login
     ↓
 Restaurant Dashboard
     ↓
-Manually enter Google Business Profile URL
+Enter Google review URL and Place ID
     ↓
-Save URL in Firestore
+Save review URL and Place ID in Firestore
     ↓
 Super Admin reviews URL
     ↓
@@ -89,7 +98,8 @@ Connect the GitHub repository
 `sonamk27/QR_AI` and deploy the `main` branch.
 
 Set `DATABASE_URL`, `DIRECT_URL`, and a strong `AUTH_SECRET` in the Render
-environment. Add the Firebase web app values for Google sign-in, plus
+environment. Add the Firebase web app values for Google sign-in, the restricted
+`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, plus
 `RESEND_API_KEY` and `EMAIL_FROM` for verification email. Optional features use
 `ANTHROPIC_API_KEY`, `CRON_SECRET`, and `UPI_VPA`. Never commit secret values to
 this repository or expose them through `NEXT_PUBLIC_*` variables.

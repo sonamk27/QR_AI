@@ -11,6 +11,7 @@ const schema = z.object({
     .min(1)
     .max(500)
     .refine(isGoogleBusinessUrl),
+  googlePlaceId: z.string().trim().max(200).optional().default(""),
 });
 
 export async function PATCH(req: Request) {
@@ -27,7 +28,10 @@ export async function PATCH(req: Request) {
 
   await db.restaurant.update({
     where: { id: ctx.restaurant.id },
-    data: { googleReviewUrl: parsed.data.googleBusinessUrl },
+    data: {
+      googleReviewUrl: parsed.data.googleBusinessUrl,
+      googlePlaceId: parsed.data.googlePlaceId || null,
+    },
   });
   return NextResponse.json({ ok: true });
 }

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   createUserWithEmailAndPassword,
   deleteUser,
@@ -19,6 +19,7 @@ type Props = { mode: "login" | "signup"; portal?: Portal };
 
 export default function FirebaseAuthForm({ mode, portal }: Props) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [logoUrl, setLogoUrl] = useState("");
@@ -89,7 +90,15 @@ export default function FirebaseAuthForm({ mode, portal }: Props) {
     if (portal && role !== portal) {
       throw new Error(role === "super_admin" ? "This account is for the Super Admin portal." : "This account is for the Restaurant Admin portal.");
     }
-    navigate(role === "super_admin" ? "/super-admin" : "/dashboard");
+    const from = (location.state as {
+      from?: { pathname?: string; search?: string; hash?: string };
+    } | null)?.from;
+    const rolePath = role === "super_admin" ? "/super-admin" : "/dashboard";
+    const canReturnTo = from?.pathname === rolePath || from?.pathname?.startsWith(`${rolePath}/`);
+    const destination = canReturnTo
+      ? `${from.pathname}${from.search ?? ""}${from.hash ?? ""}`
+      : rolePath;
+    navigate(destination, { replace: true });
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {

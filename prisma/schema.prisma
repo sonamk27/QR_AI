@@ -42,6 +42,7 @@ model Restaurant {
   logoUrl            String?
   brandColor         String              @default("#1F6F5C")
   googleReviewUrl    String?
+  googlePlaceId      String?
   status             String              @default("ACTIVE")
   createdAt          DateTime            @default(now())
   referredByName     String?

@@ -246,6 +246,7 @@ export default async function LoyaltyDashboardPage() {
       initialDailyGrowth={initialDailyGrowth}
       initialMonthlyGrowth={initialMonthlyGrowth}
       qrSlug={primaryQr?.slug}
+      businessType={ctx.restaurant.businessType}
     />
   );
 }

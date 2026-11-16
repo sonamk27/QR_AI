@@ -17,6 +17,7 @@ export default function ProfileSettingsPage() {
     restaurantId, name: restaurant.name, businessType: restaurant.businessType ?? "RESTAURANT", city: restaurant.city ?? null,
     logoUrl: restaurant.logoUrl ?? null, brandColor: restaurant.brandColor ?? "#B58A4B",
     googleReviewUrl: restaurant.googleReviewUrl ?? null, instagramUrl: restaurant.instagramUrl ?? null,
+    googlePlaceId: restaurant.googlePlaceId ?? null,
     facebookUrl: restaurant.facebookUrl ?? null, shareCaption: restaurant.shareCaption ?? null,
   };
   const firebaseSavers = {
@@ -35,11 +36,12 @@ export default function ProfileSettingsPage() {
       batch.set(publicRestaurantRef, { ...publicRestaurantData, ...values, status: restaurant.status ?? "ACTIVE" }, { merge: true });
       await batch.commit();
     },
-    saveGoogleUrl: async (url: string) => {
+    saveGoogleUrl: async (url: string, placeId: string) => {
       if (!isGoogleBusinessUrl(url)) throw new Error("Enter a valid Google Maps or Google Business Profile URL using HTTPS.");
+      if (placeId.length > 200) throw new Error("Google Place ID must be 200 characters or fewer.");
       const batch = writeBatch(db);
-      batch.update(restaurantRef, { googleReviewUrl: url });
-      batch.set(publicRestaurantRef, { ...publicRestaurantData, googleReviewUrl: url, status: restaurant.status ?? "ACTIVE" }, { merge: true });
+      batch.update(restaurantRef, { googleReviewUrl: url, googlePlaceId: placeId || null });
+      batch.set(publicRestaurantRef, { ...publicRestaurantData, googleReviewUrl: url, googlePlaceId: placeId || null, status: restaurant.status ?? "ACTIVE" }, { merge: true });
       await batch.commit();
     },
     saveSocial: async (values: { instagramUrl: string | null; facebookUrl: string | null; shareCaption: string | null }) => {
@@ -63,6 +65,7 @@ export default function ProfileSettingsPage() {
       city: restaurant.city ?? null,
       logoUrl: restaurant.logoUrl ?? null,
       googleReviewUrl: restaurant.googleReviewUrl ?? null,
+      googlePlaceId: restaurant.googlePlaceId ?? null,
       instagramUrl: restaurant.instagramUrl ?? null,
       facebookUrl: restaurant.facebookUrl ?? null,
       shareCaption: restaurant.shareCaption ?? null,

@@ -39,6 +39,7 @@ export default async function CustomerReviewPage({ params }: { params: Promise<{
         logoUrl: qr.restaurant.logoUrl,
         brandColor: qr.restaurant.brandColor,
         googleReviewUrl: qr.restaurant.googleReviewUrl,
+        googlePlaceId: qr.restaurant.googlePlaceId,
         instagramUrl: qr.restaurant.instagramUrl,
         facebookUrl: qr.restaurant.facebookUrl,
         shareCaption: qr.restaurant.shareCaption,

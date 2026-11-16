@@ -14,6 +14,7 @@ export default async function Profile() {
           city: restaurant.city,
           logoUrl: restaurant.logoUrl,
           googleReviewUrl: restaurant.googleReviewUrl,
+          googlePlaceId: restaurant.googlePlaceId,
           instagramUrl: restaurant.instagramUrl ?? null,
           facebookUrl: restaurant.facebookUrl ?? null,
           shareCaption: restaurant.shareCaption ?? null,

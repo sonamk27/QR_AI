@@ -30,6 +30,9 @@ export default defineConfig(({ mode }) => {
     envDir: projectRoot,
     publicDir: fileURLToPath(new URL("./public/", import.meta.url)),
     envPrefix: ["VITE_", "NEXT_PUBLIC_"],
+    define: {
+      "process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY": JSON.stringify(env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""),
+    },
     plugins: [
       react(),
       {

@@ -10,6 +10,20 @@ import { isSupportedLogo } from "@/lib/logo-url";
 
 type Portal = "restaurant_admin" | "super_admin";
 
+function getReturnTo(fallback: string) {
+  const returnTo = new URLSearchParams(window.location.search).get("returnTo");
+  if (
+    !returnTo ||
+    !returnTo.startsWith("/") ||
+    returnTo.startsWith("//") ||
+    returnTo === "/login" ||
+    returnTo.startsWith("/admin/login")
+  ) {
+    return fallback;
+  }
+  return returnTo;
+}
+
 export function AuthForm({
   mode,
   portal,
@@ -57,7 +71,7 @@ export function AuthForm({
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error ?? "Something went wrong. Try again.");
-      router.push(data.redirect);
+      router.push(getReturnTo(data.redirect));
       router.refresh();
     } catch (caught) {
       const code = caught && typeof caught === "object" && "code" in caught ? String(caught.code) : "";
@@ -133,7 +147,7 @@ export function AuthForm({
         setError(data.error ?? "Firebase sign-in failed. Please try again.");
         return;
       }
-      router.push(data.redirect);
+      router.push(getReturnTo(data.redirect));
       router.refresh();
     } catch (caught) {
       const err = caught instanceof Error ? caught.message : "Google sign-in failed.";

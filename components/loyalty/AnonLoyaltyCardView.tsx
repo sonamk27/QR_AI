@@ -439,7 +439,10 @@ export function AnonLoyaltyCardView({ slug }: { slug: string }) {
                   </div>
 
                   {/* Stamps Grid */}
-                  <div className="mt-6 grid grid-cols-5 gap-2.5">
+                  <div
+                    className="mt-6 grid gap-2.5"
+                    style={{ gridTemplateColumns: `repeat(${Math.min(stampsRequired, 5)}, minmax(0, 1fr))` }}
+                  >
                     {Array.from({ length: stampsRequired }).map((_, index) => {
                       const isStamped = index < currentStamps;
                       const isNext = index === currentStamps;

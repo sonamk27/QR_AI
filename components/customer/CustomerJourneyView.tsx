@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { Stars } from "@/components/Stars";
-import { CafeCupIllustration } from "@/components/customer/CafeCupIllustration";
 import { SalonDecorativeIllustration } from "@/components/customer/SalonDecorativeIllustration";
+import { GooglePlacesReviews } from "@/components/customer/GooglePlacesReviews";
 import { addDoc, collection, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { getFirebaseServices } from "@/firebase-spa/src/firebase";
 import { getBusinessFeedbackConfig, getBusinessType, type BusinessType } from "@/lib/business-type";
 import { createReviewDraft } from "@/lib/review-copy";
+
+const CAFE_STAMP_ICONS = ["🥐", "🌿", "✨", "🍪", "🍰"];
 
 export type CustomerJourneyProps = {
   slug: string;
@@ -20,6 +22,7 @@ export type CustomerJourneyProps = {
     logoUrl?: string | null;
     brandColor?: string;
     googleReviewUrl?: string | null;
+    googlePlaceId?: string | null;
     instagramUrl?: string | null;
     facebookUrl?: string | null;
     shareCaption?: string | null;
@@ -74,6 +77,27 @@ type CustomerData = {
   rewards: RewardItem[];
   transactions: TransactionItem[];
 };
+
+function BusinessLogoSpace({
+  name,
+  logoUrl,
+  fallback,
+}: {
+  name: string;
+  logoUrl?: string | null;
+  fallback: string;
+}) {
+  return (
+    <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#E8DFD1] bg-white text-xl text-[#B58A4B]">
+      {logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={logoUrl} alt={`${name} logo`} className="h-full w-full object-contain p-1" />
+      ) : (
+        <span aria-hidden="true">{fallback || name.trim().charAt(0).toUpperCase() || "R"}</span>
+      )}
+    </div>
+  );
+}
 
 function dateString(value: any): string | null {
   if (value?.toDate) return value.toDate().toISOString();
@@ -131,7 +155,7 @@ export function CustomerJourneyView({
   const [agreedUpdates, setAgreedUpdates] = useState(true);
   const [registering, setRegistering] = useState(false);
   const [registerError, setRegisterError] = useState("");
-  const [newCustomerReviewRequired, setNewCustomerReviewRequired] = useState(false);
+  const [registrationDestination, setRegistrationDestination] = useState<"collect_stamp" | "review" | null>(null);
   const registerLockRef = useRef(false);
   const collectLockRef = useRef(false);
 
@@ -185,9 +209,7 @@ export function CustomerJourneyView({
       if (savedName) setFullName(savedName);
       if (savedPhone) setPhoneNumber(savedPhone);
 
-      // Keep deep links on their requested view; the normal welcome flow still
-      // asks the customer to confirm their phone number on each scan.
-      setCurrentView(initialView === "welcome" ? "register" : initialView);
+      setCurrentView(initialView);
     }
 
     init();
@@ -389,12 +411,9 @@ export function CustomerJourneyView({
   // Collect Stamp Handler (Customer sends request to owner)
   async function handleCollectStampClick(phoneOverride?: string) {
     if (collectLockRef.current) return;
-    if (newCustomerReviewRequired && !reviewSubmitted) {
-      setCurrentView("review");
-      return;
-    }
     const phoneToUse = phoneOverride || customer?.phone || phoneNumber;
     if (!phoneToUse) {
+      setRegistrationDestination("collect_stamp");
       setCurrentView("register");
       return;
     }
@@ -469,7 +488,9 @@ export function CustomerJourneyView({
       setPendingTableNo(data.tableNo || null);
       setCurrentView("request_pending");
     } catch (err: any) {
-      setCardError(err.message || "Failed to submit stamp request");
+      const message = err.message || "Failed to submit stamp request";
+      setCardError(message);
+      if (currentView === "register") setRegisterError(message);
     } finally {
       setCollectingStamp(false);
       collectLockRef.current = false;
@@ -521,12 +542,20 @@ export function CustomerJourneyView({
         });
         setPhoneNumber(finalPhone);
         await fetchLoyaltyCard(finalPhone, true);
-        setNewCustomerReviewRequired(false);
         setReviewSubmitted(false);
         setReviewRatings([0, 0, 0]);
         setAiGenerated(false);
         setAiDraft("");
-        setCurrentView("review");
+        if (registrationDestination === "collect_stamp") {
+          await handleCollectStampClick(finalPhone);
+        } else {
+          setCurrentView("review");
+        }
+        return;
+      }
+
+      if (registrationDestination === "collect_stamp") {
+        await handleCollectStampClick(finalPhone);
         return;
       }
 
@@ -534,13 +563,10 @@ export function CustomerJourneyView({
       const lookupData = await lookup.json().catch(() => ({}));
       if (!lookup.ok) throw new Error(lookupData.error || "Could not check this phone number. Please try again.");
       if (lookupData.exists) {
-        setNewCustomerReviewRequired(false);
-        await handleCollectStampClick(finalPhone);
-        return;
+        await fetchLoyaltyCard(finalPhone, true);
       }
 
       setPhoneNumber(finalPhone);
-      setNewCustomerReviewRequired(true);
       setReviewSubmitted(false);
       setReviewRatings([0, 0, 0]);
       setAiGenerated(false);
@@ -772,7 +798,7 @@ export function CustomerJourneyView({
                   className={`flex h-12 w-12 items-center justify-center rounded-full border bg-white font-serif text-xl font-bold shadow-2xs ${isCafeFeedback ? "cafe-logo-ring" : ""}`}
                   style={{ borderColor: businessFeedback.borderColor, color: businessFeedback.accentColor }}
                 >
-                  {isCafeFeedback ? "☕" : restaurant.name.trim().charAt(0).toUpperCase() || "R"}
+                  {businessFeedback.heroIcon || restaurant.name.trim().charAt(0).toUpperCase() || "R"}
                 </div>
               )}
             </div>
@@ -843,13 +869,26 @@ export function CustomerJourneyView({
                     <p className="mt-2 max-w-[175px] font-serif text-xl font-bold leading-tight text-[#24211E]">{businessFeedback.heroMessage}</p>
                   </div>
                   {isCafeFeedback ? (
-                    <CafeCupIllustration className="cafe-ticket-illustration" />
+                    <div className="cafe-ticket-still-life" aria-hidden="true">
+                      <span>🥐</span>
+                      <span>🌿</span>
+                      <span>✦</span>
+                    </div>
                   ) : (
                     <span className="grid h-14 w-14 place-items-center rounded-2xl bg-white text-3xl shadow-sm" aria-hidden="true">{businessFeedback.heroIcon}</span>
                   )}
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  {businessFeedback.layout === "salon" ? (
+                  {isCafeFeedback ? (
+                    <div className="w-full text-center">
+                      <p className="mb-2 whitespace-nowrap text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: businessFeedback.accentColor }}>
+                        Sip · Stay · Share
+                      </p>
+                      <span className="block w-full rounded-full px-3 py-2 text-center text-[10px] font-bold leading-snug text-white" style={{ backgroundColor: businessFeedback.accentColor }}>
+                        {program.rewardTitle || "Rewards"}
+                      </span>
+                    </div>
+                  ) : businessFeedback.layout === "salon" ? (
                     ["Service", "Results", "Relax"].map((step, index) => (
                       <div key={step} className="flex-1 rounded-xl bg-white/80 px-2 py-2 text-center shadow-sm">
                         <span className="block text-[9px] font-bold" style={{ color: businessFeedback.accentColor }}>0{index + 1}</span>
@@ -859,7 +898,9 @@ export function CustomerJourneyView({
                   ) : (
                     <p className="rounded-full bg-white/80 px-3 py-2 text-[10px] font-semibold text-[#3F5E4A] shadow-sm">Sip <span aria-hidden="true">·</span> Stay <span aria-hidden="true">·</span> Share</p>
                   )}
-                  <span className="rounded-full px-3 py-2 text-[10px] font-bold" style={{ backgroundColor: businessFeedback.accentColor, color: "#FFFFFF" }}>{program.rewardTitle || "Rewards"}</span>
+                  {!isCafeFeedback && (
+                    <span className="rounded-full px-3 py-2 text-[10px] font-bold" style={{ backgroundColor: businessFeedback.accentColor, color: "#FFFFFF" }}>{program.rewardTitle || "Rewards"}</span>
+                  )}
                 </div>
               </div>
             )}
@@ -874,7 +915,10 @@ export function CustomerJourneyView({
             {/* Two Clear Options: Collect My Stamp & Share Your Experience */}
             <div className="mt-7 space-y-3">
               <button
-                onClick={() => handleCollectStampClick()}
+                onClick={() => {
+                  setRegistrationDestination("collect_stamp");
+                  setCurrentView("register");
+                }}
                 disabled={collectingStamp}
                 className={`customer-collect-stamp-button flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-bold text-white shadow-xs transition active:scale-[0.98] disabled:opacity-60 ${isCafeFeedback ? "cafe-pill-button" : ""}`}
                 style={{ backgroundColor: businessFeedback.accentColor }}
@@ -886,7 +930,10 @@ export function CustomerJourneyView({
               </button>
 
               <button
-                onClick={() => setCurrentView("review")}
+                onClick={() => {
+                  setRegistrationDestination("review");
+                  setCurrentView("register");
+                }}
                 className={`w-full rounded-2xl border bg-white py-3.5 text-sm font-bold text-[#24211E] shadow-2xs transition active:scale-[0.98] flex items-center justify-center gap-2 ${isCafeFeedback ? "cafe-pill-button" : ""}`}
                 style={{ borderColor: businessFeedback.borderColor }}
                 onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.softColor; }}
@@ -923,13 +970,23 @@ export function CustomerJourneyView({
         <main className={`customer-register-screen mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center px-5 py-6 ${isSalonFeedback ? "customer-salon-screen" : ""}`}>
           <div>
             <button
-              onClick={() => setCurrentView("welcome")}
+              onClick={() => {
+                setRegistrationDestination(null);
+                setCurrentView("welcome");
+              }}
               className="flex items-center gap-1.5 text-xs font-semibold text-[#716B64] hover:text-[#24211E] transition"
             >
               <span>←</span> Back
             </button>
 
             <div className="mt-4 text-center">
+              <div className="mb-3 flex justify-center">
+                <BusinessLogoSpace
+                  name={restaurant.name}
+                  logoUrl={restaurant.logoUrl}
+                  fallback={businessFeedback.heroIcon}
+                />
+              </div>
               <div className="customer-register-icon mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-[#F6EFE3] text-xl text-[#B58A4B] border border-[#E8D8BA]">
                 {isSalonFeedback ? businessFeedback.heroIcon : "🌿"}
               </div>
@@ -1019,6 +1076,13 @@ export function CustomerJourneyView({
       {currentView === "request_pending" && (
         <main className={`customer-pending-screen request-pending-screen mx-auto flex min-h-screen max-w-sm flex-col justify-between px-5 py-7 ${isCafeFeedback ? "request-pending-screen--cafe" : ""} ${isSalonFeedback ? "customer-salon-screen" : ""}`}>
           <div className="pt-2">
+            <div className="mb-3 flex justify-center">
+              <BusinessLogoSpace
+                name={restaurant.name}
+                logoUrl={restaurant.logoUrl}
+                fallback={businessFeedback.heroIcon}
+              />
+            </div>
             <span className={`request-pending-restaurant font-mono text-xs font-bold uppercase tracking-wider ${isCafeFeedback ? "request-pending-restaurant--cafe" : ""}`}>
               {restaurant.name}
             </span>
@@ -1087,9 +1151,6 @@ export function CustomerJourneyView({
             <p className="request-pending-hint mx-auto max-w-xs text-[11px]">
               Approval checks automatically every 2.5 seconds.
             </p>
-            {isCafeFeedback && (
-              <CafeCupIllustration className="request-pending-illustration mx-auto mt-3 w-56" />
-            )}
             {isSalonFeedback && (
               <SalonDecorativeIllustration className="salon-corner-art salon-pending-art" />
             )}
@@ -1205,11 +1266,17 @@ export function CustomerJourneyView({
                   </div>
                 </div>
 
-                {/* Stamp Icons Row (Circles with Cups / Gift Box in Gold) */}
-                <div className="my-5 grid grid-cols-5 gap-2.5">
+                {/* Stamp Icons Row */}
+                <div
+                  className="my-5 grid gap-2.5"
+                  style={{ gridTemplateColumns: `repeat(${Math.min(stampsRequired, 5)}, minmax(0, 1fr))` }}
+                >
                   {Array.from({ length: stampsRequired }).map((_, index) => {
                     const isStamped = index < currentStamps;
                     const isTarget = index === stampsRequired - 1;
+                    const stampIcon = isCafeFeedback
+                      ? CAFE_STAMP_ICONS[index % CAFE_STAMP_ICONS.length]
+                      : isSalonFeedback ? businessFeedback.heroIcon : "☕";
 
                     return (
                       <div
@@ -1222,11 +1289,11 @@ export function CustomerJourneyView({
                           }`}
                       >
                         {isStamped ? (
-                          <span className="text-lg">{isSalonFeedback ? businessFeedback.heroIcon : "☕"}</span>
+                          <span className="text-lg">{stampIcon}</span>
                         ) : isTarget ? (
                           <span className="text-lg">🎁</span>
                         ) : (
-                          <span className="text-sm font-medium">{isSalonFeedback ? businessFeedback.heroIcon : "☕"}</span>
+                          <span className="text-sm font-medium">{stampIcon}</span>
                         )}
                         <span
                           className={`text-[8px] font-bold ${isStamped ? "text-white/90" : "text-[#716B64]"
@@ -1275,7 +1342,7 @@ export function CustomerJourneyView({
                       disabled={collectingStamp}
                       className="w-full rounded-2xl bg-[#B58A4B] py-3 text-xs font-bold text-white shadow-xs transition hover:bg-[#9E7438] active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
                     >
-                      <span>{isSalonFeedback ? businessFeedback.heroIcon : "☕"}</span>
+                      <span>{isSalonFeedback || isCafeFeedback ? businessFeedback.heroIcon : "☕"}</span>
                       <span>
                         {pendingRequestId
                           ? "Approval Pending with Staff →"
@@ -1413,58 +1480,89 @@ export function CustomerJourneyView({
           STEP 6: STAFF ISSUES STAMP (Celebration Screen matching Phone 6)
       ───────────────────────────────────────────────────────────── */}
       {currentView === "stamp_added" && (
-        <main className="mx-auto flex min-h-screen max-w-sm flex-col items-center justify-center px-5 py-8 text-center">
-          {/* A clear success mark instead of decorative food imagery */}
-          <div className="relative mb-6 flex h-28 w-28 items-center justify-center rounded-full border-4 border-white bg-[#EEF6F2] text-5xl font-semibold text-[#2E6B4F] shadow-subtle">
-            <span aria-hidden="true">✓</span>
-          </div>
+        <main className="stamp-added-screen flex min-h-screen items-center justify-center px-5 py-8 text-center" style={{ backgroundColor: businessFeedback.pageColor }}>
+          <section className="stamp-added-card w-full" aria-live="polite">
+            <BusinessLogoSpace
+              name={restaurant.name}
+              logoUrl={restaurant.logoUrl}
+              fallback={businessFeedback.heroIcon}
+            />
+            <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#716B64]">
+              {restaurant.name} · Visit complete
+            </p>
 
-          <span className="rounded-full bg-[#EEF6F2] px-3.5 py-1 text-xs font-bold text-[#2E6B4F] border border-[#D1E7DC] mb-3">
-            ✨ Visit Recorded &amp; Stamped
-          </span>
+            <div className="stamp-added-seal mx-auto mt-8 flex h-24 w-24 items-center justify-center rounded-full border-4 border-white bg-[#EEF6F2] text-5xl font-semibold shadow-subtle" style={{ color: brandColor }}>
+              <span aria-hidden="true">✓</span>
+            </div>
 
-          <h1 className="font-serif text-3xl font-extrabold text-[#24211E]">
-            Stamp Added!
-          </h1>
-          <p className="mt-2 max-w-xs text-xs text-[#716B64] leading-relaxed">
-            {stampFeedbackMessage || "Your visit has been recorded. You're one step closer to your reward!"}
-          </p>
+            <span className="mt-7 inline-flex items-center gap-2 rounded-full border border-[#D1E7DC] bg-[#EEF6F2] px-3.5 py-1.5 text-[11px] font-bold text-[#2E6B4F]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#2E6B4F]" aria-hidden="true" />
+              VISIT RECORDED
+            </span>
 
-          {/* Mini Stamp Dots visual preview */}
-          <div className="my-6 flex items-center justify-center gap-2 rounded-2xl bg-white p-3.5 border border-[#E8DFD1] shadow-2xs">
-            {Array.from({ length: stampsRequired }).map((_, index) => {
-              const isStamped = index < currentStamps;
-              return (
-                <div
-                  key={index}
-                  className={`flex h-8 w-8 items-center justify-center rounded-xl text-xs font-bold transition-all ${isStamped
-                      ? "bg-[#B58A4B] text-white shadow-2xs scale-110"
-                      : "border border-[#E8DFD1] bg-[#FAF7F2] text-[#B8B1A8]"
-                    }`}
-                >
-                  {isStamped ? "✓" : index + 1}
+            <h1 className="mt-3 font-serif text-3xl font-extrabold tracking-tight text-[#24211E]">
+              Stamp Added!
+            </h1>
+            <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-[#716B64]">
+              {stampFeedbackMessage || "Your visit has been recorded. You're one step closer to your reward!"}
+            </p>
+
+            <div className="stamp-added-progress mt-7 rounded-2xl border border-[#E8DFD1] bg-white p-4 text-left shadow-2xs">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#716B64]">Your progress</p>
+                  <p className="mt-1 font-serif text-2xl font-extrabold text-[#24211E]">
+                    {currentStamps}<span className="text-sm font-bold text-[#716B64]"> / {stampsRequired}</span>
+                  </p>
                 </div>
-              );
-            })}
-          </div>
+                <span className="pb-1 text-[10px] font-semibold text-[#716B64]">stamps</span>
+              </div>
+              <div
+                className="mt-3 grid gap-2"
+                style={{ gridTemplateColumns: `repeat(${Math.min(stampsRequired, 5)}, minmax(0, 1fr))` }}
+                role="img"
+                aria-label={`${currentStamps} of ${stampsRequired} stamps collected`}
+              >
+                {Array.from({ length: stampsRequired }).map((_, index) => {
+                  const isStamped = index < currentStamps;
+                  return (
+                    <span
+                      key={index}
+                      className={`stamp-added-step flex h-9 items-center justify-center rounded-xl text-xs font-bold ${isStamped
+                        ? "text-white shadow-2xs"
+                        : "border border-[#E8DFD1] bg-[#FAF7F2] text-[#B8B1A8]"
+                        }`}
+                      style={isStamped ? { backgroundColor: brandColor, animationDelay: `${index * 55}ms` } : undefined}
+                      aria-hidden="true"
+                    >
+                      {isStamped ? "✓" : index + 1}
+                    </span>
+                  );
+                })}
+              </div>
+              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#F1EEE8]">
+                <div
+                  className="stamp-added-progress-fill h-full rounded-full"
+                  style={{ width: `${Math.min(100, (currentStamps / stampsRequired) * 100)}%`, backgroundColor: brandColor }}
+                />
+              </div>
+              <p className="mt-2 text-[10px] font-medium text-[#716B64]">
+                {currentStamps >= stampsRequired
+                  ? "Your reward goal is complete!"
+                  : `${Math.max(0, stampsRequired - currentStamps)} more ${stampsRequired - currentStamps === 1 ? "visit" : "visits"} to your reward`}
+              </p>
+            </div>
 
-          <div className="w-full max-w-xs space-y-2.5">
-            <button
-              onClick={() => setCurrentView("card")}
-              className="w-full rounded-2xl py-3.5 text-sm font-bold text-white shadow-md transition hover:brightness-105 active:scale-[0.98]"
-              style={{ backgroundColor: brandColor }}
-            >
-              View My Rewards ({currentStamps}/{stampsRequired}) →
-            </button>
-
-            <button
-              onClick={() => setCurrentView("review")}
-              className="w-full rounded-2xl border border-[#E8DFD1] bg-white py-3 text-xs font-bold text-[#24211E] shadow-2xs hover:bg-[#FAF7F2] transition flex items-center justify-center gap-1.5"
-            >
-              <span>⭐</span>
-              <span>Share Experience (Optional)</span>
-            </button>
-          </div>
+            <div className="mt-6 w-full space-y-2.5">
+              <button
+                onClick={() => setCurrentView("card")}
+                className="w-full rounded-2xl py-3.5 text-sm font-bold text-white shadow-md transition hover:brightness-105 active:scale-[0.98]"
+                style={{ backgroundColor: brandColor }}
+              >
+                View My Rewards ({currentStamps}/{stampsRequired}) →
+              </button>
+            </div>
+          </section>
         </main>
       )}
 
@@ -1501,6 +1599,14 @@ export function CustomerJourneyView({
             <div className="w-6" />
           </div>
 
+          {restaurant.googlePlaceId && (
+            <GooglePlacesReviews
+              placeId={restaurant.googlePlaceId}
+              businessName={restaurant.name}
+              googleReviewUrl={restaurant.googleReviewUrl}
+            />
+          )}
+
           <div
             className={isCafeFeedback
               ? "customer-review-intro cafe-review-hero mt-5 rounded-[2rem] border p-5 text-center shadow-sm"
@@ -1515,8 +1621,11 @@ export function CustomerJourneyView({
             {isCafeFeedback ? (
               <>
               <div className="cafe-review-art">
-                <CafeCupIllustration className="w-full" />
-                <span className="cafe-review-cup-badge" aria-hidden="true">☕</span>
+                <div className="cafe-review-still-life" aria-hidden="true">
+                  <span className="cafe-review-still-life__leaf">🌿</span>
+                  <span className="cafe-review-still-life__pastry">🥐</span>
+                  <span className="cafe-review-still-life__spark">✦</span>
+                </div>
               </div>
               <div
                 className="mx-auto mb-4 grid h-16 w-16 place-items-center overflow-hidden rounded-[1.25rem] border bg-white text-3xl shadow-sm"
@@ -1726,10 +1835,9 @@ export function CustomerJourneyView({
             </p>
             <button
               onClick={() => handleCollectStampClick(phoneNumber)}
-              disabled={newCustomerReviewRequired && !reviewSubmitted}
-              className="mt-1.5 text-xs font-bold underline text-[#24211E] disabled:cursor-not-allowed disabled:opacity-40"
+              className="mt-1.5 text-xs font-bold underline text-[#24211E]"
             >
-              {newCustomerReviewRequired && !reviewSubmitted ? "Complete your review to continue" : "Collect My Stamp Now →"}
+              Collect My Stamp Now →
             </button>
           </div>}
           {isSalonFeedback && <SalonDecorativeIllustration className="salon-corner-art" />}
@@ -1820,10 +1928,11 @@ export function CustomerJourneyView({
       {/* SCREEN 3: REWARD REDEEMED CELEBRATION */}
       {currentView === "reward_redeemed" && (
         <main className="mx-auto flex min-h-screen max-w-sm flex-col items-center justify-center px-5 py-8 text-center">
-          {restaurant.logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={restaurant.logoUrl} alt={`${restaurant.name} logo`} className="mb-4 h-12 w-12 rounded-xl border border-[#E8DFD1] bg-white object-contain p-1" />
-          )}
+          <BusinessLogoSpace
+            name={restaurant.name}
+            logoUrl={restaurant.logoUrl}
+            fallback={businessFeedback.heroIcon}
+          />
           <div className="relative mb-6 flex h-28 w-28 items-center justify-center rounded-full bg-[#FAF5ED] text-5xl shadow-subtle border-4 border-white text-[#B58A4B]">
             ✓
           </div>

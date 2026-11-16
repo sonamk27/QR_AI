@@ -8,6 +8,7 @@ type R = {
   city: string | null;
   logoUrl: string | null;
   googleReviewUrl: string | null;
+  googlePlaceId: string | null;
   instagramUrl: string | null;
   facebookUrl: string | null;
   shareCaption: string | null;
@@ -16,7 +17,7 @@ type R = {
 type FirebaseSavers = {
   onSaved?: () => Promise<void> | void;
   saveIdentity?: (values: { name: string; city: string | null; logoUrl: string | null; brandColor: string }) => Promise<void>;
-  saveGoogleUrl?: (url: string) => Promise<void>;
+  saveGoogleUrl?: (url: string, placeId: string) => Promise<void>;
   saveSocial?: (values: { instagramUrl: string | null; facebookUrl: string | null; shareCaption: string | null }) => Promise<void>;
 };
 
@@ -59,6 +60,7 @@ export function ProfileForm({ r, firebaseSavers }: { r: R; firebaseSavers?: Fire
   const [logoUploading, setLogoUploading] = useState(false);
 
   const [googleBusinessUrl, setGoogleBusinessUrl] = useState(r.googleReviewUrl ?? "");
+  const [googlePlaceId, setGooglePlaceId] = useState(r.googlePlaceId ?? "");
   const [googleUrlError, setGoogleUrlError] = useState("");
   const [googleUrlSaved, setGoogleUrlSaved] = useState("");
   const [googleBusy, setGoogleBusy] = useState(false);
@@ -119,23 +121,23 @@ export function ProfileForm({ r, firebaseSavers }: { r: R; firebaseSavers?: Fire
     setGoogleUrlSaved("");
     try {
       if (firebaseSavers?.saveGoogleUrl) {
-        await firebaseSavers.saveGoogleUrl(googleBusinessUrl.trim());
+        await firebaseSavers.saveGoogleUrl(googleBusinessUrl.trim(), googlePlaceId.trim());
         await firebaseSavers.onSaved?.();
-        setGoogleUrlSaved("URL saved!");
+        setGoogleUrlSaved("Google reviews settings saved!");
         router.refresh();
         return;
       }
       const response = await fetch("/api/restaurant/google-business-url", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ googleBusinessUrl }),
+        body: JSON.stringify({ googleBusinessUrl, googlePlaceId }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setGoogleUrlError(data.error ?? "Could not save the URL.");
+        setGoogleUrlError(data.error ?? "Could not save Google reviews settings.");
         return;
       }
-      setGoogleUrlSaved("URL saved!");
+      setGoogleUrlSaved("Google reviews settings saved!");
       router.refresh();
     } catch {
       setGoogleUrlError("Unable to reach the server. Check your connection and try again.");
@@ -280,9 +282,35 @@ export function ProfileForm({ r, firebaseSavers }: { r: R; firebaseSavers?: Fire
               Paste your business&apos;s Google Maps / Business Profile URL. Customers will be directed here after their visit.
             </p>
           </div>
+          <div>
+            <label className="block text-xs font-semibold text-[#716B64] mb-1" htmlFor="googlePlaceId">
+              Google Place ID <span className="font-normal text-[#716B64]/60">(optional)</span>
+            </label>
+            <input
+              id="googlePlaceId"
+              name="googlePlaceId"
+              type="text"
+              maxLength={200}
+              value={googlePlaceId}
+              onChange={(event) => setGooglePlaceId(event.target.value)}
+              className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] px-3.5 py-2 text-xs font-medium text-[#24211E] outline-none focus:border-[#B58A4B] focus:bg-white"
+              placeholder="ChIJ..."
+            />
+            <p className="mt-1.5 text-xs text-[#716B64]">
+              Displays your live public rating and reviews on the guest page.{" "}
+              <a
+                href="https://developers.google.com/maps/documentation/places/web-service/place-id"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold underline"
+              >
+                Find your Place ID
+              </a>
+            </p>
+          </div>
           {googleUrlError && <p role="alert" className="text-xs font-semibold text-[#A83B3B]">{googleUrlError}</p>}
           <div className="flex items-center gap-3 border-t border-[#E8DFD1]/60 pt-4">
-            <SaveButton busy={googleBusy} label="Save URL" />
+            <SaveButton busy={googleBusy} label="Save Google Reviews" />
             <StatusBadge msg={googleUrlSaved} isError={false} />
           </div>
         </div>
