@@ -1811,7 +1811,7 @@ export function CustomerJourneyView({
                       </div>
                     </div>
                   ) : businessFeedback.layout === "cafe" ? (
-                    <div key={question} className="rounded-[1.35rem] border bg-white p-4 shadow-sm transition-shadow hover:shadow-md" style={{ borderColor: businessFeedback.borderColor }}>
+                    <div key={question} className="rounded-2xl border border-[#E8DFD1] bg-white p-5 shadow-sm" style={{ borderColor: businessFeedback.borderColor }}>
                       <div className="flex items-center gap-3">
                         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-xl" style={{ backgroundColor: businessFeedback.softColor }} aria-hidden="true">{businessFeedback.questionIcons[index]}</span>
                         <div className="min-w-0">

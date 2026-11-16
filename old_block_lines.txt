@@ -1,0 +1,19 @@
+
+  if (!journeyReady) {
+    const brandColor = restaurant.brandColor || "#B58A4B";
+    const accentColor = businessFeedback.accentColor;
+    const softColor = businessFeedback.softColor;
+    return (
+      <PageLoadingScreen
+        restaurantName={restaurant.name}
+        brandColor={brandColor}
+        accentColor={accentColor}
+        softColor={softColor}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`customer-journey min-h-screen font-sans text-[#24211E] antialiased ${isCafeFeedback ? "cafe-journey" : ""} ${isSalonFeedback ? "customer-journey--salon" : ""}`}
+      style={{ backgroundColor: businessFeedback.pageColor }}
