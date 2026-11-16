@@ -8,6 +8,7 @@ type R = {
   name: string;
   city: string | null;
   logoUrl: string | null;
+  brandColor?: string | null;
   googleReviewUrl: string | null;
   instagramUrl: string | null;
   facebookUrl: string | null;
@@ -16,7 +17,7 @@ type R = {
 
 type FirebaseSavers = {
   onSaved?: () => Promise<void> | void;
-  saveIdentity?: (values: { name: string; city: string | null; logoUrl: string | null; brandColor: string }) => Promise<void>;
+  saveIdentity?: (values: { name: string; city: string | null; logoUrl: string | null; brandColor?: string }) => Promise<void>;
   saveGoogleUrl?: (url: string) => Promise<void>;
   saveSocial?: (values: { instagramUrl: string | null; facebookUrl: string | null; shareCaption: string | null }) => Promise<void>;
 };
@@ -82,7 +83,7 @@ export function ProfileForm({ r, firebaseSavers }: { r: R; firebaseSavers?: Fire
           name: String(body.name ?? "").trim(),
           city: String(body.city ?? "").trim() || null,
           logoUrl: logoValue.trim() || null,
-          brandColor: String(body.brandColor ?? ""),
+          brandColor: String(body.brandColor ?? "") || undefined,
         });
         await firebaseSavers.onSaved?.();
         setMsgIsError(false);

@@ -21,7 +21,7 @@ export default function ProfileSettingsPage() {
   };
   const firebaseSavers = {
     onSaved: refreshRestaurant,
-    saveIdentity: async (values: { name: string; city: string | null; logoUrl: string | null; brandColor: string }) => {
+    saveIdentity: async (values: { name: string; city: string | null; logoUrl: string | null; brandColor?: string }) => {
       if (values.name.length < 2 || values.name.length > 100) throw new Error("Business name must be 2–100 characters.");
       if ((values.city?.length ?? 0) > 80) throw new Error("City must be 80 characters or fewer.");
       if (values.brandColor && !/^#[0-9a-fA-F]{6}$/.test(values.brandColor)) throw new Error("Enter a valid 6-digit brand colour.");
@@ -30,9 +30,10 @@ export default function ProfileSettingsPage() {
           throw new Error("Upload a PNG, JPG, or WebP logo, or enter a secure HTTPS image URL up to 2,000 characters.");
         }
       }
+      const payload = { ...values, brandColor: values.brandColor || publicRestaurantData.brandColor || "#B58A4B" };
       const batch = writeBatch(db);
-      batch.update(restaurantRef, values);
-      batch.set(publicRestaurantRef, { ...publicRestaurantData, ...values, status: restaurant.status ?? "ACTIVE" }, { merge: true });
+      batch.update(restaurantRef, payload);
+      batch.set(publicRestaurantRef, { ...publicRestaurantData, ...payload, status: restaurant.status ?? "ACTIVE" }, { merge: true });
       await batch.commit();
     },
     saveGoogleUrl: async (url: string) => {

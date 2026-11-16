@@ -133,6 +133,8 @@ export function CustomerJourneyView({
 }: CustomerJourneyProps) {
   const businessType = getBusinessType(restaurant.businessType);
   const businessFeedback = getBusinessFeedbackConfig(businessType);
+  const businessLabel = businessFeedback.displayLabel;
+  const businessLabelLower = businessLabel.toLowerCase();
   const isCafeFeedback = businessFeedback.layout === "cafe";
   const isSalonFeedback = businessFeedback.layout === "salon";
 
@@ -455,7 +457,7 @@ export function CustomerJourneyView({
             setCurrentView("stamp_added");
           } else if (request.status === "REJECTED") {
             setPendingRequestId(null);
-            setRequestError(request.staffNote || "Your stamp request was declined by the restaurant staff.");
+            setRequestError(request.staffNote || `Your stamp request was declined by the ${businessLabelLower} staff.`);
           }
         } catch (err) { console.error("Firebase stamp status check failed", err); }
         return;
@@ -484,7 +486,7 @@ export function CustomerJourneyView({
           setCurrentView("stamp_added");
         } else if (data.status === "REJECTED") {
           setPendingRequestId(null);
-          setRequestError(data.message || "Your stamp request was declined by the restaurant staff.");
+          setRequestError(data.message || `Your stamp request was declined by the ${businessLabelLower} staff.`);
         } else if (data.status === "PENDING") {
           if (!pendingRequestId && data.requestId) {
             setPendingRequestId(data.requestId);
@@ -531,7 +533,7 @@ export function CustomerJourneyView({
         const { db, auth } = getFirebaseServices();
         const guest = auth.currentUser;
         if (!guest) throw new Error("Guest session is still initializing. Please try again.");
-        if (!program.isActive || !program.id) throw new Error("This restaurant's loyalty program is not available right now.");
+        if (!program.isActive || !program.id) throw new Error(`This ${businessLabelLower}'s loyalty program is not available right now.`);
         const customerId = `anon_${guest.uid}_${firebaseContext.restaurantId}`;
         const customerRef = doc(db, "anonymousCustomers", customerId);
         const requestId = `guest_${guest.uid}_${firebaseContext.qrId}_${new Date().toISOString().slice(0, 10).replaceAll("-", "")}`;
@@ -931,72 +933,6 @@ export function CustomerJourneyView({
               <div>
                 <p className="text-xs font-bold text-[#24211E] leading-tight">{restaurant.name}</p>
                 <p className="text-[10px] font-medium text-[#716B64]">{restaurant.city ? ` • ${restaurant.city}` : ""}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Hero Welcome Card */}
-          <div className="mt-8 flex items-center justify-center">
-            <div className="relative overflow-hidden rounded-2xl border border-[#E8DFD1] bg-white p-8 text-center shadow-sm max-w-sm">
-              {/* Decorative elements */}
-              <div className="absolute inset-0 h-[200px]">
-                <img src="https://images.unsplash.com/photo-1495474472287-4d71bc020855?w=800&q=80" alt="Restaurant interior" className="w-full h-full object-cover opacity-60" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#4A6B47]/70 to-transparent" />
-              </div>
-              <div className="relative z-10 pt-10 pb-8 px-6 text-center">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#4A6B47]/80">Visit Card</p>
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#4A6B47]/20 text-[10px] font-bold text-[#B58A4B] border border-[#4A6B47]/30">
-                  ₹100 Off Your Bill
-                </span>
-              </div>
-              <h1 className="mt-8 font-serif text-3xl font-bold text-[#24211E] tracking-tight leading-tight">
-                Good Food<br />Brings People Together
-              </h1>
-              <p className="mt-2 text-[11px] text-[#716B64] text-center leading-relaxed">
-                Join our loyalty program and share your experience with the world.
-              </p>
-              <div className="mt-6 flex items-center justify-center gap-2">
-                <button
-                  onClick={() => {
-                    setRegistrationDestination("collect_stamp");
-                    setCurrentView("register");
-                  }}
-                  disabled={collectingStamp}
-                  className={`flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-bold text-white shadow-lg transition active:scale-[0.98] disabled:opacity-60`}
-                  style={{ backgroundColor: businessFeedback.accentColor }}
-                  onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentHoverColor; }}
-                  onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentColor; }}
-                >
-                  <span className="customer-collect-stamp-icon flex h-7 w-7 items-center justify-center rounded-full text-sm" aria-hidden="true">★</span>
-                  <span>{collectingStamp ? "Collecting Stamp..." : "Collect My Stamp"}</span>
-                </button>
-              </div>
-              <button
-                onClick={() => {
-                  setRegistrationDestination("review");
-                  setCurrentView("review");
-                }}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[#E8DFD1] bg-white py-3.5 text-sm font-bold text-[#24211E] shadow-2xs transition active:scale-[0.98] flex items-center justify-center"
-                style={{ borderColor: businessFeedback.borderColor }}
-                onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.softColor; }}
-                onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = "#FFFFFF"; }}
-              >
-                <span>⭐</span>
-                <span>Share Your Experience</span>
-              </button>
-              <div className="mt-6 flex items-center justify-center gap-6 text-xs font-medium text-[#716B64]">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-bold text-[#B58A4B]">★</span>
-                  <span className="text-xs font-semibold text-[#716B64]">Great Food</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-bold text-[#B58A4B]">❤️</span>
-                  <span className="text-xs font-semibold text-[#716B64]">Kind People</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-bold text-[#B58A4B]">✨</span>
-                  <span className="text-xs font-semibold text-[#716B64]">Better Together</span>
-                </div>
               </div>
             </div>
           </div>
@@ -1861,24 +1797,6 @@ export function CustomerJourneyView({
                           <RatingStars value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} size="md" activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
                       </div>
                     </div>
-                  ) : businessFeedback.layout === "cafe" ? (
-                    <div key={question} className="rounded-2xl border border-[#E8DFD1] bg-white p-5 shadow-sm" style={{ borderColor: businessFeedback.borderColor }}>
-                      <div className="flex items-center gap-3">
-                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-xl" style={{ backgroundColor: businessFeedback.softColor }} aria-hidden="true">{businessFeedback.questionIcons[index]}</span>
-                        <div className="min-w-0">
-                          <p className="text-[9px] font-bold uppercase tracking-[0.16em]" style={{ color: businessFeedback.accentColor }}>
-                            {businessFeedback.aspectLabels[index]}
-                          </p>
-                          <p className="mt-1 text-xs font-semibold leading-relaxed text-[#24211E]">{question}</p>
-                        </div>
-                      </div>
-                      <div className="mt-3 flex items-center justify-between gap-2 border-t pt-2" style={{ borderColor: businessFeedback.borderColor }}>
-                        <span className="shrink-0 text-[10px] font-medium text-[#716B64]">
-                          {reviewRatings[index] ? `${reviewRatings[index]} / 5` : "Tap to rate"}
-                        </span>
-                        <RatingStars value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} size="md" activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
-                      </div>
-                    </div>
                   ) : businessFeedback.layout === "general-store" ? (
                     <div key={question} className="rounded-xl border bg-white p-3 shadow-sm" style={{ borderColor: businessFeedback.borderColor }}>
                       <div className="flex items-center gap-3">
@@ -1894,9 +1812,20 @@ export function CustomerJourneyView({
                       </div>
                     </div>
                   ) : (
-                    <div key={question} className="flex min-h-[68px] items-center justify-between gap-2 rounded-xl border bg-white px-3 py-2" style={{ borderColor: businessFeedback.borderColor }}>
-                      <span className="min-w-0 text-xs font-semibold text-[#24211E]">{question}</span>
-                      <RatingStars value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} size="lg" activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
+                    <div key={question} className="rounded-2xl border border-[#E8DFD1] bg-white p-5 shadow-sm hover:shadow-md transition-shadow duration-200" style={{ borderColor: businessFeedback.borderColor }}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-xl" style={{ backgroundColor: businessFeedback.softColor }} aria-hidden="true">{businessFeedback.questionIcons[index]}</span>
+                          <div className="min-w-0">
+                            <p className="text-[9px] font-bold uppercase tracking-[0.16em]" style={{ color: businessFeedback.accentColor }}>{businessFeedback.aspectLabels[index]}</p>
+                            <p className="mt-1 text-xs font-semibold leading-relaxed text-[#24211E]">{question}</p>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between gap-2 border-t pt-2" style={{ borderColor: businessFeedback.borderColor }}>
+                          <span className="shrink-0 text-[10px] font-medium text-[#716B64]">{reviewRatings[index] ? reviewRatings[index] / 5 : "Tap to rate"}</span>
+                          <RatingStars value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} size="md" activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
+                        </div>
+                      </div>
                     </div>
                   )
                 ))}

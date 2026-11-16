@@ -1,101 +1,82 @@
-const fs = require('fs');
-let content = fs.readFileSync('components/customer/CustomerJourneyView.tsx', 'utf8');
+import re
 
-// Find the welcome section start
-const welcomeStart = content.indexOf('{currentView === "welcome" && (');
-if (cafeStart < 0) {
-  console.log('Could not find welcome page start');
-  process.exit(1);
-}
+with open('components/customer/CustomerJourneyView.tsx', 'r') as f:
+    content = f.read()
 
-// Find the end - look for the closing of the main welcome div
-// We need to find where the welcome section JSX ends
-const welcomeSectionStart = content.indexOf('{currentView === "welcome" && (');
-if (welcomeStart < 0) {
-  console.log('Could not find welcome section start');
-  process.exit(1);
-}
+# Find the general-store section
+start_marker = 'businessFeedback.layout === "general-store" ? ('
+start_idx = content.find(generalStoreStart)
+if generalStoreStart < 0:
+    print("Could not find general-store section start")
+    exit(1)
 
-// Find the matching closing brace for the return
-// We need to count braces from cafeStart onwards
-let braceCount = 0;
-let inString = false;
-let escapeNext = false;
-let endIdx = cafeStart;
+# Find the end - look for ") : businessFeedback.layout" or "))}":
+# Actually the general-store section ends with "))}" before ")"
+# Let's find the closing of this div
+# The general store div starts at generalStoreStart + len("businessFeedback.layout === \"general-store\" ? (")
+# We need to find where this div ends
 
-for (let i = cafeStart; i < content.length; i++) {
-  const ch = content[i];
-  
-  if (escapeNext) {
-    escapeNext = false;
-    continue;
-  }
-  
-  if (ch === '\\') {
-    escapeNext = true;
-    continue;
-  }
-  
-  if (inString) {
-    if (ch === inString) {
-      inString = false;
-    }
-    continue;
-  }
-  
-  if (ch === '"' || ch === "'" || ch === '`') {
-    inString = ch;
-    continue;
-  }
-  
-  if (ch === '{') {
-    braceCount++;
-  } else if (ch === '}') {
-    braceCount--;
-    if (braceCount === 0) {
-      // Found matching closing brace
-      const endPos = i + 1;
-      console.log('Found block end at:', endPos);
-      console.log('Content around end:', JSON.stringify(content.substring(endPos - 5, endPos + 10)));
-      
-      const newBlock = `<div className="relative overflow-hidden">
+# Actually let's just find from cafeStart to the next "): businessFeedback.layout" or "))}"
+# After general-store there's ")" then ": businessFeedback.layout === \"default\" ? ("
+
+# Let's find where the general-store div ends
+# It ends with </div>) followed by :
+end_marker = ')</div>) : businessFeedback.layout'
+end_idx = content.find(end_marker, generalStoreStart)
+if endIdx < 0:
+    # Try alternate pattern
+    end_marker2 = ')</div>\n                  ) : businessFeedback.layout === "default"'
+    endIdx = content.find(end_marker2, generalStoreStart)
+    
+if endIdx < 0:
+    print("Could not find end of general-store section")
+    print("Searching for any ')' followed by : businessFeedback.layout")
+    # Just find next ) : 
+    idx = content.find(') : ', generalStoreStart)
+    if idx > 0:
+        endIdx = idx
+    else:
+        print("Completely stuck")
+        exit(1)
+
+newBlock = '''<div key={question} className="relative overflow-hidden rounded-2xl border border-[#E8DFD1] bg-[#FAF7F2] p-5 shadow-sm hover:shadow-md transition-shadow duration-200" style={{ borderColor: businessFeedback.borderColor }}>
               {/* Cafe header image overlay */}
               <div className="absolute inset-0 h-[200px]">
-                <img src="https://images.unsplash.com/photo-1495474472287-4d71bc020855?w=800&q=80" alt="Cafe coffee" className="w-full h-full object-cover opacity-60" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#4A6B47]/80 to-transparent" />
+                <img src="https://images.unsplash.com/photo-1495474472287-4d71bc020855?w=800&q=80" alt="General store" className="w-full h-full object-cover opacity-60" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#617B45]/80 to-transparent" />
               </div>
               <div className="relative z-10 pt-10 pb-8 px-6 text-center">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#4A6B47]/80">A little pause in your day</p>
-                <h2 className="mt-1 font-serif text-3xl font-bold text-[#24211E] tracking-tight leading-tight">Rate Your Cafe Visit</h2>
-                <p className="mt-0.5 text-[12px] font-medium text-[#4A6B47]/70">cafe</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#617B45]/80">A little pause in your day</p>
+                <h2 className="mt-1 font-serif text-3xl font-bold text-[#24211E] tracking-tight leading-tight">Rate Your Grocery Visit</h2>
+                <p className="mt-0.5 text-[12px] font-medium text-[#617B45]/70">General Store</p>
                 <div className="mt-6 flex items-center justify-center gap-2">
                   {restaurant.logoUrl ? (
                     <img src={restaurant.logoUrl} alt={restaurant.name} className="h-12 w-12 rounded-full border-2 border-white object-contain p-0.5" />
                   ) : (
-                    <div className="h-12 w-12 rounded-full flex items-center justify-center border-2 border-[#E8DFD1] bg-white font-serif text-xl font-bold text-[#B58A4B] shadow-sm">
+                    <div className="h-12 w-12 rounded-full flex items-center justify-center border-2 border-[#E8DFD1] bg-white font-serif text-xl font-bold text-[#617B45] shadow-sm">
                       {restaurant.name.trim().charAt(0).toUpperCase() || "R"}
                     </div>
                   )}
                 </div>
                 <div className="mt-3 text-center">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#4A6B47]/70">Your visit, your way</p>
-                  <h3 className="mt-1 font-serif text-xl font-bold text-[#24211E] tracking-tight">How was your cafe visit?</h3>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#617B45]/70">Your visit, your way</p>
+                  <h3 className="mt-1 font-serif text-xl font-bold text-[#24211E] tracking-tight">How was your grocery visit?</h3>
                   <p className="mt-1 text-[11px] text-[#716B64] leading-relaxed">
-                    Tell us about your drinks, treats, and time spent here.
+                    Tell us about your products, service, and time spent here.
                   </p>
                 </div>
               </div>
               <div className="relative z-10 mt-8 px-6">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="flex items-center gap-1 text-[11px] font-bold text-[#4A6B47]">
-                    <span className="text-[#B58A4B]">★</span>
-                    Rate Your Cafe Experience
+                  <span className="flex items-center gap-1 text-[11px] font-bold text-[#617B45]">
+                    <span className="text-[#617B45]">★</span>
+                    Rate Your Grocery Experience
                   </span>
                 </div>
                 <div className="rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] px-4 py-3">
                   <div className="flex items-center justify-between mb-2 text-[10px] font-semibold text-[#716B64]">
-                    <span>Your tasting notes</span>
-                    <span className="text-[#4A6B47]">{reviewRatings.filter(Boolean).length} / 3 rated</span>
+                    <span>Your feedback notes</span>
+                    <span className="text-[#617B45]">{reviewRatings.filter(Boolean).length} / 3 rated</span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-[#E8DFD1]">
                     <div className="h-full rounded-full transition-all duration-300" style={{ width: \${(reviewRatings.filter(Boolean).length / 3) * 100}%, backgroundColor: businessFeedback.accentColor }} />
@@ -129,6 +110,6 @@ for (let i = cafeStart; i < content.length; i++) {
               </div>
             </div>`;
 
-content = content.substring(0, cafeStart) + newBlock + content.substring(endPos);
-fs.writeFileSync('components/customer/CustomerJourneyView.tsx', content);
-console.log('Cafe rating section replaced successfully');
+content = content[:generalStoreStart] + newBlock + content[generalStoreEnd:]
+fs.writeFileSync('components/customer/CustomerJourneyView.tsx', content)
+print('General store card replaced successfully!')
