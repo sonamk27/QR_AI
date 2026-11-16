@@ -95,7 +95,7 @@ function RouteAnimatedContent() {
 
   return (
     <div ref={contentRef} className="route-enter">
-      <Suspense fallback={<LoadingPage />}>
+      <Suspense fallback={location.pathname.startsWith("/r/") ? null : <LoadingPage />}>
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<FirebaseAuthForm mode="login" />} />

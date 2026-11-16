@@ -55,6 +55,24 @@ type RewardItem = {
   redeemedAt: string | null;
 };
 
+type CustomerJourneyScreen =
+  | "welcome"
+  | "register"
+  | "request_pending"
+  | "card"
+  | "stamp_added"
+  | "review"
+  | "reward_details"
+  | "reward_redeemed";
+
+type SavedJourneyState = {
+  view: CustomerJourneyScreen;
+  pendingRequestId: string | null;
+  pendingTableNo: string | null;
+  stampFeedbackMessage: string | null;
+  selectedReward: RewardItem | null;
+};
+
 type TransactionItem = {
   id: string;
   stampsCount: number;
@@ -127,13 +145,14 @@ export function CustomerJourneyView({
     });
     setAiGenerated(false);
     setAiDraft("");
+    setReviewDraftHistory([]);
+    setReviewVariantIndex(0);
     setReviewGenerationError("");
   }
 
   // Navigation View State
-  const [currentView, setCurrentView] = useState<
-    "welcome" | "register" | "request_pending" | "card" | "stamp_added" | "review" | "reward_details" | "reward_redeemed"
-  >(initialView);
+  const [currentView, setCurrentView] = useState<CustomerJourneyScreen>(initialView);
+  const [journeyReady, setJourneyReady] = useState(false);
 
   // Customer & Card Data
   const [customer, setCustomer] = useState<CustomerData | null>(null);
@@ -160,7 +179,20 @@ export function CustomerJourneyView({
   const collectLockRef = useRef(false);
 
   // Review & AI Assist State (Step 7: Share Your Experience)
-  const [reviewRatings, setReviewRatings] = useState<[number, number, number]>([0, 0, 0]);
+  const [reviewRatings, setReviewRatings] = useState<[number, number, number]>(() => {
+    const saved = typeof localStorage !== "undefined" ? localStorage.getItem(`review_ratings_${slug}`) : null;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length === 3 && parsed.every((r) => typeof r === "number")) {
+          return parsed as [number, number, number];
+        }
+      } catch {
+        // ignore parse errors, fall back to default
+      }
+    }
+    return [0, 0, 0];
+  });
   const [aiDraft, setAiDraft] = useState("");
   const [generatingAi, setGeneratingAi] = useState(false);
   const [reviewGenerationError, setReviewGenerationError] = useState("");
@@ -170,6 +202,16 @@ export function CustomerJourneyView({
   const [googlePopupBlocked, setGooglePopupBlocked] = useState(false);
   const [reviewVariantIndex, setReviewVariantIndex] = useState(0);
   const [reviewSessionId, setReviewSessionId] = useState<string | null>(null);
+  const [reviewDraftHistory, setReviewDraftHistory] = useState<string[]>([]);
+
+  // Persist star ratings to localStorage so they survive hard refreshes
+  useEffect(() => {
+    try {
+      localStorage.setItem(`review_ratings_${slug}`, JSON.stringify(reviewRatings));
+    } catch {
+      // ignore storage errors (private mode, etc.)
+    }
+  }, [slug, reviewRatings]);
 
   useEffect(() => {
     if (!firebaseContext) return;
@@ -186,47 +228,87 @@ export function CustomerJourneyView({
   // Reward Voucher QR Modal / Screen State
   const [selectedReward, setSelectedReward] = useState<RewardItem | null>(null);
   const [rewardQrDataUrl, setRewardQrDataUrl] = useState<string | null>(null);
+  const initializedSlugRef = useRef<string | null>(null);
+  const lastInitialViewRef = useRef(initialView);
 
   // Theme Accent: Muted Gold #B58A4B
   const accentGold = "#B58A4B";
 
   const brandColor = restaurant.brandColor || "#B58A4B";
 
-  // Check on mount for remembered phone — pre-fill but always show the register prompt
+  // Restore the active screen on a browser reload while keeping new QR visits fresh.
   useEffect(() => {
-    let cancelled = false;
+    if (initializedSlugRef.current === slug) {
+      if (lastInitialViewRef.current !== initialView) {
+        setCurrentView(initialView);
+        lastInitialViewRef.current = initialView;
+      }
+      return;
+    }
+    initializedSlugRef.current = slug;
+    lastInitialViewRef.current = initialView;
 
-    async function init() {
-      const savedPhone =
-        initialPhone ||
-        localStorage.getItem(`loyalty_phone_${slug}`) ||
-        localStorage.getItem("loyalty_phone");
+    const savedPhone =
+      initialPhone ||
+      localStorage.getItem(`loyalty_phone_${slug}`) ||
+      localStorage.getItem("loyalty_phone");
+    const savedName =
+      initialName ||
+      localStorage.getItem(`loyalty_name_${slug}`);
 
-      const savedName =
-        initialName ||
-        localStorage.getItem(`loyalty_name_${slug}`);
+    if (savedName) setFullName(savedName);
+    if (savedPhone) setPhoneNumber(savedPhone);
 
-      if (savedName) setFullName(savedName);
-      if (savedPhone) setPhoneNumber(savedPhone);
+    const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+    const isReload = navigation?.type === "reload";
+    let restored = false;
 
-      setCurrentView(initialView);
+    if (isReload) {
+      const savedState = sessionStorage.getItem(`customer_journey_${slug}`);
+      if (savedState) {
+        try {
+          const parsed = JSON.parse(savedState) as SavedJourneyState;
+          const validViews: CustomerJourneyScreen[] = [
+            "welcome", "register", "request_pending", "card", "stamp_added",
+            "review", "reward_details", "reward_redeemed",
+          ];
+          if (validViews.includes(parsed.view) && (parsed.view !== "reward_details" || parsed.selectedReward)) {
+            setCurrentView(parsed.view);
+            setPendingRequestId(parsed.pendingRequestId ?? null);
+            setPendingTableNo(parsed.pendingTableNo ?? null);
+            setStampFeedbackMessage(parsed.stampFeedbackMessage ?? null);
+            setSelectedReward(parsed.selectedReward ?? null);
+            restored = true;
+          }
+        } catch (error) {
+          console.error("Could not restore the customer journey screen", error);
+        }
+      }
     }
 
-    init();
-
-    return () => {
-      cancelled = true;
-    };
+    if (!restored) setCurrentView(initialView);
+    setJourneyReady(true);
   }, [slug, initialPhone, initialName, initialView]);
 
-  const isMounted = useRef(false);
-
   useEffect(() => {
-    if (isMounted.current) {
-      setCurrentView(initialView);
-    }
-    isMounted.current = true;
-  }, [initialView]);
+    if (!journeyReady) return;
+    const savedState: SavedJourneyState = {
+      view: currentView,
+      pendingRequestId,
+      pendingTableNo,
+      stampFeedbackMessage,
+      selectedReward: currentView === "reward_details" ? selectedReward : null,
+    };
+    sessionStorage.setItem(`customer_journey_${slug}`, JSON.stringify(savedState));
+  }, [
+    currentView,
+    journeyReady,
+    pendingRequestId,
+    pendingTableNo,
+    selectedReward,
+    slug,
+    stampFeedbackMessage,
+  ]);
 
   // Live polling: automatically refresh card in background
   useEffect(() => {
@@ -244,7 +326,7 @@ export function CustomerJourneyView({
   // Auto-load card data when entering card view without customer data (safety net)
   const cardLoadRef = useRef(false);
   useEffect(() => {
-    if (currentView !== "card") {
+    if (currentView !== "card" && currentView !== "stamp_added") {
       cardLoadRef.current = false;
       return;
     }
@@ -252,8 +334,25 @@ export function CustomerJourneyView({
     const phoneToUse = phoneNumber;
     if (!phoneToUse) return;
     cardLoadRef.current = true;
-    fetchLoyaltyCard(phoneToUse);
+    fetchLoyaltyCard(phoneToUse, currentView === "stamp_added");
   }, [currentView, phoneNumber]);
+
+  useEffect(() => {
+    if (currentView !== "reward_details" || !selectedReward || rewardQrDataUrl) return;
+    let cancelled = false;
+    void QRCode.toDataURL(selectedReward.code, {
+      width: 260,
+      margin: 2,
+      color: { dark: "#24211E", light: "#FFFFFF" },
+    }).then((qr) => {
+      if (!cancelled) setRewardQrDataUrl(qr);
+    }).catch((error) => {
+      console.error("Could not restore the reward QR code", error);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentView, rewardQrDataUrl, selectedReward]);
 
   async function fetchLoyaltyCard(phoneToFetch: string, silent = false) {
     if (!silent) {
@@ -544,6 +643,8 @@ export function CustomerJourneyView({
         await fetchLoyaltyCard(finalPhone, true);
         setReviewSubmitted(false);
         setReviewRatings([0, 0, 0]);
+        setReviewDraftHistory([]);
+        setReviewVariantIndex(0);
         setAiGenerated(false);
         setAiDraft("");
         if (registrationDestination === "collect_stamp") {
@@ -569,6 +670,8 @@ export function CustomerJourneyView({
       setPhoneNumber(finalPhone);
       setReviewSubmitted(false);
       setReviewRatings([0, 0, 0]);
+      setReviewDraftHistory([]);
+      setReviewVariantIndex(0);
       setAiGenerated(false);
       setAiDraft("");
       setCurrentView("review");
@@ -585,6 +688,10 @@ export function CustomerJourneyView({
     const [primaryRating, secondaryRating, atmosphereRating] = reviewRatings;
     const starRating = Math.round((primaryRating + secondaryRating + atmosphereRating) / 3);
     if (starRating < 1 || starRating > 5) return;
+    const previousDrafts = Array.from(new Set([
+      ...reviewDraftHistory,
+      ...(aiGenerated && aiDraft.trim() ? [aiDraft.trim()] : []),
+    ])).slice(-10);
     setGeneratingAi(true);
     setReviewGenerationError("");
     try {
@@ -593,7 +700,8 @@ export function CustomerJourneyView({
         const chips = [`${businessFeedback.aspectLabels[2]} rating: ${atmosphereRating}/5`];
         const guestUid = auth.currentUser?.uid;
         if (!guestUid) throw new Error("Guest session is still initializing. Please try again.");
-        const text = createReviewDraft({
+        let variation = reviewVariantIndex;
+        let text = createReviewDraft({
           businessName: restaurant.name,
           overall: starRating,
           aspects: [
@@ -601,8 +709,24 @@ export function CustomerJourneyView({
             { label: businessFeedback.aspectLabels[1], score: secondaryRating },
             { label: businessFeedback.aspectLabels[2], score: atmosphereRating },
           ],
-          variation: reviewVariantIndex,
+          variation,
         });
+        for (let attempt = 0; previousDrafts.includes(text) && attempt < 100; attempt += 1) {
+          variation += 1;
+          text = createReviewDraft({
+            businessName: restaurant.name,
+            overall: starRating,
+            aspects: [
+              { label: businessFeedback.aspectLabels[0], score: primaryRating },
+              { label: businessFeedback.aspectLabels[1], score: secondaryRating },
+              { label: businessFeedback.aspectLabels[2], score: atmosphereRating },
+            ],
+            variation,
+          });
+        }
+        if (previousDrafts.includes(text)) {
+          throw new Error("Could not create a different review draft. Please try again.");
+        }
         if (reviewSessionId) {
           const draftRef = doc(db, "drafts", reviewSessionId);
           const existing = await getDoc(draftRef);
@@ -637,8 +761,9 @@ export function CustomerJourneyView({
           setReviewSessionId(session.id);
         }
         setAiDraft(text);
+        setReviewDraftHistory((drafts) => [...drafts, text].slice(-10));
         setAiGenerated(true);
-        setReviewVariantIndex((i) => i + 1);
+        setReviewVariantIndex(variation + 1);
         return;
       }
       const variants = ["short", "casual", "detailed"] as const;
@@ -661,6 +786,7 @@ export function CustomerJourneyView({
             ? crypto.randomUUID()
             : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
           previousDraft: aiGenerated ? aiDraft : undefined,
+          previousDrafts,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -668,6 +794,7 @@ export function CustomerJourneyView({
         throw new Error(data.error || "Could not generate your review. Please try again.");
       }
       setAiDraft(data.text);
+      setReviewDraftHistory((drafts) => [...drafts, data.text].slice(-10));
       setAiGenerated(true);
       setReviewSessionId(data.sessionId);
       setReviewVariantIndex((i) => i + 1);
@@ -719,6 +846,12 @@ export function CustomerJourneyView({
     }
 
     setReviewSubmitted(true);
+    // Clear stored ratings so the next review starts fresh
+    try {
+      localStorage.removeItem(`review_ratings_${slug}`);
+    } catch {
+      // ignore
+    }
   }
 
   function recordSocialClick(platform: "instagram" | "facebook") {
@@ -1238,17 +1371,17 @@ export function CustomerJourneyView({
             </div>
           ) : (
             <div className="mt-5 space-y-4">
-              {/* STAMP CARD (Matching Phone 5 Mockup) */}
-              <div className={`customer-stamp-card rounded-3xl border border-[#E8DFD1] bg-white p-5 shadow-subtle ${isCafeFeedback ? "cafe-stamp-card" : ""}`}>
-                <div className="flex items-center justify-between border-b border-[#E8DFD1]/60 pb-3">
+              <div className={`customer-stamp-card stamp-passport-card rounded-3xl border border-[#E8DFD1] bg-white p-5 shadow-subtle ${isCafeFeedback ? "cafe-stamp-card" : ""}`}>
+                <div className="stamp-passport-header">
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] text-xl text-[#B58A4B]">
+                    <div className="stamp-passport-logo grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] text-xl text-[#B58A4B]">
                       {restaurant.logoUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={restaurant.logoUrl} alt={`${restaurant.name} logo`} className="h-full w-full bg-white object-contain p-1" />
                       ) : businessFeedback.heroIcon}
                     </div>
                     <div className="min-w-0">
+                      <p className="stamp-passport-eyebrow">YOUR LOYALTY PASS</p>
                       <h3 className="truncate font-serif text-sm font-bold text-[#24211E]">
                         {restaurant.name}
                       </h3>
@@ -1257,8 +1390,8 @@ export function CustomerJourneyView({
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <span className="font-serif text-2xl font-black text-[#B58A4B]">
+                  <div className="stamp-passport-count text-right" style={{ color: brandColor }}>
+                    <span className="font-serif text-2xl font-black">
                       {currentStamps}
                     </span>
                     <span className="text-xs font-bold text-[#716B64]">/{stampsRequired}</span>
@@ -1266,13 +1399,15 @@ export function CustomerJourneyView({
                   </div>
                 </div>
 
-                {/* Stamp Icons Row */}
                 <div
-                  className="my-5 grid gap-2.5"
-                  style={{ gridTemplateColumns: `repeat(${Math.min(stampsRequired, 5)}, minmax(0, 1fr))` }}
+                  className="stamp-passport-grid"
+                  style={{ gridTemplateColumns: `repeat(${Math.min(stampsRequired, 4)}, minmax(0, 1fr))` }}
+                  role="list"
+                  aria-label={`${currentStamps} of ${stampsRequired} stamps collected`}
                 >
                   {Array.from({ length: stampsRequired }).map((_, index) => {
                     const isStamped = index < currentStamps;
+                    const isNext = index === currentStamps;
                     const isTarget = index === stampsRequired - 1;
                     const stampIcon = isCafeFeedback
                       ? CAFE_STAMP_ICONS[index % CAFE_STAMP_ICONS.length]
@@ -1281,42 +1416,45 @@ export function CustomerJourneyView({
                     return (
                       <div
                         key={index}
-                        className={`relative flex aspect-square flex-col items-center justify-center rounded-2xl transition-all ${isStamped
-                            ? "bg-[#B58A4B] text-white shadow-xs scale-105"
-                            : isTarget
-                              ? "border-2 border-dashed border-[#B58A4B] bg-[#FAF5ED] text-[#B58A4B]"
-                              : "border border-[#E8DFD1] bg-[#FAF7F2] text-[#B8B1A8]"
-                          }`}
+                        className={`stamp-passport-step ${isStamped ? "stamp-passport-step--earned" : isNext ? "stamp-passport-step--next" : ""}`}
+                        style={{
+                          ...(isStamped ? { backgroundColor: brandColor, borderColor: brandColor } : {}),
+                          ...(isNext ? { borderColor: brandColor } : {}),
+                          animationDelay: `${index * 45}ms`,
+                        }}
+                        role="listitem"
+                        aria-label={`Stamp ${index + 1}: ${isStamped ? "collected" : isTarget ? "reward" : isNext ? "next" : "not collected"}`}
                       >
-                        {isStamped ? (
-                          <span className="text-lg">{stampIcon}</span>
-                        ) : isTarget ? (
-                          <span className="text-lg">🎁</span>
-                        ) : (
-                          <span className="text-sm font-medium">{stampIcon}</span>
-                        )}
-                        <span
-                          className={`text-[8px] font-bold ${isStamped ? "text-white/90" : "text-[#716B64]"
-                            }`}
-                        >
-                          {index + 1}
+                        <span className="stamp-passport-step__icon" aria-hidden="true">
+                          {isStamped ? stampIcon : isTarget ? "✦" : "○"}
+                        </span>
+                        <span className="stamp-passport-step__label">
+                          {isStamped ? "Collected" : isTarget ? "Reward" : isNext ? "Next up" : "Visit"}
                         </span>
                       </div>
                     );
                   })}
                 </div>
 
-                {/* Progress Subtitle */}
-                <div className={`customer-rewards-info rounded-2xl bg-[#FAF5ED] border border-[#E8D8BA] p-3 text-center ${isCafeFeedback ? "cafe-rewards-info" : ""}`}>
-                  <p className="text-xs font-bold text-[#7A5826]">
+                <div className={`stamp-passport-summary customer-rewards-info ${isCafeFeedback ? "cafe-rewards-info" : ""}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-bold text-[#24211E]">
+                      {currentStamps >= stampsRequired ? "Reward unlocked" : `${stampsRemaining} ${stampsRemaining === 1 ? "stamp" : "stamps"} to go`}
+                    </p>
+                    <span className="text-[10px] font-bold text-[#716B64]">
+                      {Math.round((currentStamps / stampsRequired) * 100)}%
+                    </span>
+                  </div>
+                  <div className="stamp-passport-progress">
+                    <span style={{ width: `${Math.min(100, (currentStamps / stampsRequired) * 100)}%`, backgroundColor: brandColor }} />
+                  </div>
+                  <p className="mt-2 text-[11px] leading-relaxed text-[#716B64]">
                     {currentStamps >= stampsRequired
-                      ? "🎉 Goal Reached! Your reward voucher is ready to redeem!"
-                      : stampsRemaining === 1
-                      ? "4/5 Stamps — One more visit to unlock your reward!"
-                        : `${currentStamps}/${stampsRequired} Stamps — ${stampsRemaining} more visits to unlock your reward!`}
+                      ? "Your visit reward is ready to redeem."
+                      : `Collect ${stampsRemaining} more ${stampsRemaining === 1 ? "stamp" : "stamps"} to unlock ${program.rewardTitle}.`}
                   </p>
                   {customer?.cycleEndsAt && customer.currentStamps > 0 && (
-                    <p className="mt-1 text-[10px] text-[#7A5826]/80">
+                    <p className="mt-2 text-[10px] text-[#716B64]">
                       ⏳ Stamps valid until{" "}
                       <strong>
                         {new Date(customer.cycleEndsAt).toLocaleDateString("en-IN", {
@@ -1330,7 +1468,7 @@ export function CustomerJourneyView({
                 </div>
 
                 {/* Collect Today's Stamp CTA on Card */}
-                <div className="mt-4 pt-3 border-t border-[#E8DFD1]/60">
+                <div className="stamp-passport-action">
                   {hasCollectedStampToday ? (
                     <div className="w-full rounded-2xl py-3 text-xs font-bold text-[#2E6B4F] bg-[#EEF6F2] border border-[#D1E7DC] text-center flex items-center justify-center gap-2 shadow-2xs">
                       <span>✓</span>

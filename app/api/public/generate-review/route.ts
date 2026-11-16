@@ -19,6 +19,7 @@ const schema = z.object({
   text: z.string().max(600).optional(),
   variant: z.enum(["short", "casual", "detailed"]).optional(),
   variationId: z.string().min(1).max(80).optional(),
+  previousDrafts: z.array(z.string().min(1).max(600)).max(10).optional(),
 });
 
 async function generateReview(req: Request) {
@@ -101,6 +102,7 @@ async function generateReview(req: Request) {
       chips: d.chips,
       text: d.text,
       previousDraft,
+      previousDrafts: d.previousDrafts,
       variant: d.variant,
       variationId: d.variationId ?? randomUUID(),
     },

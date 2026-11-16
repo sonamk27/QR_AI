@@ -1538,6 +1538,137 @@ h1, h2, h3, .font-serif {
   background: #fffdf8 !important;
 }
 
+.customer-rewards-screen .customer-stamp-card.stamp-passport-card {
+  overflow: hidden;
+  padding: 0 !important;
+}
+
+.stamp-passport-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px dashed #e8dfd1;
+  background:
+    radial-gradient(circle at 100% 0%, rgb(91 122 82 / 10%), transparent 8rem),
+    linear-gradient(145deg, #fffdf8, #f8f2e8);
+  padding: 1rem;
+}
+
+.stamp-passport-logo {
+  border-radius: 1rem !important;
+  background: #fffdf8 !important;
+}
+
+.stamp-passport-eyebrow {
+  color: #8b642d;
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.stamp-passport-count {
+  flex: 0 0 auto;
+  border: 1px solid #e8dfd1;
+  border-radius: 1rem;
+  background: #fffdf8;
+  padding: 0.35rem 0.6rem;
+  box-shadow: 0 3px 8px rgb(36 33 30 / 5%);
+}
+
+.stamp-passport-count > span:first-child {
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.stamp-passport-count > span:last-child {
+  font-size: 0.5rem;
+}
+
+.stamp-passport-grid {
+  display: grid;
+  gap: 0.55rem;
+  padding: 1rem 1rem 0.6rem;
+}
+
+.stamp-passport-step {
+  display: flex;
+  min-width: 0;
+  min-height: 4.1rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e8dfd1;
+  border-radius: 1rem;
+  background: #faf7f2;
+  color: #716b64;
+  animation: stamp-passport-arrive 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.stamp-passport-step--earned {
+  color: #fff;
+  box-shadow: 0 5px 12px rgb(36 33 30 / 12%);
+}
+
+.stamp-passport-step--next {
+  border-style: dashed;
+  background: #fffdf8;
+  box-shadow: 0 0 0 3px rgb(181 138 75 / 10%);
+}
+
+.stamp-passport-step__icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.stamp-passport-step__label {
+  max-width: 100%;
+  margin-top: 0.3rem;
+  overflow: hidden;
+  font-size: 0.55rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-rewards-screen .customer-stamp-card .stamp-passport-summary {
+  margin: 0 1rem;
+  border: 1px solid #e8dfd1 !important;
+  border-radius: 1.15rem !important;
+  background: #faf7f2 !important;
+  padding: 0.85rem !important;
+}
+
+.stamp-passport-progress {
+  height: 0.35rem;
+  margin-top: 0.55rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: #e8dfd1;
+}
+
+.stamp-passport-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 450ms ease-out;
+}
+
+.stamp-passport-action {
+  margin-top: 0.9rem;
+  border-top: 1px solid rgb(232 223 209 / 70%);
+  padding: 0.85rem 1rem 1rem;
+}
+
+.customer-rewards-screen .stamp-passport-action button {
+  border-radius: 9999px;
+}
+
+@keyframes stamp-passport-arrive {
+  from { opacity: 0; transform: translateY(5px) scale(0.94); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .customer-review-intro.cafe-review-hero {
   padding: 0.6rem !important;
 }
