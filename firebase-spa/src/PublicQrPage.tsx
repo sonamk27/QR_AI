@@ -45,7 +45,6 @@ export default function PublicQrPage() {
             logoUrl: restaurant.logoUrl,
             brandColor: restaurant.brandColor,
             googleReviewUrl: restaurant.googleReviewUrl,
-            googlePlaceId: restaurant.googlePlaceId,
             instagramUrl: restaurant.instagramUrl,
             facebookUrl: restaurant.facebookUrl,
             shareCaption: restaurant.shareCaption,

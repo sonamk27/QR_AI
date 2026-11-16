@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { Stars } from "@/components/Stars";
 import { SalonDecorativeIllustration } from "@/components/customer/SalonDecorativeIllustration";
-import { GooglePlacesReviews } from "@/components/customer/GooglePlacesReviews";
 import { addDoc, collection, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { getFirebaseServices } from "@/firebase-spa/src/firebase";
 import { getBusinessFeedbackConfig, getBusinessType, type BusinessType } from "@/lib/business-type";
@@ -22,7 +21,6 @@ export type CustomerJourneyProps = {
     logoUrl?: string | null;
     brandColor?: string;
     googleReviewUrl?: string | null;
-    googlePlaceId?: string | null;
     instagramUrl?: string | null;
     facebookUrl?: string | null;
     shareCaption?: string | null;
@@ -898,13 +896,6 @@ export function CustomerJourneyView({
     })
   );
 
-  const isPercent = program?.discountType === "PERCENT";
-  const discountDisplay = isPercent
-    ? `${program.rewardDiscount}% OFF`
-    : program.discountType === "FREE_ITEM"
-      ? "Free Item"
-      : `₹${(program.rewardDiscount / 100).toFixed(0)} OFF`;
-
   return (
     <div
       className={`customer-journey min-h-screen font-sans text-[#24211E] antialiased ${isCafeFeedback ? "cafe-journey" : ""} ${isSalonFeedback ? "customer-journey--salon" : ""}`}
@@ -1493,31 +1484,7 @@ export function CustomerJourneyView({
                 </div>
               </div>
 
-              {/* NEXT REWARD CARD (Golden Gift Box Banner matching Phone 5) */}
-              <div className={`customer-next-reward rounded-3xl border border-[#E8D8BA] bg-gradient-to-br from-[#FAF5ED] via-[#F4ECE1] to-[#FAF7F2] p-5 shadow-subtle ${isCafeFeedback ? "cafe-next-reward" : ""}`}>
-                <div className="flex items-center justify-between">
-                  <span className="inline-block rounded-md bg-[#F4ECDD] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#7A5826]">
-                    Next Reward
-                  </span>
-                  <span className="text-[11px] font-semibold text-[#7A5826]">
-                    Valid for {program.rewardExpiryDays || 30} days
-                  </span>
-                </div>
-
-                <div className="mt-3 flex items-center justify-between">
-                  <div>
-                    <h4 className="font-serif text-xl font-extrabold text-[#24211E]">
-                      {discountDisplay}
-                    </h4>
-                    <p className="text-xs text-[#716B64] mt-0.5">
-                      {program.rewardTitle || "on your next visit"}
-                    </p>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F6EFE3] text-2xl border border-[#E8D8BA] shadow-2xs">
-                    🎁
-                  </div>
-                </div>
-              </div>
+              {/* NEXT REWARD CARD — Removed per request */}
 
               {/* Active Unredeemed Rewards / Vouchers */}
               {activeRewards.length > 0 && (
@@ -1736,14 +1703,6 @@ export function CustomerJourneyView({
             </div>
             <div className="w-6" />
           </div>
-
-          {restaurant.googlePlaceId && (
-            <GooglePlacesReviews
-              placeId={restaurant.googlePlaceId}
-              businessName={restaurant.name}
-              googleReviewUrl={restaurant.googleReviewUrl}
-            />
-          )}
 
           <div
             className={isCafeFeedback

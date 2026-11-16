@@ -7,7 +7,7 @@ import { useAuthState } from "./AuthState";
 
 type Restaurant = {
   name: string; businessType?: string; city?: string | null; brandColor?: string; status?: string; primaryQrId?: string | null;
-  logoUrl?: string | null; googleReviewUrl?: string | null; googlePlaceId?: string | null; instagramUrl?: string | null;
+  logoUrl?: string | null; googleReviewUrl?: string | null; instagramUrl?: string | null;
   facebookUrl?: string | null; shareCaption?: string | null;
 };
 export type DashboardOutletContext = { restaurant: Restaurant | null; restaurantId: string | null; refreshRestaurant: () => Promise<void> };

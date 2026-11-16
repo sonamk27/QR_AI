@@ -766,7 +766,7 @@ export function LoyaltySettingsView({
           <div className="mt-4">
             {/* SVG Trend Spline matching the reference mockup */}
             <div className="relative h-44 w-full">
-              <svg viewBox="0 0 500 160" className="h-full w-full overflow-visible">
+              <svg viewBox="0 0 500 190" className="h-full w-full overflow-visible">
                 <defs>
                   <linearGradient id="growthGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#B58A4B" stopOpacity="0.18" />
@@ -819,30 +819,35 @@ export function LoyaltySettingsView({
                     </g>
                   );
                 })}
-              </svg>
-
-              {/* Dynamic X-Axis Labels */}
-              <div className="mt-2 flex justify-between px-6 text-[10px] font-semibold text-[#716B64]/70">
-                {chartPoints.map((p, idx) => {
-                  if (chartPoints.length > 10 && idx % 2 !== 0 && idx !== chartPoints.length - 1) {
-                    return <span key={idx} className="opacity-0">{p.primaryLabel}</span>;
-                  }
-                  return (
-                    <span
-                      key={idx}
-                      className={
-                        hoveredPointIndex === idx
-                          ? "text-[#B58A4B] font-bold"
-                          : idx === chartPoints.length - 1
-                          ? "text-[#24211E] font-bold"
-                          : ""
-                      }
-                    >
-                      {growthView === "DAY" && dayRange > 7 ? p.secondaryLabel || p.primaryLabel : p.primaryLabel}
-                    </span>
-                  );
-                })}
-              </div>
+              {/* Dynamic X-Axis Labels — rendered inside SVG for perfect alignment with data points */}
+              {chartPoints.map((p, idx) => {
+                if (chartPoints.length > 10 && idx % 2 !== 0 && idx !== chartPoints.length - 1) {
+                  return null;
+                }
+                const isHovered = hoveredPointIndex === idx;
+                const isLast = idx === chartPoints.length - 1;
+                return (
+                  <text
+                    key={idx}
+                    x={p.x}
+                    y={150}
+                    textAnchor="middle"
+                    fontSize="10"
+                    fontWeight="600"
+                    fill={
+                      isHovered
+                        ? "#B58A4B"
+                        : isLast
+                        ? "#24211E"
+                        : "#716B64"
+                    }
+                    opacity={isHovered || isLast ? 1 : 0.7}
+                  >
+                    {growthView === "DAY" && dayRange > 7 ? p.secondaryLabel || p.primaryLabel : p.primaryLabel}
+                  </text>
+                );
+              })}
+            </svg>
 
               {/* Hover Tooltip Card */}
               {hoveredPointIndex !== null && chartPoints[hoveredPointIndex] && (
