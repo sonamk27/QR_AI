@@ -923,31 +923,82 @@ export function CustomerJourneyView({
       {currentView === "welcome" && (
         <main className={`mx-auto flex min-h-screen max-w-sm flex-col justify-between px-5 py-7 ${isCafeFeedback ? "cafe-welcome" : ""}`}>
           {/* Top Brand Header */}
-          <div className="text-center pt-1">
-            <div className="inline-flex items-center justify-center">
-              {restaurant.logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={restaurant.logoUrl}
-                  alt={restaurant.name}
-                  className={`h-12 w-12 rounded-full border object-contain p-1 shadow-2xs ${isCafeFeedback ? "cafe-logo-ring" : ""}`}
-                  style={{ borderColor: businessFeedback.borderColor }}
-                />
-              ) : (
-                <div
-                  className={`flex h-12 w-12 items-center justify-center rounded-full border bg-white font-serif text-xl font-bold shadow-2xs ${isCafeFeedback ? "cafe-logo-ring" : ""}`}
-                  style={{ borderColor: businessFeedback.borderColor, color: businessFeedback.accentColor }}
-                >
-                  {businessFeedback.heroIcon || restaurant.name.trim().charAt(0).toUpperCase() || "R"}
-                </div>
-              )}
+          <div className="text-center pt-4">
+            <div className="inline-flex items-center justify-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E8DFD1] text-2xl text-[#B58A4B] shadow-sm">
+                🍽️
+              </div>
+              <div>
+                <p className="text-xs font-bold text-[#24211E] leading-tight">{restaurant.name}</p>
+                <p className="text-[10px] font-medium text-[#716B64]">{restaurant.city ? ` • ${restaurant.city}` : ""}</p>
+              </div>
             </div>
-            <h2 className="mt-2 font-serif text-lg font-bold text-[#24211E] tracking-tight">
-              {restaurant.name}
-            </h2>
-            <p className="text-[11px] font-medium uppercase tracking-wider text-[#716B64]">
-              {businessFeedback.displayLabel}{restaurant.city ? ` • ${restaurant.city}` : ""}
-            </p>
+          </div>
+
+          {/* Hero Welcome Card */}
+          <div className="mt-8 flex items-center justify-center">
+            <div className="relative overflow-hidden rounded-2xl border border-[#E8DFD1] bg-white p-8 text-center shadow-sm max-w-sm">
+              {/* Decorative elements */}
+              <div className="absolute inset-0 h-[200px]">
+                <img src="https://images.unsplash.com/photo-1495474472287-4d71bc020855?w=800&q=80" alt="Restaurant interior" className="w-full h-full object-cover opacity-60" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#4A6B47]/70 to-transparent" />
+              </div>
+              <div className="relative z-10 pt-10 pb-8 px-6 text-center">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#4A6B47]/80">Visit Card</p>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#4A6B47]/20 text-[10px] font-bold text-[#B58A4B] border border-[#4A6B47]/30">
+                  ₹100 Off Your Bill
+                </span>
+              </div>
+              <h1 className="mt-8 font-serif text-3xl font-bold text-[#24211E] tracking-tight leading-tight">
+                Good Food<br />Brings People Together
+              </h1>
+              <p className="mt-2 text-[11px] text-[#716B64] text-center leading-relaxed">
+                Join our loyalty program and share your experience with the world.
+              </p>
+              <div className="mt-6 flex items-center justify-center gap-2">
+                <button
+                  onClick={() => {
+                    setRegistrationDestination("collect_stamp");
+                    setCurrentView("register");
+                  }}
+                  disabled={collectingStamp}
+                  className={`flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-bold text-white shadow-lg transition active:scale-[0.98] disabled:opacity-60`}
+                  style={{ backgroundColor: businessFeedback.accentColor }}
+                  onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentHoverColor; }}
+                  onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentColor; }}
+                >
+                  <span className="customer-collect-stamp-icon flex h-7 w-7 items-center justify-center rounded-full text-sm" aria-hidden="true">★</span>
+                  <span>{collectingStamp ? "Collecting Stamp..." : "Collect My Stamp"}</span>
+                </button>
+              </div>
+              <button
+                onClick={() => {
+                  setRegistrationDestination("review");
+                  setCurrentView("review");
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[#E8DFD1] bg-white py-3.5 text-sm font-bold text-[#24211E] shadow-2xs transition active:scale-[0.98] flex items-center justify-center"
+                style={{ borderColor: businessFeedback.borderColor }}
+                onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.softColor; }}
+                onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = "#FFFFFF"; }}
+              >
+                <span>⭐</span>
+                <span>Share Your Experience</span>
+              </button>
+              <div className="mt-6 flex items-center justify-center gap-6 text-xs font-medium text-[#716B64]">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold text-[#B58A4B]">★</span>
+                  <span className="text-xs font-semibold text-[#716B64]">Great Food</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold text-[#B58A4B]">❤️</span>
+                  <span className="text-xs font-semibold text-[#716B64]">Kind People</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold text-[#B58A4B]">✨</span>
+                  <span className="text-xs font-semibold text-[#716B64]">Better Together</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Hero Welcome Card */}
