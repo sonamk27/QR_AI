@@ -1231,7 +1231,7 @@ export function LoyaltySettingsView({
               value={voucherCustomerRef}
               onChange={(e) => setVoucherCustomerRef(e.target.value)}
               placeholder="e.g. 9876543210 or anon_…"
-              className="min-h-11 w-full rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] px-3.5 py-2.5 text-sm font-medium text-[#24211E] outline-none focus:border-[#B58A4B] focus:bg-white"
+              className="min-h-11 w-full rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] px-3.5 py-2.5 text-sm font-medium text-[#24211E] outline-none focus:border-[#E8DFD1] focus:bg-[#FAF7F2]"
               required
             />
           </div>

@@ -1841,3 +1841,27 @@ h1, h2, h3, .font-serif {
 .hover\:text-\[\#9E7438\]:hover { color: #573E1B; }
 .hover\:border-\[\#B58A4B\]:hover { border-color: #8B642D; }
 .group:hover .group-hover\:text-\[\#B58A4B\] { color: #7A5826; }
+
+/* Salon journey: keep all screens consistent with first (welcome) pink palette/design */
+.customer-journey--salon .customer-register-screen > div,
+.customer-journey--salon .customer-pending-screen > div:first-child,
+.customer-journey--salon .customer-rewards-screen > div,
+.customer-journey--salon .customer-review-screen .customer-review-intro,
+.customer-journey--salon .customer-review-screen .customer-review-actions,
+.customer-journey--salon .customer-review-screen .customer-review-stamp-link,
+.customer-journey--salon .stamp-added-card {
+  background: linear-gradient(145deg, #FFFFFF 0%, var(--biz-soft) 100%);
+  border-color: var(--biz-border);
+}
+
+.customer-journey--salon .customer-register-screen form,
+.customer-journey--salon .request-ticket,
+.customer-journey--salon .stamp-passport-card,
+.customer-journey--salon .customer-rewards-history,
+.customer-journey--salon .customer-stamp-card {
+  border-color: var(--biz-border);
+}
+
+.customer-journey--salon .customer-rewards-header {
+  border-color: var(--biz-border);
+}

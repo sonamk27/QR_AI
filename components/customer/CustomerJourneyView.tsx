@@ -105,7 +105,10 @@ function BusinessLogoSpace({
   fallback: string;
 }) {
   return (
-    <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#E8DFD1] bg-white text-xl text-[#B58A4B]">
+    <div
+      className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl border bg-white text-xl"
+      style={{ borderColor: "var(--biz-border, #E8DFD1)", color: "var(--biz-accent, #B58A4B)" }}
+    >
       {logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={logoUrl} alt={`${name} logo`} className="h-full w-full object-contain p-1" />
@@ -232,10 +235,7 @@ export function CustomerJourneyView({
   const initializedSlugRef = useRef<string | null>(null);
   const lastInitialViewRef = useRef(initialView);
 
-  // Theme Accent: Muted Gold #B58A4B
-  const accentGold = "#B58A4B";
-
-  const brandColor = restaurant.brandColor || "#B58A4B";
+  const brandColor = restaurant.brandColor || businessFeedback.accentColor;
 
   // Restore the active screen on a browser reload while keeping new QR visits fresh.
   useEffect(() => {
@@ -900,7 +900,7 @@ export function CustomerJourneyView({
   );
 
   if (!journeyReady) {
-    const brandColor = restaurant.brandColor || "#B58A4B";
+    const brandColor = restaurant.brandColor || businessFeedback.accentColor;
     const accentColor = businessFeedback.accentColor;
     const softColor = businessFeedback.softColor;
     return (
@@ -916,7 +916,14 @@ export function CustomerJourneyView({
   return (
     <div
       className={`customer-journey min-h-screen font-sans text-[#24211E] antialiased ${isCafeFeedback ? "cafe-journey" : ""} ${isSalonFeedback ? "customer-journey--salon" : ""}`}
-      style={{ backgroundColor: businessFeedback.pageColor }}
+      style={{
+        backgroundColor: businessFeedback.pageColor,
+        ["--biz-accent" as any]: businessFeedback.accentColor,
+        ["--biz-accent-hover" as any]: businessFeedback.accentHoverColor,
+        ["--biz-soft" as any]: businessFeedback.softColor,
+        ["--biz-border" as any]: businessFeedback.borderColor,
+        ["--biz-page" as any]: businessFeedback.pageColor,
+      } as React.CSSProperties}
     >
 
       {/* ─────────────────────────────────────────────────────────────
@@ -927,12 +934,17 @@ export function CustomerJourneyView({
           {/* Top Brand Header */}
           <div className="text-center pt-4">
             <div className="inline-flex items-center justify-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E8DFD1] text-2xl text-[#B58A4B] shadow-sm">
-                🍽️
+              <div className="flex h-10 w-10 items-center justify-center rounded-full text-2xl shadow-sm" style={{ backgroundColor: businessFeedback.softColor, color: businessFeedback.accentColor }}>
+                {businessFeedback.heroIcon}
               </div>
               <div>
-                <p className="text-xs font-bold text-[#24211E] leading-tight">{restaurant.name}</p>
-                <p className="text-[10px] font-medium text-[#716B64]">{restaurant.city ? ` • ${restaurant.city}` : ""}</p>
+                <p
+                  className="inline-block rounded-full px-2.5 py-0.5 text-sm font-extrabold leading-tight"
+                  style={{ color: businessFeedback.accentColor, backgroundColor: businessFeedback.softColor }}
+                >
+                  {restaurant.name}
+                </p>
+                <p className="mt-0.5 text-[10px] font-medium text-[#716B64]">{restaurant.city ? ` • ${restaurant.city}` : ""}</p>
               </div>
             </div>
           </div>
@@ -1061,10 +1073,10 @@ export function CustomerJourneyView({
                   setRegistrationDestination("review");
                   setCurrentView("register");
                 }}
-                className={`w-full rounded-2xl border bg-white py-3.5 text-sm font-bold text-[#24211E] shadow-2xs transition active:scale-[0.98] flex items-center justify-center gap-2 ${isCafeFeedback ? "cafe-pill-button" : ""}`}
-                style={{ borderColor: businessFeedback.borderColor }}
-                onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.softColor; }}
-                onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = "#FFFFFF"; }}
+                className={`w-full rounded-2xl py-3.5 text-sm font-bold text-white shadow-xs transition active:scale-[0.98] flex items-center justify-center gap-2 ${isCafeFeedback ? "cafe-pill-button" : ""}`}
+                style={{ backgroundColor: businessFeedback.accentColor, borderColor: businessFeedback.accentColor }}
+                onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentHoverColor; }}
+                onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentColor; }}
               >
                 <span>⭐</span>
                 <span>Share Your Experience</span>
@@ -1114,7 +1126,7 @@ export function CustomerJourneyView({
                   fallback={businessFeedback.heroIcon}
                 />
               </div>
-              <div className="customer-register-icon mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-[#F6EFE3] text-xl text-[#B58A4B] border border-[#E8D8BA]">
+              <div className="customer-register-icon mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--biz-soft)] text-xl text-[var(--biz-accent)] border border-[var(--biz-border)]">
                 {isSalonFeedback ? businessFeedback.heroIcon : "🌿"}
               </div>
               <h1 className="mt-3 font-serif text-2xl font-bold text-[#24211E]">
@@ -1136,7 +1148,7 @@ export function CustomerJourneyView({
                   placeholder="e.g. Aarav Sharma"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full rounded-xl border border-[#E8DFD1] bg-white px-4 py-3 text-sm font-medium text-[#24211E] outline-none focus:border-[#B58A4B] focus:ring-1 focus:ring-[#B58A4B] shadow-2xs transition"
+                  className="w-full rounded-xl border border-[var(--biz-border)] bg-white px-4 py-3 text-sm font-medium text-[#24211E] outline-none focus:outline-none focus:border-[var(--biz-border)] focus:ring-0 focus:shadow-2xs shadow-2xs"
                   required
                 />
               </div>
@@ -1145,7 +1157,7 @@ export function CustomerJourneyView({
                 <label className="block text-xs font-semibold text-[#716B64] mb-1.5">
                   Mobile Number
                 </label>
-                <div className="flex rounded-xl border border-[#E8DFD1] bg-white shadow-2xs focus-within:border-[#B58A4B] focus-within:ring-1 focus-within:ring-[#B58A4B] transition overflow-hidden">
+                <div className="flex rounded-xl border border-[var(--biz-border)] bg-white shadow-2xs focus-within:border-[var(--biz-border)] focus-within:ring-0 focus-within:outline-none focus-within:shadow-2xs overflow-hidden">
                   <span className="flex items-center pl-4 pr-2 text-sm font-semibold text-[#716B64]">
                     +91
                   </span>
@@ -1156,7 +1168,7 @@ export function CustomerJourneyView({
                     placeholder="Enter your phone number"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="w-full bg-transparent py-3 pr-4 text-sm font-medium text-[#24211E] outline-none"
+                    className="w-full bg-transparent py-3 pr-4 text-sm font-medium text-[#24211E] outline-none focus:outline-none focus:ring-0"
                     required
                   />
                 </div>
@@ -1169,7 +1181,7 @@ export function CustomerJourneyView({
                   id="optin"
                   checked={agreedUpdates}
                   onChange={(e) => setAgreedUpdates(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-[#E8DFD1] text-[#B58A4B] accent-[#B58A4B] focus:ring-0"
+                  className="mt-0.5 h-4 w-4 rounded border-[var(--biz-border)] text-[var(--biz-accent)] accent-[var(--biz-accent)] focus:ring-0"
                 />
                 <label htmlFor="optin" className="text-[11px] leading-tight text-[#716B64]">
                   I agree to receive important updates about my rewards, offers and news. You can opt out anytime.
@@ -1185,7 +1197,7 @@ export function CustomerJourneyView({
               <button
                 type="submit"
                 disabled={registering}
-                className="mt-3 w-full rounded-2xl bg-[#B58A4B] py-3.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#9E7438] active:scale-[0.98] disabled:opacity-60"
+                className="mt-3 w-full rounded-2xl bg-[var(--biz-accent)] py-3.5 text-sm font-bold text-white shadow-xs transition hover:bg-[var(--biz-accent-hover)] active:scale-[0.98] disabled:opacity-60"
               >
                 {registering ? "Creating Your Card..." : "Create Loyalty Card"}
               </button>
@@ -1286,7 +1298,8 @@ export function CustomerJourneyView({
           <div className="w-full max-w-xs space-y-3 mx-auto pb-2">
             <button
               onClick={() => setCurrentView("card")}
-              className="request-pending-button w-full rounded-2xl py-3.5 text-sm font-bold shadow-sm transition"
+              className="request-pending-button w-full rounded-2xl py-3.5 text-sm font-bold text-white shadow-sm transition"
+              style={{ backgroundColor: "var(--biz-accent)" }}
             >
               View My Loyalty Card Meanwhile →
             </button>
@@ -1318,7 +1331,7 @@ export function CustomerJourneyView({
                 type="button"
                 onClick={handleRefreshCard}
                 disabled={refreshingCard}
-                className="rounded-xl border border-[#E8DFD1] bg-white px-2.5 py-1.5 text-xs text-[#716B64] hover:bg-[#FAF7F2] transition disabled:opacity-60"
+                className="rounded-xl border border-[var(--biz-border)] bg-white px-2.5 py-1.5 text-xs text-[#716B64] hover:bg-[var(--biz-soft)] transition disabled:opacity-60"
                 title="Refresh Stamps"
                 aria-label={refreshingCard ? "Refreshing rewards" : "Refresh rewards"}
               >
@@ -1326,7 +1339,7 @@ export function CustomerJourneyView({
               </button>
               <button
                 onClick={() => setCurrentView("review")}
-                className="rounded-xl bg-[#FAF5ED] border border-[#E8D8BA] px-2.5 py-1 text-xs font-bold text-[#7A5826] hover:bg-[#F6EFE3] transition"
+                className="rounded-xl bg-[var(--biz-soft)] border border-[var(--biz-border)] px-2.5 py-1 text-xs font-bold text-[var(--biz-accent)] hover:bg-[var(--biz-soft)] transition"
               >
                 ⭐ Review
               </button>
@@ -1335,14 +1348,14 @@ export function CustomerJourneyView({
 
           {/* Pending Stamp Request Banner on Card */}
           {pendingRequestId && (
-            <div className={`customer-pending-banner mt-3.5 flex items-center justify-between rounded-2xl border border-[#E8D8BA] bg-[#FAF5ED] p-3 text-xs text-[#7A5826] shadow-2xs ${isCafeFeedback ? "cafe-pending-banner" : ""}`}>
+            <div className={`customer-pending-banner mt-3.5 flex items-center justify-between rounded-2xl border border-[var(--biz-border)] bg-[var(--biz-soft)] p-3 text-xs text-[var(--biz-accent)] shadow-2xs ${isCafeFeedback ? "cafe-pending-banner" : ""}`}>
               <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-[#B58A4B] animate-ping shrink-0" />
+                <span className="h-2 w-2 rounded-full bg-[var(--biz-accent)] animate-ping shrink-0" />
                 <span>Stamp request sent to staff! Waiting for approval...</span>
               </div>
               <button
                 onClick={() => setCurrentView("request_pending")}
-                className="ml-2 font-bold underline text-[#7A5826] shrink-0"
+                className="ml-2 font-bold underline text-[var(--biz-accent)] shrink-0"
               >
                 View
               </button>
@@ -1358,17 +1371,24 @@ export function CustomerJourneyView({
               <p className="text-xs text-[#A83B3B]">{cardError}</p>
               <button
                 onClick={() => fetchLoyaltyCard(phoneNumber)}
-                className="mt-3 rounded-xl bg-[#24211E] px-4 py-2 text-xs font-bold text-white hover:bg-stone-800"
+                className="mt-3 rounded-xl px-4 py-2 text-xs font-bold text-white transition hover:brightness-105"
+                style={{ backgroundColor: businessFeedback.accentColor }}
               >
                 Retry
               </button>
             </div>
           ) : (
             <div className="mt-5 space-y-4">
-              <div className={`customer-stamp-card stamp-passport-card rounded-3xl border border-[#E8DFD1] bg-white p-5 shadow-subtle ${isCafeFeedback ? "cafe-stamp-card" : ""}`}>
+              <div
+                className={`customer-stamp-card stamp-passport-card rounded-3xl border p-5 shadow-subtle ${isCafeFeedback ? "cafe-stamp-card" : ""}`}
+                style={{
+                  borderColor: businessFeedback.borderColor,
+                  background: `linear-gradient(145deg, #FFFFFF 0%, ${businessFeedback.softColor} 100%)`,
+                }}
+              >
                 <div className="stamp-passport-header">
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="stamp-passport-logo grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#E8DFD1] bg-[#FAF7F2] text-xl text-[#B58A4B]">
+                    <div className="stamp-passport-logo grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-[var(--biz-border)] bg-[var(--biz-soft)] text-xl text-[var(--biz-accent)]">
                       {restaurant.logoUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={restaurant.logoUrl} alt={`${restaurant.name} logo`} className="h-full w-full bg-white object-contain p-1" />
@@ -1472,7 +1492,7 @@ export function CustomerJourneyView({
                     <button
                       onClick={pendingRequestId ? () => setCurrentView("request_pending") : () => handleCollectStampClick()}
                       disabled={collectingStamp}
-                      className="w-full rounded-2xl bg-[#B58A4B] py-3 text-xs font-bold text-white shadow-xs transition hover:bg-[#9E7438] active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
+                      className="w-full rounded-2xl bg-[var(--biz-accent)] py-3 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--biz-accent-hover)] active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
                     >
                       <span>{isSalonFeedback || isCafeFeedback ? businessFeedback.heroIcon : "☕"}</span>
                       <span>
@@ -1498,10 +1518,11 @@ export function CustomerJourneyView({
                   {activeRewards.map((r) => (
                     <div
                       key={r.id}
-                      className="flex items-center justify-between rounded-2xl border-2 border-dashed border-[#B58A4B] bg-white p-4 shadow-2xs"
+                      className="flex items-center justify-between rounded-2xl border-2 border-dashed bg-white p-4 shadow-2xs"
+                      style={{ borderColor: "var(--biz-accent)" }}
                     >
                       <div>
-                        <span className="text-[10px] font-bold text-[#7A5826] uppercase">
+                        <span className="text-[10px] font-bold text-[var(--biz-accent)] uppercase">
                           Unlocked Voucher
                         </span>
                         <h5 className="text-sm font-bold text-[#24211E]">{r.rewardTitle}</h5>
@@ -1512,7 +1533,7 @@ export function CustomerJourneyView({
 
                       <button
                         onClick={() => handleOpenRewardQr(r)}
-                        className="rounded-xl bg-[#B58A4B] px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#9E7438] transition"
+                        className="rounded-xl bg-[var(--biz-accent)] px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-[var(--biz-accent-hover)] transition"
                       >
                         Redeem →
                       </button>
@@ -1522,7 +1543,7 @@ export function CustomerJourneyView({
               )}
 
               {/* Links: View Reward Details & Visit History */}
-              <div className={`customer-rewards-history divide-y divide-[#E8DFD1]/60 rounded-2xl border border-[#E8DFD1] bg-white shadow-subtle overflow-hidden ${isCafeFeedback ? "cafe-reward-history" : ""}`}>
+              <div className={`customer-rewards-history divide-y divide-[var(--biz-border)]/60 rounded-2xl border border-[var(--biz-border)] bg-white shadow-subtle overflow-hidden ${isCafeFeedback ? "cafe-reward-history" : ""}`}>
                 <button
                   onClick={() => {
                     if (activeRewards[0]) {
@@ -1531,7 +1552,7 @@ export function CustomerJourneyView({
                       alert(`Collect ${stampsRemaining} more stamps to unlock your reward voucher!`);
                     }
                   }}
-                  className="flex w-full items-center justify-between p-4 text-xs font-bold text-[#24211E] hover:bg-[#FAF7F2] transition"
+                  className="flex w-full items-center justify-between p-4 text-xs font-bold text-[#24211E] hover:bg-[var(--biz-soft)] transition"
                 >
                   <span className="flex items-center gap-2">
                     <span>🎟️</span>
@@ -1548,7 +1569,7 @@ export function CustomerJourneyView({
                   {customer?.transactions && customer.transactions.length > 0 ? (
                     <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
                       {customer.transactions.map((tx) => (
-                        <div key={tx.id} className="flex justify-between text-[11px] text-[#716B64] border-b border-[#E8DFD1]/40 pb-1">
+                        <div key={tx.id} className="flex justify-between text-[11px] text-[#716B64] border-b border-[var(--biz-border)]/40 pb-1">
                           <span>
                             {tx.stampsCount > 0 ? `+${tx.stampsCount} Stamp(s) Awarded` : "Offer Redeemed"}
                             {tx.billReference ? ` (${tx.billReference})` : ""}
@@ -1568,7 +1589,7 @@ export function CustomerJourneyView({
               {/* Action: Share Your Experience */}
               <button
                 onClick={() => setCurrentView("review")}
-                className={`customer-share-review w-full rounded-2xl border border-[#E8DFD1] bg-white py-3 text-xs font-bold text-[#24211E] shadow-2xs hover:bg-[#FAF7F2] transition flex items-center justify-center gap-2 ${isCafeFeedback ? "cafe-review-pill" : ""}`}
+                className={`customer-share-review w-full rounded-2xl border border-[var(--biz-border)] bg-white py-3 text-xs font-bold text-[#24211E] shadow-2xs hover:bg-[var(--biz-soft)] transition flex items-center justify-center gap-2 ${isCafeFeedback ? "cafe-review-pill" : ""}`}
               >
                 <span>⭐</span>
                 <span>Share Your Experience &amp; Review</span>
@@ -1599,12 +1620,18 @@ export function CustomerJourneyView({
               {restaurant.name} · Visit complete
             </p>
 
-            <div className="stamp-added-seal mx-auto mt-8 flex h-24 w-24 items-center justify-center rounded-full border-4 border-white bg-[#EEF6F2] text-5xl font-semibold shadow-subtle" style={{ color: brandColor }}>
+            <div
+              className="stamp-added-seal mx-auto mt-8 flex h-24 w-24 items-center justify-center rounded-full border-4 border-white text-5xl font-semibold shadow-subtle"
+              style={{ color: brandColor, backgroundColor: businessFeedback.softColor }}
+            >
               <span aria-hidden="true">✓</span>
             </div>
 
-            <span className="mt-7 inline-flex items-center gap-2 rounded-full border border-[#D1E7DC] bg-[#EEF6F2] px-3.5 py-1.5 text-[11px] font-bold text-[#2E6B4F]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#2E6B4F]" aria-hidden="true" />
+            <span
+              className="mt-7 inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[11px] font-bold"
+              style={{ borderColor: businessFeedback.borderColor, backgroundColor: businessFeedback.softColor, color: businessFeedback.accentColor }}
+            >
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: businessFeedback.accentColor }} aria-hidden="true" />
               VISIT RECORDED
             </span>
 
@@ -1615,7 +1642,13 @@ export function CustomerJourneyView({
               {stampFeedbackMessage || "Your visit has been recorded. You're one step closer to your reward!"}
             </p>
 
-            <div className="stamp-added-progress mt-7 rounded-2xl border border-[#E8DFD1] bg-white p-4 text-left shadow-2xs">
+            <div
+              className="stamp-added-progress mt-7 rounded-2xl border p-4 text-left shadow-2xs"
+              style={{
+                borderColor: businessFeedback.borderColor,
+                background: `linear-gradient(145deg, #FFFFFF 0%, ${businessFeedback.softColor} 100%)`,
+              }}
+            >
               <div className="flex items-end justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#716B64]">Your progress</p>
@@ -1636,11 +1669,12 @@ export function CustomerJourneyView({
                   return (
                     <span
                       key={index}
-                      className={`stamp-added-step flex h-9 items-center justify-center rounded-xl text-xs font-bold ${isStamped
-                        ? "text-white shadow-2xs"
-                        : "border border-[#E8DFD1] bg-[#FAF7F2] text-[#B8B1A8]"
-                        }`}
-                      style={isStamped ? { backgroundColor: brandColor, animationDelay: `${index * 55}ms` } : undefined}
+                      className={`stamp-added-step flex h-9 items-center justify-center rounded-xl text-xs font-bold ${isStamped ? "text-white shadow-2xs" : "border"}`}
+                      style={
+                        isStamped
+                          ? { backgroundColor: brandColor, animationDelay: `${index * 55}ms` }
+                          : { borderColor: businessFeedback.borderColor, backgroundColor: businessFeedback.softColor, color: businessFeedback.accentColor }
+                      }
                       aria-hidden="true"
                     >
                       {isStamped ? "✓" : index + 1}
@@ -1648,7 +1682,7 @@ export function CustomerJourneyView({
                   );
                 })}
               </div>
-              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#F1EEE8]">
+              <div className="mt-4 h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: businessFeedback.borderColor }}>
                 <div
                   className="stamp-added-progress-fill h-full rounded-full"
                   style={{ width: `${Math.min(100, (currentStamps / stampsRequired) * 100)}%`, backgroundColor: brandColor }}
@@ -1681,7 +1715,7 @@ export function CustomerJourneyView({
         <main className={`customer-review-screen mx-auto min-h-screen max-w-sm px-5 py-6 ${isSalonFeedback ? "customer-salon-screen" : ""}`}>
           <div
             className={`customer-review-header flex items-center justify-between border-b pb-3.5 ${
-              isCafeFeedback ? "border-[#D2E0D3]" : "border-[#E8DFD1]"
+              isCafeFeedback ? "border-[#D2E0D3]" : "border-[var(--biz-border)]"
             }`}
           >
             <button
@@ -1741,7 +1775,7 @@ export function CustomerJourneyView({
               // eslint-disable-next-line @next/next/no-img-element
               <img src={restaurant.logoUrl} alt={`${restaurant.name} logo`} className="mx-auto mb-3 h-14 w-14 rounded-full border-2 border-white object-contain p-1 shadow-sm" />
             ) : (
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-[#F6EFE3] font-serif text-xl font-bold text-[#B58A4B] shadow-sm">
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-[var(--biz-soft)] font-serif text-xl font-bold text-[var(--biz-accent)] shadow-sm">
                 {restaurant.name.trim().charAt(0).toUpperCase() || "R"}
               </div>
             )}
@@ -1812,7 +1846,7 @@ export function CustomerJourneyView({
                       </div>
                     </div>
                   ) : (
-                    <div key={question} className="rounded-2xl border border-[#E8DFD1] bg-white p-5 shadow-sm hover:shadow-md transition-shadow duration-200" style={{ borderColor: businessFeedback.borderColor }}>
+                    <div key={question} className="rounded-2xl border border-[var(--biz-border)] bg-white p-5 shadow-sm hover:shadow-md transition-shadow duration-200" style={{ borderColor: businessFeedback.borderColor }}>
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-xl" style={{ backgroundColor: businessFeedback.softColor }} aria-hidden="true">{businessFeedback.questionIcons[index]}</span>
@@ -1861,8 +1895,8 @@ export function CustomerJourneyView({
                   type="button"
                   onClick={handleGenerateAiReview}
                   disabled={generatingAi || reviewRatings.some((rating) => rating === 0)}
-                  className="mt-2 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border bg-white py-2 text-xs font-bold transition hover:bg-[#FAF7F2] disabled:opacity-60"
-                  style={{ borderColor: businessFeedback.borderColor, color: businessFeedback.accentColor }}
+                  className="mt-2 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl py-2 text-xs font-bold text-white transition hover:brightness-105 disabled:opacity-60"
+                  style={{ backgroundColor: businessFeedback.accentColor }}
                   aria-label="Generate another review draft"
                 >
                   <span className={generatingAi ? "inline-block animate-spin" : "inline-block"} aria-hidden="true">↻</span>
@@ -1903,14 +1937,15 @@ export function CustomerJourneyView({
                 onClick={() => recordSocialClick("instagram")}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#E8DFD1] bg-white px-4 text-sm font-bold text-[#24211E] transition hover:bg-[#FAF7F2]"
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold text-white transition hover:brightness-105"
+                style={{ backgroundColor: businessFeedback.accentColor }}
               >
                 <span aria-hidden="true">◎</span> Follow {restaurant.name} on Instagram
               </a>
             )}
 
             {aiGenerated && (
-              <div className="space-y-3 border-t border-[#E8DFD1] pt-4">
+              <div className="space-y-3 border-t border-[var(--biz-border)] pt-4">
                 {reviewSubmitted && (
                   <div className="space-y-1.5 text-center text-xs text-[#2E6B4F]">
                     <p className="font-bold">✅ Review copied to clipboard!</p>
@@ -1928,7 +1963,8 @@ export function CustomerJourneyView({
             </p>
             <button
               onClick={() => handleCollectStampClick(phoneNumber)}
-              className="mt-1.5 text-xs font-bold underline text-[#24211E]"
+              className="mt-2 w-full rounded-xl py-2.5 text-xs font-bold text-white transition"
+              style={{ backgroundColor: businessFeedback.accentColor }}
             >
               Collect My Stamp Now →
             </button>
@@ -1943,9 +1979,9 @@ export function CustomerJourneyView({
       {/* SCREEN 2: YOUR REWARD (Voucher QR Modal) */}
       {currentView === "reward_details" && selectedReward && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl border border-[#E8DFD1]">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl border border-[var(--biz-border)]">
             <div className="flex items-center justify-between">
-              <span className="rounded-full bg-[#FAF5ED] border border-[#E8D8BA] px-2.5 py-0.5 text-[10px] font-bold text-[#7A5826]">
+              <span className="rounded-full bg-[var(--biz-soft)] border border-[var(--biz-border)] px-2.5 py-0.5 text-[10px] font-bold text-[var(--biz-accent)]">
                 🎁 Redeem at Counter
               </span>
               <button
@@ -1959,9 +1995,9 @@ export function CustomerJourneyView({
             <div className="mt-4 flex items-center justify-center gap-2">
               {restaurant.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={restaurant.logoUrl} alt={`${restaurant.name} logo`} className="h-10 w-10 rounded-lg border border-[#E8DFD1] bg-white object-contain p-1" />
+                <img src={restaurant.logoUrl} alt={`${restaurant.name} logo`} className="h-10 w-10 rounded-lg border border-[var(--biz-border)] bg-white object-contain p-1" />
               ) : (
-                <span className="grid h-10 w-10 place-items-center rounded-lg border border-[#E8DFD1] bg-[#FAF7F2] text-lg" aria-hidden="true">
+                <span className="grid h-10 w-10 place-items-center rounded-lg border border-[var(--biz-border)] bg-[var(--biz-soft)] text-lg" aria-hidden="true">
                   {businessFeedback.heroIcon}
                 </span>
               )}
@@ -1971,7 +2007,7 @@ export function CustomerJourneyView({
             <h4 className="mt-3 font-serif text-2xl font-bold text-[#24211E]">
               Your Reward
             </h4>
-            <p className="text-sm font-bold text-[#B58A4B] mt-0.5">
+            <p className="text-sm font-bold text-[var(--biz-accent)] mt-0.5">
               {selectedReward.rewardTitle}
             </p>
 
@@ -1982,16 +2018,16 @@ export function CustomerJourneyView({
                 <img
                   src={rewardQrDataUrl}
                   alt={`Voucher ${selectedReward.code}`}
-                  className="h-52 w-52 rounded-2xl border border-[#E8DFD1] p-2 shadow-inner"
+                  className="h-52 w-52 rounded-2xl border border-[var(--biz-border)] p-2 shadow-inner"
                 />
               ) : (
-                <div className="h-52 w-52 rounded-2xl bg-[#FAF7F2] flex items-center justify-center text-xs text-[#716B64]">
+                <div className="h-52 w-52 rounded-2xl bg-[var(--biz-soft)] flex items-center justify-center text-xs text-[#716B64]">
                   Generating QR...
                 </div>
               )}
             </div>
 
-            <div className="rounded-xl bg-[#FAF7F2] border border-[#E8DFD1] p-2.5">
+            <div className="rounded-xl bg-[var(--biz-soft)] border border-[var(--biz-border)] p-2.5">
               <span className="text-[10px] font-semibold text-[#716B64] uppercase tracking-wider block">
                 Voucher Code
               </span>
@@ -2010,7 +2046,8 @@ export function CustomerJourneyView({
 
             <button
               onClick={() => setCurrentView("card")}
-              className="mt-5 w-full rounded-xl bg-[#24211E] py-3 text-xs font-bold text-white transition hover:bg-stone-800"
+              className="mt-5 w-full rounded-xl py-3 text-xs font-bold text-white transition hover:brightness-105"
+              style={{ backgroundColor: businessFeedback.accentColor }}
             >
               Back to My Rewards
             </button>
@@ -2026,7 +2063,7 @@ export function CustomerJourneyView({
             logoUrl={restaurant.logoUrl}
             fallback={businessFeedback.heroIcon}
           />
-          <div className="relative mb-6 flex h-28 w-28 items-center justify-center rounded-full bg-[#FAF5ED] text-5xl shadow-subtle border-4 border-white text-[#B58A4B]">
+          <div className="relative mb-6 flex h-28 w-28 items-center justify-center rounded-full bg-[var(--biz-soft)] text-5xl shadow-subtle border-4 border-white text-[var(--biz-accent)]">
             ✓
           </div>
 
@@ -2039,7 +2076,7 @@ export function CustomerJourneyView({
 
           <button
             onClick={() => setCurrentView("card")}
-            className="mt-8 w-full max-w-xs rounded-2xl bg-[#B58A4B] py-3.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#9E7438] active:scale-[0.98]"
+            className="mt-8 w-full max-w-xs rounded-2xl bg-[var(--biz-accent)] py-3.5 text-sm font-bold text-white shadow-xs transition hover:bg-[var(--biz-accent-hover)] active:scale-[0.98]"
           >
             Back to My Rewards
           </button>
