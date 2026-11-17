@@ -138,8 +138,64 @@ export function CustomerJourneyView({
   const businessFeedback = getBusinessFeedbackConfig(businessType);
   const businessLabel = businessFeedback.displayLabel;
   const businessLabelLower = businessLabel.toLowerCase();
+  const isRestaurantFeedback = businessFeedback.layout === "restaurant";
   const isCafeFeedback = businessFeedback.layout === "cafe";
   const isSalonFeedback = businessFeedback.layout === "salon";
+  const isStoreFeedback = businessFeedback.layout === "general-store";
+  const isMockupLayout = isRestaurantFeedback || isCafeFeedback || isSalonFeedback || isStoreFeedback;
+
+  // Shared customer journey layout with business-specific copy, colors, and
+  // reference artwork. These assets only decorate the screen; all account,
+  // stamp, reward, and review actions still use the live app state below.
+  const mockup = {
+    brandWord: isCafeFeedback ? "Cafe" : isStoreFeedback ? "General Store" : isSalonFeedback ? "Salon" : "Restaurant",
+    brandTagline: isCafeFeedback ? "Sip · Stay · Share" : isStoreFeedback ? "Shop · Save · Reward" : isSalonFeedback ? "Look Good · Feel Great" : "Dine Well · Feel Great",
+    brandEyebrow: isCafeFeedback ? "CAFÉ LOYALTY" : isStoreFeedback ? "STORE LOYALTY" : isSalonFeedback ? "SALON LOYALTY" : "DINE · EARN · ENJOY",
+    homeEyebrow: isCafeFeedback ? "YOUR LITTLE PAUSE IN THE DAY" : isStoreFeedback ? "YOUR LOYALTY PAYS" : isSalonFeedback ? "YOUR LOYALTY PAYS" : "YOUR LOYALTY PAYS",
+    homeHeadline: isCafeFeedback ? "Find your favorite sip." : isStoreFeedback ? "Find your favorite picks." : isSalonFeedback ? "Find your favorite service." : "Find your favorite meal.",
+    homeChip: isCafeFeedback ? "Sip · Stay · Share →" : isStoreFeedback ? "Shop · Earn · Save →" : isSalonFeedback ? "Shop · Book · Save →" : "Dine & Earn →",
+    homeSubline: isRestaurantFeedback ? "Dine · Earn · Redeem" : null,
+    homeImage: isCafeFeedback ? "/customer-journey/iced-latte-reference.png" : isStoreFeedback ? "/customer-journey/store-basket-reference.png" : isSalonFeedback ? "/customer-journey/salon-hero-reference.png" : "/customer-journey/restaurant-hero-reference.png",
+    logoImage: isCafeFeedback ? "/customer-journey/cafe-mark-reference.png" : isStoreFeedback ? "/customer-journey/store-mark-reference.png" : isSalonFeedback ? "/customer-journey/salon-mark-reference.png" : "/customer-journey/restaurant-mark-reference.png",
+    registerImage: isCafeFeedback ? "/customer-journey/cafe-mark-reference.png" : isStoreFeedback ? "/customer-journey/store-mark-reference.png" : isSalonFeedback ? "/customer-journey/salon-signup-reference.png" : "/customer-journey/restaurant-signup-reference.png",
+    registerBottomImage: isSalonFeedback ? "/customer-journey/salon-products-reference.png" : isRestaurantFeedback ? "/customer-journey/restaurant-meal-reference.png" : null,
+    reviewImage: isCafeFeedback ? "/customer-journey/latte-cup-reference.png" : isStoreFeedback ? "/customer-journey/store-shopfront-reference.png" : isSalonFeedback ? "/customer-journey/salon-interior-reference.png" : "/customer-journey/restaurant-dining-reference.png",
+    rewardImage: isRestaurantFeedback ? "/customer-journey/restaurant-promo-reference.png" : null,
+    stampImage: isCafeFeedback ? "/customer-journey/latte-cup-reference.png" : isStoreFeedback ? "/customer-journey/store-success-reference.png" : isSalonFeedback ? "/customer-journey/salon-products-reference.png" : "/customer-journey/restaurant-success-reference.png",
+    homeArt: isCafeFeedback ? ["🌿", "🥤", "🫘"] : isStoreFeedback ? ["🥬", "🛒", "📦"] : isSalonFeedback ? ["🌿", "✂️", "🧴"] : ["🌿", "🍴", "🍽️"],
+    ink: isCafeFeedback ? "#4A3728" : isStoreFeedback ? "#37432C" : isSalonFeedback ? "#4A2819" : "#183224",
+    inkSoft: isCafeFeedback ? "#6B4F3A" : isStoreFeedback ? "#55663F" : isSalonFeedback ? "#62371F" : "#1E422E",
+    muted: isCafeFeedback ? "#6E6258" : isStoreFeedback ? "#6C7559" : isSalonFeedback ? "#796459" : "#586558",
+    chip: isCafeFeedback ? "#5A4A3A" : isStoreFeedback ? "#4A5738" : isSalonFeedback ? "#62371F" : "#173B29",
+    heroText: isRestaurantFeedback ? "#FFF8E8" : isSalonFeedback ? "#4A2819" : isCafeFeedback ? "#4A3728" : "#37432C",
+    heroChip: isRestaurantFeedback ? "#F8E8C9" : undefined,
+    surface: isCafeFeedback ? "#FFFCF7" : isStoreFeedback ? "#FFFEF9" : isSalonFeedback ? "#FFFAF7" : "#FFFCF5",
+    cardTop: isCafeFeedback ? "#FFFCF6" : isStoreFeedback ? "#FBFDF4" : isSalonFeedback ? "#FFF8F4" : "#FFF9EF",
+    stampIcon: isCafeFeedback ? "☕" : isStoreFeedback ? "🛍️" : isSalonFeedback ? "✂️" : "🍴",
+    stampUnit: isCafeFeedback ? "cup" : isStoreFeedback ? "visit" : isSalonFeedback ? "service" : "dine",
+    badgeIcons: isCafeFeedback ? ["★", "❤", "☕"] : isStoreFeedback ? ["★", "❤", "🛍️"] : isSalonFeedback ? ["📅", "🎁", "★", "🌿"] : ["🍴", "🎁", "🏷️", "📖"],
+    joinTitle: isCafeFeedback ? "Join Our Café Rewards" : "Join Our Rewards",
+    joinSub: isCafeFeedback ? "A few details to get started" : isStoreFeedback ? "A few details to get started" : isSalonFeedback ? "A few details to get started" : "A few details to get started",
+    registerFoot: isCafeFeedback ? "☕ Fast 1-click registration • Secure & confidential" : isStoreFeedback ? "🛍️ Fast 1-click registration • Secure & confidential" : isSalonFeedback ? "✂️ Fast 1-click registration • Secure & confidential" : "🍴 Fast 1-click registration • Secure & confidential",
+    rateEyebrow: isCafeFeedback ? "RATE YOUR CAFÉ EXPERIENCE" : isStoreFeedback ? "RATE YOUR SHOPPING EXPERIENCE" : isSalonFeedback ? "RATE YOUR SALON EXPERIENCE" : "RATE YOUR DINING EXPERIENCE",
+    rateSummary: isCafeFeedback ? "Drinks & food • Service • Atmosphere" : isStoreFeedback ? "Shopping experience • Product quality • Staff" : isSalonFeedback ? "Service quality • Ambience • Staff friendliness" : "Food quality • Service • Ambience",
+    rateHint: isCafeFeedback
+      ? "A quick rating for each part of your visit helps us make your next cup even better."
+      : isRestaurantFeedback ? "A quick rating helps us make your next meal even better."
+        : isSalonFeedback ? "A quick rating helps us make your next visit feel even better."
+          : "A quick rating for each part of your visit helps us serve you better next time.",
+    reviewArt: isCafeFeedback ? ["🌿", "🥐", "✦"] : isStoreFeedback ? ["🌿", "🛒", "✦"] : isSalonFeedback ? ["🌿", "✂️", "✦"] : ["🌿", "🍴", "✦"],
+    stampSub: "Your visit has been recorded. You’re one step closer to your reward.",
+    stampDone: `Thank you for visiting our ${businessLabel}! Your reward is ready to enjoy.`,
+    stampIconUnit: isCafeFeedback ? "☕" : isStoreFeedback ? "🛍️" : isSalonFeedback ? "✂️" : "🍴",
+    heroGradient: isRestaurantFeedback
+      ? "linear-gradient(145deg, #102D20 0%, #183A29 58%, #2D422E 100%)"
+      : isSalonFeedback
+        ? "linear-gradient(145deg, #FFF9F5 0%, #F7E5DA 55%, #EED5C1 100%)"
+        : isCafeFeedback
+          ? "linear-gradient(145deg, #FFFDF8 0%, #F3EBDD 55%, #EAF0E3 100%)"
+          : "linear-gradient(145deg, #FFFDF6 0%, #F1F3E3 55%, #E6EEDC 100%)",
+  };
 
   function updateReviewRating(index: number, rating: number) {
     setReviewRatings((current) => {
@@ -915,7 +971,7 @@ export function CustomerJourneyView({
 
   return (
     <div
-      className={`customer-journey min-h-screen font-sans text-[#24211E] antialiased ${isCafeFeedback ? "cafe-journey" : ""} ${isSalonFeedback ? "customer-journey--salon" : ""}`}
+      className={`customer-journey min-h-screen font-sans text-[#24211E] antialiased ${isCafeFeedback ? "cafe-journey" : ""} ${isStoreFeedback ? "customer-journey--store" : ""} ${isSalonFeedback ? "customer-journey--salon" : ""} ${isRestaurantFeedback ? "customer-journey--restaurant" : ""}`}
       style={{
         backgroundColor: businessFeedback.pageColor,
         ["--biz-accent" as any]: businessFeedback.accentColor,
@@ -927,264 +983,334 @@ export function CustomerJourneyView({
     >
 
       {/* ─────────────────────────────────────────────────────────────
-          STEP 2: WELCOME PAGE (Branded Landing Page with Two Clear Options)
+          STEP 2: WELCOME PAGE (Café Home / Branded Landing)
       ───────────────────────────────────────────────────────────── */}
       {currentView === "welcome" && (
-        <main className={`mx-auto flex min-h-screen max-w-sm flex-col justify-between px-5 py-7 ${isCafeFeedback ? "cafe-welcome" : ""}`}>
-          {/* Top Brand Header */}
-          <div className="text-center pt-4">
-            <div className="inline-flex items-center justify-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full text-2xl shadow-sm" style={{ backgroundColor: businessFeedback.softColor, color: businessFeedback.accentColor }}>
-                {businessFeedback.heroIcon}
+        isMockupLayout ? (
+          <main className="mx-auto flex min-h-screen max-w-sm flex-col px-5 py-6" style={{ color: mockup.ink, justifyContent: "flex-start" }}>
+            {/* Brand header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="grid h-12 w-12 place-items-center overflow-hidden rounded-full border-2 border-white text-2xl shadow-sm" style={{ backgroundColor: businessFeedback.softColor, color: businessFeedback.accentColor }}>
+                  {restaurant.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={restaurant.logoUrl} alt={`${restaurant.name} logo`} className="h-full w-full bg-white object-contain p-1" />
+                  ) : isMockupLayout ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={mockup.logoImage} alt={`${mockup.brandWord} icon`} className="h-full w-full object-cover" />
+                  ) : businessFeedback.heroIcon}
+                </div>
+                <div>
+                  <p className="font-serif text-xl font-bold leading-tight" style={{ color: mockup.ink }}>{mockup.brandWord}</p>
+                  <p className="text-[11px] font-medium" style={{ color: mockup.muted }}>{mockup.brandTagline}</p>
+                </div>
               </div>
-              <div>
-                <p
-                  className="inline-block rounded-full px-2.5 py-0.5 text-sm font-extrabold leading-tight"
-                  style={{ color: businessFeedback.accentColor, backgroundColor: businessFeedback.softColor }}
+              <div className="flex items-center gap-2">
+                <span
+                  className="relative grid h-9 w-9 place-items-center rounded-full border bg-white text-sm shadow-sm"
+                  style={{ borderColor: businessFeedback.borderColor }}
+                  aria-hidden="true"
                 >
-                  {restaurant.name}
-                </p>
-                <p className="mt-0.5 text-[10px] font-medium text-[#716B64]">{restaurant.city ? ` • ${restaurant.city}` : ""}</p>
+                  🔔
+                  <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "#C97B5A" }} />
+                </span>
+                <span
+                  className="grid h-9 w-9 place-items-center rounded-full border bg-white text-base shadow-sm"
+                  style={{ borderColor: businessFeedback.borderColor }}
+                  title={program.rewardTitle || "Rewards"}
+                  aria-hidden="true"
+                >
+                  👤
+                </span>
               </div>
             </div>
-          </div>
 
-          {/* Hero Welcome Card */}
-          <div className="my-auto py-4 text-center">
-            {businessFeedback.layout === "restaurant" ? (
-              <div className="mx-auto mb-6 flex h-48 w-full max-w-[300px] items-center justify-center rounded-3xl border bg-[#F1E8D9] p-5 shadow-subtle" style={{ borderColor: businessFeedback.borderColor }}>
-                <div className="w-full rounded-2xl border bg-white p-4 text-left shadow-sm" style={{ borderColor: businessFeedback.borderColor }}>
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#716B64]">Visit card</p>
-                    <span className="rounded-full px-2.5 py-1 text-[10px] font-semibold" style={{ backgroundColor: businessFeedback.softColor, color: businessFeedback.accentColor }}>{program.rewardTitle || "Rewards"}</span>
+            {/* Hero card */}
+            <div className="relative mt-5 overflow-hidden rounded-[1.75rem] border p-5 shadow-sm" style={{ borderColor: businessFeedback.borderColor, background: mockup.heroGradient }}>
+              <p className="relative z-10 max-w-[190px] text-[9px] font-bold uppercase leading-relaxed tracking-[0.2em]" style={{ color: mockup.heroText }}>{mockup.homeEyebrow}</p>
+              <h1 className="relative z-10 mt-2 max-w-[58%] font-serif text-[2rem] font-extrabold leading-[1.05]" style={{ color: mockup.heroText }}>
+                {mockup.homeHeadline}
+              </h1>
+              {mockup.homeSubline && <p className="relative z-10 mt-2 max-w-[58%] text-xs font-medium" style={{ color: mockup.heroText }}>{mockup.homeSubline}</p>}
+              <span className="relative z-10 mt-4 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[11px] font-bold shadow-sm" style={{ backgroundColor: mockup.heroChip || businessFeedback.accentColor, color: mockup.heroChip ? mockup.ink : "#FFFFFF" }}>
+                {mockup.homeChip}
+              </span>
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-[43%] overflow-hidden rounded-r-[1.75rem]" aria-hidden="true">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={mockup.homeImage} alt="" className="h-full w-full object-cover" />
+              </div>
+            </div>
+
+            {/* Headline + actions */}
+            <div className="mt-6 text-center">
+              <h2 className="font-serif text-[1.7rem] font-extrabold leading-tight" style={{ color: mockup.ink }}>
+                {businessFeedback.welcomeHeadline[0]}<br />{businessFeedback.welcomeHeadline[1]}
+              </h2>
+              <div className="my-3 flex items-center justify-center gap-2" aria-hidden="true">
+                <span className="h-px w-16" style={{ backgroundColor: businessFeedback.borderColor }} />
+                <span className="text-sm" style={{ color: businessFeedback.accentColor }}>{isCafeFeedback ? "❤" : isStoreFeedback ? "🛍️" : isSalonFeedback ? "✂️" : "🍴"}</span>
+                <span className="h-px w-16" style={{ backgroundColor: businessFeedback.borderColor }} />
+              </div>
+              <p className="mx-auto max-w-[280px] text-xs leading-relaxed" style={{ color: mockup.muted }}>
+                {businessFeedback.welcomeSupportingText}
+              </p>
+
+              <div className="mt-5 space-y-3">
+                <button
+                  onClick={() => { setRegistrationDestination("collect_stamp"); setCurrentView("register"); }}
+                  disabled={collectingStamp}
+                  className="customer-collect-stamp-button flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-bold text-white shadow-sm transition active:scale-[0.98] disabled:opacity-60"
+                  style={{ backgroundColor: businessFeedback.accentColor }}
+                >
+                  <span>⭐</span>
+                  <span>{collectingStamp ? "Collecting Stamp..." : "Collect My Stamp"}</span>
+                </button>
+                <button
+                  onClick={() => { setRegistrationDestination("review"); setCurrentView("register"); }}
+                  className="flex w-full items-center justify-center gap-2 rounded-full border-2 bg-white/70 py-3.5 text-sm font-bold transition active:scale-[0.98]"
+                  style={{ borderColor: mockup.inkSoft, color: mockup.inkSoft }}
+                >
+                  <span aria-hidden="true">➜</span>
+                  <span>Share Your Experience</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Value badges + bottom navigation */}
+            <div className="mt-auto">
+              <div className={`grid ${businessFeedback.welcomeBadges.length === 4 ? "grid-cols-4" : "grid-cols-3"} gap-2 border-t pt-4 text-center`} style={{ borderColor: businessFeedback.borderColor }}>
+                {businessFeedback.welcomeBadges.map((label, index) => (
+                  <div key={label} className="flex items-center justify-center gap-1.5 text-[10px] font-semibold" style={{ color: mockup.chip }}>
+                    <span aria-hidden="true">{mockup.badgeIcons[index]}</span>
+                    <span className="leading-tight">{label}</span>
                   </div>
-                  <div className="my-5 flex items-center justify-between gap-2" aria-hidden="true">
-                    {Array.from({ length: 5 }).map((_, index) => (
-                      <span key={index} className="flex h-9 w-9 items-center justify-center rounded-full border text-sm" style={index === 0 ? { borderColor: businessFeedback.accentColor, backgroundColor: businessFeedback.accentColor, color: "#FFFFFF" } : { borderStyle: "dashed", borderColor: businessFeedback.borderColor, backgroundColor: businessFeedback.softColor, color: "#B8B1A8" }}>
-                        {index === 0 ? "✓" : "·"}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="text-xs font-semibold text-[#24211E]">Every visit brings you closer to a reward</p>
+                ))}
+              </div>
+              <nav className="mt-4 grid grid-cols-4 gap-1 border-t pt-3" style={{ borderColor: businessFeedback.borderColor }} aria-label="Customer journey shortcuts">
+                <button
+                  type="button"
+                  onClick={() => setCurrentView("welcome")}
+                  className="flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-[9px] font-bold"
+                  style={{ backgroundColor: businessFeedback.softColor, color: businessFeedback.accentColor }}
+                >
+                  <span className="text-base" aria-hidden="true">🏠</span>
+                  <span>Home</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => (phoneNumber ? void fetchLoyaltyCard(phoneNumber) : setCurrentView("register"))}
+                  className="flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-[9px] font-semibold"
+                  style={{ color: mockup.muted }}
+                >
+                  <span className="text-base" aria-hidden="true">🎁</span>
+                  <span>Rewards</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => (phoneNumber ? void fetchLoyaltyCard(phoneNumber) : setCurrentView("register"))}
+                  className="flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-[9px] font-semibold"
+                  style={{ color: mockup.muted }}
+                >
+                  <span className="text-base" aria-hidden="true">{mockup.stampIcon}</span>
+                  <span>My Stamps</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setRegistrationDestination("review"); setCurrentView("register"); }}
+                  className="flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-[9px] font-semibold"
+                  style={{ color: mockup.muted }}
+                >
+                  <span className="text-base" aria-hidden="true">⭐</span>
+                  <span>Review</span>
+                </button>
+              </nav>
+            </div>
+          </main>
+        ) : (
+          <main className={`mx-auto flex min-h-screen max-w-sm flex-col justify-between px-5 py-7 ${isCafeFeedback ? "cafe-welcome" : ""}`}>
+            {/* Top Brand Header */}
+            <div className="text-center pt-4">
+              <div className="inline-flex items-center justify-center gap-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full text-2xl shadow-sm" style={{ backgroundColor: businessFeedback.softColor, color: businessFeedback.accentColor }}>
+                  {businessFeedback.heroIcon}
+                </div>
+                <div>
+                  <p
+                    className="inline-block rounded-full px-2.5 py-0.5 text-sm font-extrabold leading-tight"
+                    style={{ color: businessFeedback.accentColor, backgroundColor: businessFeedback.softColor }}
+                  >
+                    {restaurant.name}
+                  </p>
+                  <p className="mt-0.5 text-[10px] font-medium text-[#716B64]">{restaurant.city ? ` • ${restaurant.city}` : ""}</p>
                 </div>
               </div>
-            ) : businessFeedback.layout === "general-store" ? (
-              <div
-                className="mx-auto mb-6 flex h-48 w-full max-w-[300px] flex-col justify-between rounded-2xl border bg-white p-4 text-left shadow-subtle"
-                style={{ borderColor: businessFeedback.borderColor, background: `linear-gradient(145deg, #FFFFFF 0%, ${businessFeedback.softColor} 100%)` }}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: businessFeedback.accentColor }}>Your local store</p>
-                    <p className="mt-1 font-serif text-lg font-bold text-[#24211E]">A little of everything</p>
-                  </div>
-                  <span className="grid h-12 w-12 place-items-center rounded-xl bg-white text-2xl shadow-sm" aria-hidden="true">🛍️</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  {[
-                    ["🥬", "Fresh"],
-                    ["🥫", "Pantry"],
-                    ["🧴", "Daily care"],
-                  ].map(([icon, label]) => (
-                    <div key={label} className="rounded-xl border bg-white/80 px-2 py-2" style={{ borderColor: businessFeedback.borderColor }}>
-                      <span className="block text-xl" aria-hidden="true">{icon}</span>
-                      <span className="mt-1 block text-[9px] font-semibold text-[#51484B]">{label}</span>
+            </div>
+
+            {/* Hero Welcome Card */}
+            <div className="my-auto py-4 text-center">
+              {businessFeedback.layout === "restaurant" ? (
+                <div className="mx-auto mb-6 flex h-48 w-full max-w-[300px] items-center justify-center rounded-3xl border bg-[#F1E8D9] p-5 shadow-subtle" style={{ borderColor: businessFeedback.borderColor }}>
+                  <div className="w-full rounded-2xl border bg-white p-4 text-left shadow-sm" style={{ borderColor: businessFeedback.borderColor }}>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#716B64]">Visit card</p>
+                      <span className="rounded-full px-2.5 py-1 text-[10px] font-semibold" style={{ backgroundColor: businessFeedback.softColor, color: businessFeedback.accentColor }}>{program.rewardTitle || "Rewards"}</span>
                     </div>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="rounded-full px-3 py-2 text-[10px] font-bold" style={{ backgroundColor: businessFeedback.accentColor, color: "#FFFFFF" }}>{program.rewardTitle || "Rewards"}</span>
-                  <span className="text-[10px] font-semibold" style={{ color: businessFeedback.accentColor }}>Choose · Shop · Enjoy</span>
-                </div>
-              </div>
-            ) : (
-              <div
-                className={`mx-auto mb-6 flex h-48 w-full max-w-[300px] flex-col justify-between rounded-[2rem] border p-5 text-left shadow-subtle ${businessFeedback.layout === "salon" ? "rotate-[-1deg]" : ""} ${isCafeFeedback ? "cafe-welcome-ticket" : ""}`}
-                style={{ borderColor: businessFeedback.borderColor, background: `linear-gradient(145deg, #FFFFFF 0%, ${businessFeedback.softColor} 100%)` }}
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: businessFeedback.accentColor }}>{businessFeedback.heroEyebrow}</p>
-                    <p className="mt-2 max-w-[175px] font-serif text-xl font-bold leading-tight text-[#24211E]">{businessFeedback.heroMessage}</p>
-                  </div>
-                  {isCafeFeedback ? (
-                    <div className="cafe-ticket-still-life" aria-hidden="true">
-                      <span>🥐</span>
-                      <span>🌿</span>
-                      <span>✦</span>
+                    <div className="my-5 flex items-center justify-between gap-2" aria-hidden="true">
+                      {Array.from({ length: 5 }).map((_, index) => (
+                        <span key={index} className="flex h-9 w-9 items-center justify-center rounded-full border text-sm" style={index === 0 ? { borderColor: businessFeedback.accentColor, backgroundColor: businessFeedback.accentColor, color: "#FFFFFF" } : { borderStyle: "dashed", borderColor: businessFeedback.borderColor, backgroundColor: businessFeedback.softColor, color: "#B8B1A8" }}>
+                          {index === 0 ? "✓" : "·"}
+                        </span>
+                      ))}
                     </div>
-                  ) : (
+                    <p className="text-xs font-semibold text-[#24211E]">Every visit brings you closer to a reward</p>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className={`mx-auto mb-6 flex h-48 w-full max-w-[300px] flex-col justify-between rounded-[2rem] border p-5 text-left shadow-subtle ${businessFeedback.layout === "salon" ? "rotate-[-1deg]" : ""}`}
+                  style={{ borderColor: businessFeedback.borderColor, background: `linear-gradient(145deg, #FFFFFF 0%, ${businessFeedback.softColor} 100%)` }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: businessFeedback.accentColor }}>{businessFeedback.heroEyebrow}</p>
+                      <p className="mt-2 max-w-[175px] font-serif text-xl font-bold leading-tight text-[#24211E]">{businessFeedback.heroMessage}</p>
+                    </div>
                     <span className="grid h-14 w-14 place-items-center rounded-2xl bg-white text-3xl shadow-sm" aria-hidden="true">{businessFeedback.heroIcon}</span>
-                  )}
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  {isCafeFeedback ? (
-                    <div className="w-full text-center">
-                      <p className="mb-2 whitespace-nowrap text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: businessFeedback.accentColor }}>
-                        Sip · Stay · Share
-                      </p>
-                      <span className="block w-full rounded-full px-3 py-2 text-center text-[10px] font-bold leading-snug text-white" style={{ backgroundColor: businessFeedback.accentColor }}>
-                        {program.rewardTitle || "Rewards"}
-                      </span>
-                    </div>
-                  ) : businessFeedback.layout === "salon" ? (
-                    ["Service", "Results", "Relax"].map((step, index) => (
-                      <div key={step} className="flex-1 rounded-xl bg-white/80 px-2 py-2 text-center shadow-sm">
-                        <span className="block text-[9px] font-bold" style={{ color: businessFeedback.accentColor }}>0{index + 1}</span>
-                        <span className="text-[10px] font-semibold text-[#51484B]">{step}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="rounded-full bg-white/80 px-3 py-2 text-[10px] font-semibold text-[#3F5E4A] shadow-sm">Sip <span aria-hidden="true">·</span> Stay <span aria-hidden="true">·</span> Share</p>
-                  )}
-                  {!isCafeFeedback && (
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    {businessFeedback.layout === "salon" ? (
+                      ["Service", "Results", "Relax"].map((step, index) => (
+                        <div key={step} className="flex-1 rounded-xl bg-white/80 px-2 py-2 text-center shadow-sm">
+                          <span className="block text-[9px] font-bold" style={{ color: businessFeedback.accentColor }}>0{index + 1}</span>
+                          <span className="text-[10px] font-semibold text-[#51484B]">{step}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="rounded-full bg-white/80 px-3 py-2 text-[10px] font-semibold text-[#3F5E4A] shadow-sm">Sip <span aria-hidden="true">·</span> Stay <span aria-hidden="true">·</span> Share</p>
+                    )}
                     <span className="rounded-full px-3 py-2 text-[10px] font-bold" style={{ backgroundColor: businessFeedback.accentColor, color: "#FFFFFF" }}>{program.rewardTitle || "Rewards"}</span>
-                  )}
+                  </div>
                 </div>
+              )}
+
+              <h1 className="font-serif text-3xl font-extrabold tracking-tight text-[#24211E] leading-tight">
+                {businessFeedback.welcomeHeadline[0]}<br />{businessFeedback.welcomeHeadline[1]}
+              </h1>
+              <p className="mx-auto mt-2.5 max-w-xs text-xs text-[#716B64] leading-relaxed">
+                {businessFeedback.welcomeSupportingText}
+              </p>
+
+              <div className="mt-7 space-y-3">
+                <button
+                  onClick={() => { setRegistrationDestination("collect_stamp"); setCurrentView("register"); }}
+                  disabled={collectingStamp}
+                  className="customer-collect-stamp-button flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-bold text-white shadow-xs transition active:scale-[0.98] disabled:opacity-60"
+                  style={{ backgroundColor: businessFeedback.accentColor }}
+                  onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentHoverColor; }}
+                  onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentColor; }}
+                >
+                  <span className="customer-collect-stamp-icon flex h-7 w-7 items-center justify-center rounded-full text-sm" aria-hidden="true">★</span>
+                  <span>{collectingStamp ? "Collecting Stamp..." : "Collect My Stamp"}</span>
+                </button>
+
+                <button
+                  onClick={() => { setRegistrationDestination("review"); setCurrentView("register"); }}
+                  className="w-full rounded-2xl py-3.5 text-sm font-bold text-white shadow-xs transition active:scale-[0.98] flex items-center justify-center gap-2"
+                  style={{ backgroundColor: businessFeedback.accentColor, borderColor: businessFeedback.accentColor }}
+                  onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentHoverColor; }}
+                  onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentColor; }}
+                >
+                  <span>⭐</span>
+                  <span>Share Your Experience</span>
+                </button>
               </div>
-            )}
-
-            <h1 className="font-serif text-3xl font-extrabold tracking-tight text-[#24211E] leading-tight">
-              {businessFeedback.welcomeHeadline[0]}<br />{businessFeedback.welcomeHeadline[1]}
-            </h1>
-            <p className="mx-auto mt-2.5 max-w-xs text-xs text-[#716B64] leading-relaxed">
-              {businessFeedback.welcomeSupportingText}
-            </p>
-
-            {/* Two Clear Options: Collect My Stamp & Share Your Experience */}
-            <div className="mt-7 space-y-3">
-              <button
-                onClick={() => {
-                  setRegistrationDestination("collect_stamp");
-                  setCurrentView("register");
-                }}
-                disabled={collectingStamp}
-                className={`customer-collect-stamp-button flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-bold text-white shadow-xs transition active:scale-[0.98] disabled:opacity-60 ${isCafeFeedback ? "cafe-pill-button" : ""}`}
-                style={{ backgroundColor: businessFeedback.accentColor }}
-                onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentHoverColor; }}
-                onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentColor; }}
-              >
-                <span className="customer-collect-stamp-icon flex h-7 w-7 items-center justify-center rounded-full text-sm" aria-hidden="true">★</span>
-                <span>{collectingStamp ? "Collecting Stamp..." : "Collect My Stamp"}</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setRegistrationDestination("review");
-                  setCurrentView("register");
-                }}
-                className={`w-full rounded-2xl py-3.5 text-sm font-bold text-white shadow-xs transition active:scale-[0.98] flex items-center justify-center gap-2 ${isCafeFeedback ? "cafe-pill-button" : ""}`}
-                style={{ backgroundColor: businessFeedback.accentColor, borderColor: businessFeedback.accentColor }}
-                onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentHoverColor; }}
-                onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentColor; }}
-              >
-                <span>⭐</span>
-                <span>Share Your Experience</span>
-              </button>
             </div>
-          </div>
 
-          {/* Three Value Badges at Bottom */}
-          <div className="flex items-center justify-center gap-6 border-t pt-5 text-center text-xs font-medium text-[#716B64]" style={{ borderColor: businessFeedback.borderColor }}>
-            <div className="flex items-center gap-1.5">
-              <span>★</span>
-              <span>{businessFeedback.welcomeBadges[0]}</span>
+            <div className="flex items-center justify-center gap-6 border-t pt-5 text-center text-xs font-medium text-[#716B64]" style={{ borderColor: businessFeedback.borderColor }}>
+              <div className="flex items-center gap-1.5"><span>★</span><span>{businessFeedback.welcomeBadges[0]}</span></div>
+              <div className="flex items-center gap-1.5"><span>🤎</span><span>{businessFeedback.welcomeBadges[1]}</span></div>
+              <div className="flex items-center gap-1.5"><span>✨</span><span>{businessFeedback.welcomeBadges[2]}</span></div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span>🤎</span>
-              <span>{businessFeedback.welcomeBadges[1]}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span>✨</span>
-              <span>{businessFeedback.welcomeBadges[2]}</span>
-            </div>
-          </div>
-        </main>
+          </main>
+        )
       )}
 
       {/* ─────────────────────────────────────────────────────────────
           STEP 3: ENTER DETAILS ("Join Our Rewards" — matching Phone 3)
       ───────────────────────────────────────────────────────────── */}
       {currentView === "register" && (
-        <main className={`customer-register-screen mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center px-5 py-6 ${isSalonFeedback ? "customer-salon-screen" : ""}`}>
-          <div>
+        isMockupLayout ? (
+          <main className="customer-register-screen mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center px-5 py-6" style={{ color: mockup.ink, justifyContent: "center" }}>
             <button
-              onClick={() => {
-                setRegistrationDestination(null);
-                setCurrentView("welcome");
-              }}
-              className="flex items-center gap-1.5 text-xs font-semibold text-[#716B64] hover:text-[#24211E] transition"
+              onClick={() => { setRegistrationDestination(null); setCurrentView("welcome"); }}
+              className="inline-flex w-fit items-center gap-1.5 rounded-full border bg-white/85 px-4 py-2 text-xs font-semibold shadow-sm transition"
+              style={{ borderColor: businessFeedback.borderColor, color: mockup.inkSoft }}
             >
-              <span>←</span> Back
+              <span aria-hidden="true">←</span> Back
             </button>
 
-            <div className="mt-4 text-center">
-              <div className="mb-3 flex justify-center">
-                <BusinessLogoSpace
-                  name={restaurant.name}
-                  logoUrl={restaurant.logoUrl}
-                  fallback={businessFeedback.heroIcon}
-                />
+            <div className="mt-5 text-center">
+              <div className="mx-auto grid h-16 w-16 place-items-center overflow-hidden rounded-full border-[3px] border-white text-3xl shadow-md" style={{ backgroundColor: businessFeedback.softColor, color: businessFeedback.accentColor }}>
+                {restaurant.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={restaurant.logoUrl} alt={`${restaurant.name} logo`} className="h-full w-full bg-white object-contain p-1.5" />
+                ) : isMockupLayout ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={mockup.registerImage} alt={`${mockup.brandWord} emblem`} className="h-full w-full object-cover" />
+                ) : businessFeedback.heroIcon}
               </div>
-              <div className="customer-register-icon mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--biz-soft)] text-xl text-[var(--biz-accent)] border border-[var(--biz-border)]">
-                {isSalonFeedback ? businessFeedback.heroIcon : "🌿"}
-              </div>
-              <h1 className="mt-3 font-serif text-2xl font-bold text-[#24211E]">
-                Join Our Rewards
-              </h1>
-              <p className="mt-1 text-xs text-[#716B64]">
-                A few details to get started
-              </p>
+              <h1 className="mt-3 font-serif text-2xl font-extrabold leading-tight" style={{ color: mockup.ink }}>{mockup.joinTitle}</h1>
+              <p className="mx-auto mt-1.5 max-w-[280px] text-xs leading-relaxed" style={{ color: mockup.muted }}>{mockup.joinSub}</p>
             </div>
 
-            {/* Registration Form */}
-            <form onSubmit={handleRegister} className="customer-register-form mt-7 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-[#716B64] mb-1.5">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Aarav Sharma"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--biz-border)] bg-white px-4 py-3 text-sm font-medium text-[#24211E] outline-none focus:outline-none focus:border-[var(--biz-border)] focus:ring-0 focus:shadow-2xs shadow-2xs"
-                  required
-                />
-              </div>
+            <form onSubmit={handleRegister} className="mt-5 space-y-4">
+              <div className="rounded-2xl border bg-white p-4" style={{ borderColor: businessFeedback.borderColor }}>
+                <label className="mb-1.5 block text-xs font-semibold" style={{ color: mockup.chip }}>Full Name</label>
+                <div className="flex items-center gap-2 rounded-xl border px-3" style={{ borderColor: businessFeedback.borderColor, backgroundColor: mockup.surface }}>
+                  <span className="text-sm" aria-hidden="true">👤</span>
+                  <input
+                    type="text"
+                    placeholder="Your full name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="w-full bg-transparent py-3 text-sm font-medium outline-none focus:outline-none focus:ring-0"
+                    style={{ color: mockup.ink }}
+                    required
+                  />
+                </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-[#716B64] mb-1.5">
-                  Mobile Number
-                </label>
-                <div className="flex rounded-xl border border-[var(--biz-border)] bg-white shadow-2xs focus-within:border-[var(--biz-border)] focus-within:ring-0 focus-within:outline-none focus-within:shadow-2xs overflow-hidden">
-                  <span className="flex items-center pl-4 pr-2 text-sm font-semibold text-[#716B64]">
-                    +91
+                <label className="mb-1.5 mt-4 block text-xs font-semibold" style={{ color: mockup.chip }}>Mobile Number</label>
+                <div className="flex items-center overflow-hidden rounded-xl border" style={{ borderColor: businessFeedback.borderColor, backgroundColor: mockup.surface }}>
+                  <span className="pl-3 text-sm" aria-hidden="true">📞</span>
+                  <span className="flex items-center gap-1 px-2 text-sm font-semibold" style={{ color: mockup.inkSoft }}>
+                    +91 <span className="text-[9px]" aria-hidden="true">▾</span>
                   </span>
+                  <span className="h-6 w-px" style={{ backgroundColor: businessFeedback.borderColor }} aria-hidden="true" />
                   <input
                     type="tel"
                     inputMode="numeric"
                     maxLength={10}
-                    placeholder="Enter your phone number"
+                    placeholder="Enter your mobile number"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="w-full bg-transparent py-3 pr-4 text-sm font-medium text-[#24211E] outline-none focus:outline-none focus:ring-0"
+                    className="w-full bg-transparent py-3 pl-3 pr-4 text-sm font-medium outline-none focus:outline-none focus:ring-0"
+                    style={{ color: mockup.ink }}
                     required
                   />
                 </div>
-              </div>
 
-              {/* Opt-in updates checkbox */}
-              <div className="flex items-start gap-2.5 pt-1">
-                <input
-                  type="checkbox"
-                  id="optin"
-                  checked={agreedUpdates}
-                  onChange={(e) => setAgreedUpdates(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-[var(--biz-border)] text-[var(--biz-accent)] accent-[var(--biz-accent)] focus:ring-0"
-                />
-                <label htmlFor="optin" className="text-[11px] leading-tight text-[#716B64]">
-                  I agree to receive important updates about my rewards, offers and news. You can opt out anytime.
+                <label htmlFor="optin" className="mt-4 flex items-start gap-2.5 rounded-xl border p-3" style={{ borderColor: businessFeedback.borderColor, backgroundColor: businessFeedback.softColor }}>
+                  <input
+                    type="checkbox"
+                    id="optin"
+                    checked={agreedUpdates}
+                    onChange={(e) => setAgreedUpdates(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded"
+                    style={{ accentColor: businessFeedback.accentColor }}
+                  />
+                  <span className="text-[11px] leading-relaxed" style={{ color: mockup.chip }}>
+                    I agree to receive important updates about my rewards, offers and news. You can opt out anytime.
+                  </span>
                 </label>
               </div>
 
@@ -1197,18 +1323,66 @@ export function CustomerJourneyView({
               <button
                 type="submit"
                 disabled={registering}
-                className="mt-3 w-full rounded-2xl bg-[var(--biz-accent)] py-3.5 text-sm font-bold text-white shadow-xs transition hover:bg-[var(--biz-accent-hover)] active:scale-[0.98] disabled:opacity-60"
+                className="w-full rounded-full py-3.5 text-sm font-bold text-white shadow-sm transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
+                style={{ backgroundColor: businessFeedback.accentColor }}
               >
                 {registering ? "Creating Your Card..." : "Create Loyalty Card"}
               </button>
             </form>
-          </div>
 
-          <p className="mt-6 text-center text-[11px] text-[#716B64]/70">
-            🔒 Fast 1-click registration • Secure &amp; confidential.
-          </p>
-          {isSalonFeedback && <SalonDecorativeIllustration className="salon-corner-art" />}
-        </main>
+            <p className="mt-4 text-center text-[11px]" style={{ color: mockup.muted }}>🔒 {mockup.registerFoot}</p>
+            {mockup.registerBottomImage && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={mockup.registerBottomImage} alt="" className="mx-auto mt-2 h-24 w-full max-w-[300px] object-contain" />
+            )}
+          </main>
+        ) : (
+          <main className={`customer-register-screen mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center px-5 py-6 ${isSalonFeedback ? "customer-salon-screen" : ""}`}>
+            <div>
+              <button
+                onClick={() => { setRegistrationDestination(null); setCurrentView("welcome"); }}
+                className="flex items-center gap-1.5 text-xs font-semibold text-[#716B64] hover:text-[#24211E] transition"
+              >
+                <span>←</span> Back
+              </button>
+
+              <div className="mt-4 text-center">
+                <div className="mb-3 flex justify-center">
+                  <BusinessLogoSpace name={restaurant.name} logoUrl={restaurant.logoUrl} fallback={businessFeedback.heroIcon} />
+                </div>
+                <div className="customer-register-icon mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--biz-soft)] text-xl text-[var(--biz-accent)] border border-[var(--biz-border)]">
+                  {isSalonFeedback ? businessFeedback.heroIcon : "🌿"}
+                </div>
+                <h1 className="mt-3 font-serif text-2xl font-bold text-[#24211E]">Join Our Rewards</h1>
+                <p className="mt-1 text-xs text-[#716B64]">A few details to get started</p>
+              </div>
+
+              <form onSubmit={handleRegister} className="customer-register-form mt-7 space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[#716B64] mb-1.5">Full Name</label>
+                  <input type="text" placeholder="e.g. Aarav Sharma" value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full rounded-xl border border-[var(--biz-border)] bg-white px-4 py-3 text-sm font-medium text-[#24211E] outline-none focus:outline-none focus:border-[var(--biz-border)] focus:ring-0 focus:shadow-2xs shadow-2xs" required />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#716B64] mb-1.5">Mobile Number</label>
+                  <div className="flex rounded-xl border border-[var(--biz-border)] bg-white shadow-2xs focus-within:border-[var(--biz-border)] focus-within:ring-0 focus-within:outline-none focus-within:shadow-2xs overflow-hidden">
+                    <span className="flex items-center pl-4 pr-2 text-sm font-semibold text-[#716B64]">+91</span>
+                    <input type="tel" inputMode="numeric" maxLength={10} placeholder="Enter your phone number" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="w-full bg-transparent py-3 pr-4 text-sm font-medium text-[#24211E] outline-none focus:outline-none focus:ring-0" required />
+                  </div>
+                </div>
+                <div className="flex items-start gap-2.5 pt-1">
+                  <input type="checkbox" id="optin" checked={agreedUpdates} onChange={(e) => setAgreedUpdates(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-[var(--biz-border)] text-[var(--biz-accent)] accent-[var(--biz-accent)] focus:ring-0" />
+                  <label htmlFor="optin" className="text-[11px] leading-tight text-[#716B64]">I agree to receive important updates about my rewards, offers and news. You can opt out anytime.</label>
+                </div>
+                {registerError && <div className="rounded-xl border border-[#F7D6D6] bg-[#FDF2F2] p-3 text-xs font-medium text-[#A83B3B]">{registerError}</div>}
+                <button type="submit" disabled={registering} className="mt-3 w-full rounded-2xl bg-[var(--biz-accent)] py-3.5 text-sm font-bold text-white shadow-xs transition hover:bg-[var(--biz-accent-hover)] active:scale-[0.98] disabled:opacity-60">
+                  {registering ? "Creating Your Card..." : "Create Loyalty Card"}
+                </button>
+              </form>
+            </div>
+            <p className="mt-6 text-center text-[11px] text-[#716B64]/70">🔒 Fast 1-click registration • Secure &amp; confidential.</p>
+            {isSalonFeedback && <SalonDecorativeIllustration className="salon-corner-art" />}
+          </main>
+        )
       )}
 
       {/* STEP 4: Waiting for owner approval */}
@@ -1311,9 +1485,9 @@ export function CustomerJourneyView({
           STEP 5: MY LOYALTY CARD (Matching Phone 5 in reference mockup)
       ───────────────────────────────────────────────────────────── */}
       {currentView === "card" && (
-        <main className={`customer-rewards-screen mx-auto min-h-screen max-w-sm px-5 py-6 ${isCafeFeedback ? "cafe-rewards" : ""} ${isSalonFeedback ? "customer-salon-screen" : ""}`}>
+        <main className={`customer-rewards-screen mx-auto min-h-screen max-w-sm px-5 py-6 ${isMockupLayout ? "cafe-rewards" : ""} ${isSalonFeedback ? "customer-salon-screen" : ""}`}>
           {/* Header Bar */}
-          <div className={`customer-rewards-header flex items-center justify-between border-b pb-3.5 ${isCafeFeedback ? "cafe-rewards-header" : ""}`} style={{ borderColor: businessFeedback.borderColor }}>
+          <div className={`customer-rewards-header flex items-center justify-between border-b pb-3.5 ${isMockupLayout ? "cafe-rewards-header" : ""}`} style={{ borderColor: businessFeedback.borderColor }}>
             {!firebaseContext && <button
               onClick={() => setCurrentView("welcome")}
               className="text-xs font-semibold text-[#716B64] hover:text-[#24211E] transition flex items-center gap-1"
@@ -1321,10 +1495,10 @@ export function CustomerJourneyView({
               <span aria-label="Back to business home">←</span>
             </button>}
             <div className="text-center">
-              <h2 className="font-serif text-base font-bold text-[#24211E] leading-tight">
+              <h2 className="font-serif text-base font-bold leading-tight" style={{ color: isMockupLayout ? mockup.ink : "#24211E" }}>
                 My Rewards
               </h2>
-              <p className="text-[11px] text-[#716B64]">{restaurant.name}</p>
+              <p className="text-[11px]" style={{ color: isMockupLayout ? mockup.muted : "#716B64" }}>{restaurant.name}</p>
             </div>
             <div className="flex items-center gap-1.5">
               <button
@@ -1348,7 +1522,7 @@ export function CustomerJourneyView({
 
           {/* Pending Stamp Request Banner on Card */}
           {pendingRequestId && (
-            <div className={`customer-pending-banner mt-3.5 flex items-center justify-between rounded-2xl border border-[var(--biz-border)] bg-[var(--biz-soft)] p-3 text-xs text-[var(--biz-accent)] shadow-2xs ${isCafeFeedback ? "cafe-pending-banner" : ""}`}>
+            <div className={`customer-pending-banner mt-3.5 flex items-center justify-between rounded-2xl border border-[var(--biz-border)] bg-[var(--biz-soft)] p-3 text-xs text-[var(--biz-accent)] shadow-2xs ${isMockupLayout ? "cafe-pending-banner" : ""}`}>
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-[var(--biz-accent)] animate-ping shrink-0" />
                 <span>Stamp request sent to staff! Waiting for approval...</span>
@@ -1380,7 +1554,7 @@ export function CustomerJourneyView({
           ) : (
             <div className="mt-5 space-y-4">
               <div
-                className={`customer-stamp-card stamp-passport-card rounded-3xl border p-5 shadow-subtle ${isCafeFeedback ? "cafe-stamp-card" : ""}`}
+                className={`customer-stamp-card stamp-passport-card rounded-3xl border p-5 shadow-subtle ${isMockupLayout ? "cafe-stamp-card" : ""}`}
                 style={{
                   borderColor: businessFeedback.borderColor,
                   background: `linear-gradient(145deg, #FFFFFF 0%, ${businessFeedback.softColor} 100%)`,
@@ -1392,14 +1566,17 @@ export function CustomerJourneyView({
                       {restaurant.logoUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={restaurant.logoUrl} alt={`${restaurant.name} logo`} className="h-full w-full bg-white object-contain p-1" />
+                      ) : isMockupLayout ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={mockup.logoImage} alt={`${mockup.brandWord} icon`} className="h-full w-full object-cover" />
                       ) : businessFeedback.heroIcon}
                     </div>
                     <div className="min-w-0">
-                      <p className="stamp-passport-eyebrow">YOUR LOYALTY PASS</p>
-                      <h3 className="truncate font-serif text-sm font-bold text-[#24211E]">
+                      <p className="stamp-passport-eyebrow" style={isMockupLayout ? { color: mockup.inkSoft } : undefined}>YOUR LOYALTY PASS</p>
+                      <h3 className="truncate font-serif text-sm font-bold" style={{ color: isMockupLayout ? mockup.ink : "#24211E" }}>
                         {restaurant.name}
                       </h3>
-                      <p className="text-[11px] text-[#716B64]">
+                      <p className="text-[11px]" style={{ color: isMockupLayout ? mockup.muted : "#716B64" }}>
                         {customer?.name || "Valued Customer"}
                       </p>
                     </div>
@@ -1423,16 +1600,62 @@ export function CustomerJourneyView({
                     const isStamped = index < currentStamps;
                     const isNext = index === currentStamps;
                     const isTarget = index === stampsRequired - 1;
-                    const stampIcon = isCafeFeedback
-                      ? CAFE_STAMP_ICONS[index % CAFE_STAMP_ICONS.length]
-                      : isSalonFeedback ? businessFeedback.heroIcon : "☕";
 
+                    if (isMockupLayout) {
+                      const stampTileIcon = isTarget ? "🎁" : mockup.stampIcon;
+                      return (
+                        <div
+                          key={index}
+                          className={`stamp-passport-step ${isStamped ? "stamp-passport-step--earned" : isNext ? "stamp-passport-step--next" : ""}`}
+                          style={{
+                            ...(isStamped
+                              ? {
+                                  backgroundColor: brandColor,
+                                  borderColor: brandColor,
+                                  boxShadow: "0 4px 10px rgba(91, 122, 82, 0.25)",
+                                }
+                              : {
+                                  backgroundColor: isNext ? "#FFFFFF" : businessFeedback.softColor,
+                                  borderColor: isNext ? brandColor : businessFeedback.borderColor,
+                                  borderStyle: isNext ? "dashed" : "solid",
+                                }),
+                            borderRadius: "9999px",
+                            minHeight: "64px",
+                            animationDelay: `${index * 45}ms`,
+                          }}
+                          role="listitem"
+                          aria-label={`Stamp ${index + 1}: ${isStamped ? "collected" : isTarget ? "reward" : isNext ? "next" : "not collected"}`}
+                        >
+                          <span
+                            className="stamp-passport-step__icon"
+                            aria-hidden="true"
+                            style={{
+                              fontSize: isStamped ? "1.25rem" : "1.1rem",
+                              filter: isStamped ? "none" : "grayscale(0.2)",
+                              opacity: isStamped ? 1 : isNext ? 0.95 : 0.55,
+                            }}
+                          >
+                            {isStamped ? mockup.stampIcon : stampTileIcon}
+                          </span>
+                          <span
+                            className="stamp-passport-step__label"
+                            style={{ color: isStamped ? "#FFFFFF" : isNext ? brandColor : "#716B64" }}
+                          >
+                            {isStamped ? "Collected" : isTarget ? "Reward" : isNext ? `Next ${mockup.stampUnit}` : `${index + 1}`}
+                          </span>
+                        </div>
+                      );
+                    }
+
+                    const stampIcon = isSalonFeedback ? businessFeedback.heroIcon : "☕";
                     return (
                       <div
                         key={index}
                         className={`stamp-passport-step ${isStamped ? "stamp-passport-step--earned" : isNext ? "stamp-passport-step--next" : ""}`}
                         style={{
-                          ...(isStamped ? { backgroundColor: brandColor, borderColor: brandColor } : {}),
+                          ...(isStamped
+                            ? { backgroundColor: brandColor, borderColor: brandColor }
+                            : { backgroundColor: businessFeedback.softColor, borderColor: businessFeedback.borderColor }),
                           ...(isNext ? { borderColor: brandColor } : {}),
                           animationDelay: `${index * 45}ms`,
                         }}
@@ -1450,7 +1673,7 @@ export function CustomerJourneyView({
                   })}
                 </div>
 
-                <div className={`stamp-passport-summary customer-rewards-info ${isCafeFeedback ? "cafe-rewards-info" : ""}`}>
+                <div className={`stamp-passport-summary customer-rewards-info ${isMockupLayout ? "cafe-rewards-info" : ""}`}>
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs font-bold text-[#24211E]">
                       {currentStamps >= stampsRequired ? "Reward unlocked" : `${stampsRemaining} ${stampsRemaining === 1 ? "stamp" : "stamps"} to go`}
@@ -1494,7 +1717,7 @@ export function CustomerJourneyView({
                       disabled={collectingStamp}
                       className="w-full rounded-2xl bg-[var(--biz-accent)] py-3 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--biz-accent-hover)] active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
                     >
-                      <span>{isSalonFeedback || isCafeFeedback ? businessFeedback.heroIcon : "☕"}</span>
+                      <span>{isSalonFeedback || isMockupLayout ? businessFeedback.heroIcon : "☕"}</span>
                       <span>
                         {pendingRequestId
                           ? "Approval Pending with Staff →"
@@ -1508,6 +1731,22 @@ export function CustomerJourneyView({
               </div>
 
               {/* NEXT REWARD CARD — Removed per request */}
+
+              {isRestaurantFeedback && mockup.rewardImage && (
+                <section className="flex items-center gap-3 overflow-hidden rounded-2xl border bg-white p-2.5 shadow-sm" style={{ borderColor: businessFeedback.borderColor }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={mockup.rewardImage} alt="A meal from the restaurant" className="h-24 w-32 shrink-0 rounded-xl object-cover" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.14em]" style={{ color: mockup.inkSoft }}>Your next meal reward</p>
+                    <h4 className="mt-1 font-serif text-base font-bold leading-tight" style={{ color: mockup.ink }}>{program.rewardTitle}</h4>
+                    {activeRewards[0] ? (
+                      <button onClick={() => void handleOpenRewardQr(activeRewards[0])} className="mt-2 rounded-full px-3 py-1.5 text-[10px] font-bold text-white" style={{ backgroundColor: businessFeedback.accentColor }}>Redeem Now →</button>
+                    ) : (
+                      <p className="mt-2 text-[10px] font-medium" style={{ color: mockup.muted }}>Collect more stamps to unlock</p>
+                    )}
+                  </div>
+                </section>
+              )}
 
               {/* Active Unredeemed Rewards / Vouchers */}
               {activeRewards.length > 0 && (
@@ -1543,7 +1782,7 @@ export function CustomerJourneyView({
               )}
 
               {/* Links: View Reward Details & Visit History */}
-              <div className={`customer-rewards-history divide-y divide-[var(--biz-border)]/60 rounded-2xl border border-[var(--biz-border)] bg-white shadow-subtle overflow-hidden ${isCafeFeedback ? "cafe-reward-history" : ""}`}>
+              <div className={`customer-rewards-history divide-y divide-[var(--biz-border)]/60 rounded-2xl border border-[var(--biz-border)] bg-white shadow-subtle overflow-hidden ${isMockupLayout ? "cafe-reward-history" : ""}`}>
                 <button
                   onClick={() => {
                     if (activeRewards[0]) {
@@ -1589,7 +1828,7 @@ export function CustomerJourneyView({
               {/* Action: Share Your Experience */}
               <button
                 onClick={() => setCurrentView("review")}
-                className={`customer-share-review w-full rounded-2xl border border-[var(--biz-border)] bg-white py-3 text-xs font-bold text-[#24211E] shadow-2xs hover:bg-[var(--biz-soft)] transition flex items-center justify-center gap-2 ${isCafeFeedback ? "cafe-review-pill" : ""}`}
+                className={`customer-share-review w-full rounded-2xl border border-[var(--biz-border)] bg-white py-3 text-xs font-bold text-[#24211E] shadow-2xs hover:bg-[var(--biz-soft)] transition flex items-center justify-center gap-2 ${isMockupLayout ? "cafe-review-pill" : ""}`}
               >
                 <span>⭐</span>
                 <span>Share Your Experience &amp; Review</span>
@@ -1609,167 +1848,165 @@ export function CustomerJourneyView({
           STEP 6: STAFF ISSUES STAMP (Celebration Screen matching Phone 6)
       ───────────────────────────────────────────────────────────── */}
       {currentView === "stamp_added" && (
-        <main className="stamp-added-screen flex min-h-screen items-center justify-center px-5 py-8 text-center" style={{ backgroundColor: businessFeedback.pageColor }}>
-          <section className="stamp-added-card w-full" aria-live="polite">
-            <BusinessLogoSpace
-              name={restaurant.name}
-              logoUrl={restaurant.logoUrl}
-              fallback={businessFeedback.heroIcon}
-            />
-            <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#716B64]">
-              {restaurant.name} · Visit complete
-            </p>
-
-            <div
-              className="stamp-added-seal mx-auto mt-8 flex h-24 w-24 items-center justify-center rounded-full border-4 border-white text-5xl font-semibold shadow-subtle"
-              style={{ color: brandColor, backgroundColor: businessFeedback.softColor }}
-            >
-              <span aria-hidden="true">✓</span>
-            </div>
-
-            <span
-              className="mt-7 inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[11px] font-bold"
-              style={{ borderColor: businessFeedback.borderColor, backgroundColor: businessFeedback.softColor, color: businessFeedback.accentColor }}
-            >
-              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: businessFeedback.accentColor }} aria-hidden="true" />
-              VISIT RECORDED
-            </span>
-
-            <h1 className="mt-3 font-serif text-3xl font-extrabold tracking-tight text-[#24211E]">
-              Stamp Added!
-            </h1>
-            <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-[#716B64]">
-              {stampFeedbackMessage || "Your visit has been recorded. You're one step closer to your reward!"}
-            </p>
-
-            <div
-              className="stamp-added-progress mt-7 rounded-2xl border p-4 text-left shadow-2xs"
-              style={{
-                borderColor: businessFeedback.borderColor,
-                background: `linear-gradient(145deg, #FFFFFF 0%, ${businessFeedback.softColor} 100%)`,
-              }}
-            >
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#716B64]">Your progress</p>
-                  <p className="mt-1 font-serif text-2xl font-extrabold text-[#24211E]">
-                    {currentStamps}<span className="text-sm font-bold text-[#716B64]"> / {stampsRequired}</span>
-                  </p>
-                </div>
-                <span className="pb-1 text-[10px] font-semibold text-[#716B64]">stamps</span>
+        isMockupLayout ? (
+          <main className="flex min-h-screen items-center justify-center px-5 py-8" style={{ backgroundColor: businessFeedback.pageColor }}>
+            <section className="w-full max-w-sm rounded-[2rem] border p-6 text-center shadow-sm" aria-live="polite" style={{ borderColor: businessFeedback.borderColor, background: `linear-gradient(180deg, ${mockup.cardTop} 0%, ${businessFeedback.pageColor} 100%)` }}>
+              <div className="relative mx-auto h-36 w-full">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={mockup.stampImage} alt="" className="mx-auto h-full w-full object-contain" />
+                {(isCafeFeedback || isSalonFeedback) && (
+                  <span className="absolute left-1/2 top-1 ml-6 grid h-8 w-8 place-items-center rounded-full border-2 border-white text-sm font-bold text-white shadow-sm" style={{ backgroundColor: mockup.inkSoft }} aria-hidden="true">
+                    ✓
+                  </span>
+                )}
               </div>
-              <div
-                className="mt-3 grid gap-2"
-                style={{ gridTemplateColumns: `repeat(${Math.min(stampsRequired, 5)}, minmax(0, 1fr))` }}
-                role="img"
-                aria-label={`${currentStamps} of ${stampsRequired} stamps collected`}
-              >
-                {Array.from({ length: stampsRequired }).map((_, index) => {
-                  const isStamped = index < currentStamps;
-                  return (
-                    <span
-                      key={index}
-                      className={`stamp-added-step flex h-9 items-center justify-center rounded-xl text-xs font-bold ${isStamped ? "text-white shadow-2xs" : "border"}`}
-                      style={
-                        isStamped
-                          ? { backgroundColor: brandColor, animationDelay: `${index * 55}ms` }
-                          : { borderColor: businessFeedback.borderColor, backgroundColor: businessFeedback.softColor, color: businessFeedback.accentColor }
-                      }
-                      aria-hidden="true"
-                    >
-                      {isStamped ? "✓" : index + 1}
-                    </span>
-                  );
-                })}
-              </div>
-              <div className="mt-4 h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: businessFeedback.borderColor }}>
-                <div
-                  className="stamp-added-progress-fill h-full rounded-full"
-                  style={{ width: `${Math.min(100, (currentStamps / stampsRequired) * 100)}%`, backgroundColor: brandColor }}
-                />
-              </div>
-              <p className="mt-2 text-[10px] font-medium text-[#716B64]">
-                {currentStamps >= stampsRequired
-                  ? "Your reward goal is complete!"
-                  : `${Math.max(0, stampsRequired - currentStamps)} more ${stampsRequired - currentStamps === 1 ? "visit" : "visits"} to your reward`}
+
+              <h1 className="font-serif text-3xl font-extrabold" style={{ color: mockup.ink }}>Stamp Collected!</h1>
+              <p className="mx-auto mt-1 max-w-[290px] text-sm font-bold" style={{ color: mockup.inkSoft }}>
+                Thank you for visiting our {businessLabel}!
               </p>
-            </div>
+              <p className="mx-auto mt-2 max-w-[290px] text-sm leading-relaxed" style={{ color: mockup.muted }}>
+                {stampFeedbackMessage || mockup.stampSub}
+              </p>
 
-            <div className="mt-6 w-full space-y-2.5">
+              <div className="mt-5 rounded-2xl border p-4" style={{ borderColor: businessFeedback.borderColor, backgroundColor: "#FFFFFF" }}>
+                <div className="flex items-end justify-between">
+                  <p className="text-xs font-semibold" style={{ color: mockup.inkSoft }}>Total Stamps</p>
+                  <span className="rounded-full px-2.5 py-1 text-[10px] font-bold" style={{ backgroundColor: businessFeedback.softColor, color: businessFeedback.accentColor }}>
+                    {Math.round((currentStamps / stampsRequired) * 100)}%
+                  </span>
+                </div>
+                <p className="mt-1 text-center font-serif text-3xl font-extrabold" style={{ color: mockup.ink }}>
+                  {currentStamps}<span className="text-base font-bold" style={{ color: mockup.muted }}> / {stampsRequired}</span>
+                </p>
+                <div className="mt-2 h-3 overflow-hidden rounded-full" style={{ backgroundColor: businessFeedback.borderColor }}>
+                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, (currentStamps / stampsRequired) * 100)}%`, backgroundColor: businessFeedback.accentColor }} />
+                </div>
+                <p className="mt-2 text-[11px] leading-relaxed" style={{ color: mockup.muted }}>
+                  {currentStamps >= stampsRequired
+                    ? mockup.stampDone
+                    : `${Math.max(0, stampsRequired - currentStamps)} more ${stampsRequired - currentStamps === 1 ? "visit" : "visits"} until your next reward.`}
+                </p>
+              </div>
+
               <button
                 onClick={() => setCurrentView("card")}
-                className="w-full rounded-2xl py-3.5 text-sm font-bold text-white shadow-md transition hover:brightness-105 active:scale-[0.98]"
-                style={{ backgroundColor: brandColor }}
+                className="mt-5 flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-bold text-white shadow-sm transition hover:brightness-105 active:scale-[0.98]"
+                style={{ backgroundColor: businessFeedback.accentColor }}
               >
-                View My Rewards ({currentStamps}/{stampsRequired}) →
+                <span aria-hidden="true">←</span>
+                <span>Back to Rewards</span>
               </button>
-            </div>
-          </section>
-        </main>
+            </section>
+          </main>
+        ) : (
+          <main className="stamp-added-screen flex min-h-screen items-center justify-center px-5 py-8 text-center" style={{ backgroundColor: businessFeedback.pageColor }}>
+            <section className="stamp-added-card w-full" aria-live="polite">
+              <BusinessLogoSpace name={restaurant.name} logoUrl={restaurant.logoUrl} fallback={businessFeedback.heroIcon} />
+              <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#716B64]">{restaurant.name} · Visit complete</p>
+              <div className="stamp-added-seal mx-auto mt-8 flex h-24 w-24 items-center justify-center rounded-full border-4 border-white text-5xl font-semibold shadow-subtle" style={{ color: brandColor, backgroundColor: businessFeedback.softColor }}>
+                <span aria-hidden="true">✓</span>
+              </div>
+              <span className="mt-7 inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[11px] font-bold" style={{ borderColor: businessFeedback.borderColor, backgroundColor: businessFeedback.softColor, color: businessFeedback.accentColor }}>
+                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: businessFeedback.accentColor }} aria-hidden="true" />
+                VISIT RECORDED
+              </span>
+              <h1 className="mt-3 font-serif text-3xl font-extrabold tracking-tight text-[#24211E]">Stamp Added!</h1>
+              <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-[#716B64]">{stampFeedbackMessage || "Your visit has been recorded. You're one step closer to your reward!"}</p>
+              <div className="stamp-added-progress mt-7 rounded-2xl border p-4 text-left shadow-2xs" style={{ borderColor: businessFeedback.borderColor, background: `linear-gradient(145deg, #FFFFFF 0%, ${businessFeedback.softColor} 100%)` }}>
+                <div className="flex items-end justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#716B64]">Your progress</p>
+                    <p className="mt-1 font-serif text-2xl font-extrabold text-[#24211E]">{currentStamps}<span className="text-sm font-bold text-[#716B64]"> / {stampsRequired}</span></p>
+                  </div>
+                  <span className="pb-1 text-[10px] font-semibold text-[#716B64]">stamps</span>
+                </div>
+                <div className="mt-3 grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(stampsRequired, 5)}, minmax(0, 1fr))` }} role="img" aria-label={`${currentStamps} of ${stampsRequired} stamps collected`}>
+                  {Array.from({ length: stampsRequired }).map((_, index) => {
+                    const isStamped = index < currentStamps;
+                    return (
+                      <span key={index} className={`stamp-added-step flex h-9 items-center justify-center rounded-xl text-xs font-bold ${isStamped ? "text-white shadow-2xs" : "border"}`} style={isStamped ? { backgroundColor: brandColor, animationDelay: `${index * 55}ms` } : { borderColor: businessFeedback.borderColor, backgroundColor: businessFeedback.softColor, color: businessFeedback.accentColor }} aria-hidden="true">
+                        {isStamped ? "✓" : index + 1}
+                      </span>
+                    );
+                  })}
+                </div>
+                <div className="mt-4 h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: businessFeedback.borderColor }}>
+                  <div className="stamp-added-progress-fill h-full rounded-full" style={{ width: `${Math.min(100, (currentStamps / stampsRequired) * 100)}%`, backgroundColor: brandColor }} />
+                </div>
+                <p className="mt-2 text-[10px] font-medium text-[#716B64]">{currentStamps >= stampsRequired ? "Your reward goal is complete!" : `${Math.max(0, stampsRequired - currentStamps)} more ${stampsRequired - currentStamps === 1 ? "visit" : "visits"} to your reward`}</p>
+              </div>
+              <div className="mt-6 w-full space-y-2.5">
+                <button onClick={() => setCurrentView("card")} className="w-full rounded-2xl py-3.5 text-sm font-bold text-white shadow-md transition hover:brightness-105 active:scale-[0.98]" style={{ backgroundColor: brandColor }}>
+                  View My Rewards ({currentStamps}/{stampsRequired}) →
+                </button>
+              </div>
+            </section>
+          </main>
+        )
       )}
 
       {/* ─────────────────────────────────────────────────────────────
           STEP 7: SHARE YOUR EXPERIENCE (Matching Phone 7 in reference mockup)
       ───────────────────────────────────────────────────────────── */}
       {currentView === "review" && (
-        <main className={`customer-review-screen mx-auto min-h-screen max-w-sm px-5 py-6 ${isSalonFeedback ? "customer-salon-screen" : ""}`}>
+        <main className={`customer-review-screen mx-auto min-h-screen max-w-sm px-5 py-6 ${isSalonFeedback ? "customer-salon-screen" : ""}`} style={isMockupLayout ? { justifyContent: "flex-start" } : undefined}>
           <div
-            className={`customer-review-header flex items-center justify-between border-b pb-3.5 ${
-              isCafeFeedback ? "border-[#D2E0D3]" : "border-[var(--biz-border)]"
-            }`}
+            className="customer-review-header flex items-center justify-between border-b pb-3.5"
+            style={{ borderColor: businessFeedback.borderColor }}
           >
             <button
               onClick={() => setCurrentView("welcome")}
               aria-label="Back to welcome page"
-              className={isCafeFeedback
-                ? "flex h-10 w-10 items-center justify-center rounded-full border border-[#D2E0D3] bg-white text-lg text-[#557A65] shadow-sm transition hover:bg-[#E6EFE6]"
+              className={isMockupLayout
+                ? "flex h-10 w-10 items-center justify-center rounded-full border bg-white text-lg shadow-sm transition"
                 : "flex items-center gap-1 text-xs font-semibold text-[#716B64] transition hover:text-[#24211E]"}
+              style={isMockupLayout ? { borderColor: businessFeedback.borderColor, color: mockup.inkSoft } : undefined}
             >
               <span aria-hidden="true">←</span>
             </button>
             <div className="min-w-0 text-center">
-              {isCafeFeedback && (
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#557A65]">
-                  A little pause in your day
-                </p>
-              )}
-              <h2 className="font-serif text-base font-bold leading-tight text-[#24211E]">
+              <h2 className="font-serif text-base font-bold leading-tight" style={isMockupLayout ? { color: mockup.ink } : { color: "#24211E" }}>
                 {businessFeedback.reviewTopbar}
               </h2>
-              <p className="text-[11px] text-[#716B64]">{restaurant.name}</p>
+              <p className="text-[11px]" style={isMockupLayout ? { color: mockup.muted } : { color: "#716B64" }}>{restaurant.name}</p>
             </div>
             <div className="w-6" />
           </div>
 
           <div
-            className={isCafeFeedback
-              ? "customer-review-intro cafe-review-hero mt-5 rounded-[2rem] border p-5 text-center shadow-sm"
-              : "customer-review-intro mt-5 text-center"}
-            style={isCafeFeedback
+            className={`customer-review-intro mt-5 text-center ${isMockupLayout ? "rounded-[2rem] border p-5 shadow-sm" : ""}`}
+            style={isMockupLayout
               ? {
                   borderColor: businessFeedback.borderColor,
-                  background: `linear-gradient(145deg, #FFFFFF 0%, ${businessFeedback.softColor} 100%)`,
+                  background: `linear-gradient(160deg, #FFFFFF 0%, ${businessFeedback.softColor} 100%)`,
                 }
               : undefined}
           >
-            {isCafeFeedback ? (
+            {isMockupLayout ? (
               <>
-              <div className="cafe-review-art">
-                <div className="cafe-review-still-life" aria-hidden="true">
-                  <span className="cafe-review-still-life__leaf">🌿</span>
-                  <span className="cafe-review-still-life__pastry">🥐</span>
-                  <span className="cafe-review-still-life__spark">✦</span>
+                <div
+                  className="cafe-review-art"
+                  style={{ background: `linear-gradient(135deg, ${businessFeedback.softColor} 0%, #F4EAD8 100%)`, height: "7.5rem" }}
+                >
+                  {isCafeFeedback ? (
+                    <div className="cafe-review-still-life" aria-hidden="true">
+                      <span className="cafe-review-still-life__leaf">🌿</span>
+                      <span className="cafe-review-still-life__pastry">🥐</span>
+                      <span className="cafe-review-still-life__spark">☕</span>
+                    </div>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={mockup.reviewImage}
+                      alt=""
+                      className={`absolute inset-0 h-full w-full ${isStoreFeedback ? "object-contain px-5 py-1" : "object-cover"}`}
+                    />
+                  )}
                 </div>
-              </div>
-              <div
-                className="mx-auto mb-4 grid h-16 w-16 place-items-center overflow-hidden rounded-[1.25rem] border bg-white text-3xl shadow-sm"
-                style={{ borderColor: businessFeedback.borderColor, color: businessFeedback.accentColor }}
-              >
-                {restaurant.logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={restaurant.logoUrl} alt={`${restaurant.name} logo`} className="h-full w-full object-contain p-1" />
-                ) : businessFeedback.heroIcon}
-              </div>
+                <p className="mb-2 text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: mockup.inkSoft }}>
+                  Your Visit, Your Way
+                </p>
               </>
             ) : restaurant.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -1779,45 +2016,47 @@ export function CustomerJourneyView({
                 {restaurant.name.trim().charAt(0).toUpperCase() || "R"}
               </div>
             )}
-            {isCafeFeedback && (
-              <p className="mb-2 text-[9px] font-bold uppercase tracking-[0.2em] text-[#557A65]">
-                Your visit, your way
-              </p>
-            )}
-            <h3 className={`font-serif font-bold text-[#24211E] ${isCafeFeedback ? "text-3xl leading-tight" : "text-2xl"}`}>
-              {businessFeedback.layout === "restaurant"
-                ? `How was your visit to ${restaurant.name}?`
-                : businessFeedback.reviewHeading}
+            <h3
+              className={`font-serif font-bold ${isMockupLayout ? "text-3xl leading-tight" : "text-2xl"}`}
+              style={{ color: isMockupLayout ? mockup.ink : "#24211E" }}
+            >
+              {businessFeedback.reviewHeading}
             </h3>
-            <p className={`mx-auto mt-2 max-w-xs text-xs leading-relaxed text-[#716B64] ${isCafeFeedback ? "text-sm" : ""}`}>
+            <p className={`mx-auto mt-2 max-w-xs leading-relaxed ${isMockupLayout ? "text-sm" : "text-xs text-[#716B64]"}`} style={isMockupLayout ? { color: mockup.muted } : undefined}>
               {restaurant.shareCaption || businessFeedback.reviewPrompt}
             </p>
 
-            <div className={`customer-review-ratings ${isCafeFeedback ? "mt-6 text-left" : "my-5"}`}>
-              <p className={`mb-3 font-semibold text-[#24211E] ${isCafeFeedback ? "text-xs uppercase tracking-wide" : "text-sm"}`}>
-                {isCafeFeedback && <span className="mr-1 text-[#F7D154]" aria-hidden="true">★</span>}
-                {businessFeedback.reviewInstruction}
+            <div className={`customer-review-ratings ${isMockupLayout ? "mt-5 text-left" : "my-5"}`}>
+              <p
+                className={`mb-3 font-semibold ${isMockupLayout ? "text-xs uppercase tracking-[0.12em]" : "text-sm text-[#24211E]"}`}
+                style={isMockupLayout ? { color: businessFeedback.accentColor } : undefined}
+              >
+                {isMockupLayout ? mockup.rateEyebrow : businessFeedback.reviewInstruction}
               </p>
-              {isCafeFeedback && (
-                <div className="mb-4 rounded-2xl border bg-white/80 px-4 py-3" style={{ borderColor: businessFeedback.borderColor }}>
-                  <div className="mb-2 flex items-center justify-between text-[10px] font-semibold">
-                    <span className="text-[#716B64]">Your tasting notes</span>
-                    <span style={{ color: businessFeedback.accentColor }}>{reviewRatings.filter(Boolean).length} of 3 rated</span>
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-[#E6EFE6]">
-                    <div
-                      className="h-full rounded-full transition-all duration-300"
-                      style={{
-                        width: `${(reviewRatings.filter(Boolean).length / 3) * 100}%`,
-                        backgroundColor: businessFeedback.accentColor,
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-              <div className="space-y-3 text-left">
+              <div className="space-y-2.5 text-left">
                 {businessFeedback.questions.map((question, index) => (
-                  businessFeedback.layout === "salon" ? (
+                  isMockupLayout ? (
+                    <div
+                      key={question}
+                      className="flex items-center gap-3 rounded-2xl border bg-white p-3 shadow-sm"
+                      style={{ borderColor: businessFeedback.borderColor }}
+                    >
+                      <span
+                        className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-xl"
+                        style={{ backgroundColor: businessFeedback.softColor }}
+                        aria-hidden="true"
+                      >
+                        {businessFeedback.questionIcons[index]}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold leading-tight" style={{ color: mockup.ink }}>{businessFeedback.aspectLabels[index]}</p>
+                        <p className="mt-1 text-[10px] leading-snug" style={{ color: mockup.muted }}>{question}</p>
+                      </div>
+                      <div className="shrink-0">
+                        <RatingStars value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} size="sm" activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
+                      </div>
+                    </div>
+                  ) : businessFeedback.layout === "salon" ? (
                     <div key={question} className="rounded-2xl border bg-white p-4 shadow-sm" style={{ borderColor: businessFeedback.borderColor }}>
                       <div className="flex items-center gap-3">
                           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-xl" style={{ backgroundColor: businessFeedback.softColor }} aria-hidden="true">{businessFeedback.questionIcons[index]}</span>
@@ -1831,51 +2070,35 @@ export function CustomerJourneyView({
                           <RatingStars value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} size="md" activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
                       </div>
                     </div>
-                  ) : businessFeedback.layout === "general-store" ? (
-                    <div key={question} className="rounded-xl border bg-white p-3 shadow-sm" style={{ borderColor: businessFeedback.borderColor }}>
-                      <div className="flex items-center gap-3">
-                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-lg" style={{ backgroundColor: businessFeedback.softColor }} aria-hidden="true">{businessFeedback.questionIcons[index]}</span>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[9px] font-bold uppercase tracking-[0.16em]" style={{ color: businessFeedback.accentColor }}>Shopping detail 0{index + 1}</p>
-                          <p className="mt-1 text-xs font-semibold text-[#24211E]">{question}</p>
-                        </div>
-                      </div>
-                      <div className="mt-3 flex items-center justify-between border-t pt-2" style={{ borderColor: businessFeedback.borderColor }}>
-                        <span className="text-[10px] font-medium text-[#716B64]">Tap to rate</span>
-                        <RatingStars value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} size="md" activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
-                      </div>
-                    </div>
                   ) : (
                     <div key={question} className="rounded-2xl border border-[var(--biz-border)] bg-white p-5 shadow-sm hover:shadow-md transition-shadow duration-200" style={{ borderColor: businessFeedback.borderColor }}>
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-xl" style={{ backgroundColor: businessFeedback.softColor }} aria-hidden="true">{businessFeedback.questionIcons[index]}</span>
-                          <div className="min-w-0">
-                            <p className="text-[9px] font-bold uppercase tracking-[0.16em]" style={{ color: businessFeedback.accentColor }}>{businessFeedback.aspectLabels[index]}</p>
-                            <p className="mt-1 text-xs font-semibold leading-relaxed text-[#24211E]">{question}</p>
-                          </div>
+                      <div className="flex items-center gap-3">
+                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-xl" style={{ backgroundColor: businessFeedback.softColor }} aria-hidden="true">{businessFeedback.questionIcons[index]}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[9px] font-bold uppercase tracking-[0.16em]" style={{ color: businessFeedback.accentColor }}>{businessFeedback.aspectLabels[index]}</p>
+                          <p className="mt-1 text-xs font-semibold leading-relaxed text-[#24211E]">{question}</p>
                         </div>
-                        <div className="mt-3 flex items-center justify-between gap-2 border-t pt-2" style={{ borderColor: businessFeedback.borderColor }}>
-                          <span className="shrink-0 text-[10px] font-medium text-[#716B64]">{reviewRatings[index] ? reviewRatings[index] / 5 : "Tap to rate"}</span>
-                          <RatingStars value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} size="md" activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
-                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-2 border-t pt-3" style={{ borderColor: businessFeedback.borderColor }}>
+                        <span className="shrink-0 text-[10px] font-medium text-[#716B64]">{reviewRatings[index] ? `${reviewRatings[index]} / 5` : "Tap to rate"}</span>
+                        <RatingStars value={reviewRatings[index]} onChange={(rating) => updateReviewRating(index, rating)} label={question} size="md" activeColor={businessFeedback.accentColor} inactiveColor={businessFeedback.borderColor} />
                       </div>
                     </div>
                   )
                 ))}
               </div>
-              <p className="mt-2 text-[11px] text-[#716B64]" aria-live="polite">
+              <p className="mt-3 text-[11px] leading-relaxed" style={isMockupLayout ? { color: mockup.muted } : { color: "#716B64" }} aria-live="polite">
                 {reviewRatings.filter(Boolean).length === 3
                   ? businessFeedback.ratingThankYou
-                  : isCafeFeedback
-                    ? "A quick rating for each part of your visit helps us make your next cup even better."
+                  : isMockupLayout
+                    ? mockup.rateHint
                     : `Tap 1–5 stars for ${businessFeedback.aspectLabels.map((aspect) => aspect.toLowerCase()).join(", and ")}.`}
               </p>
             </div>
           </div>
 
           <div
-            className={`customer-review-actions space-y-4 border bg-white p-5 shadow-subtle ${isCafeFeedback ? "cafe-review-actions rounded-[1.75rem]" : "rounded-3xl"}`}
+            className={`customer-review-actions space-y-4 border bg-white p-5 shadow-subtle ${isMockupLayout ? "cafe-review-actions rounded-[1.75rem]" : "rounded-3xl"}`}
             style={{ borderColor: businessFeedback.borderColor }}
           >
             {aiGenerated && (
@@ -1909,13 +2132,13 @@ export function CustomerJourneyView({
             <button
               onClick={aiGenerated ? handleCopyAndGoogleReview : handleGenerateAiReview}
               disabled={generatingAi || reviewRatings.some((rating) => rating === 0)}
-              className={`customer-review-submit sticky bottom-3 z-20 flex min-h-12 w-full items-center justify-center gap-2 border border-white/40 py-3 text-sm font-bold text-white shadow-lg transition active:scale-[0.98] disabled:opacity-60 ${isCafeFeedback ? "rounded-full cafe-pill-button" : "rounded-2xl"}`}
+              className={`customer-review-submit sticky bottom-3 z-20 flex min-h-12 w-full items-center justify-center gap-2 border border-white/40 py-3 text-sm font-bold text-white shadow-lg transition active:scale-[0.98] disabled:opacity-60 ${isMockupLayout ? "rounded-full cafe-pill-button" : "rounded-2xl"}`}
               style={{ backgroundColor: businessFeedback.accentColor }}
               onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentHoverColor; }}
               onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = businessFeedback.accentColor; }}
               aria-live="polite"
             >
-              <span>{isCafeFeedback ? "✎" : businessFeedback.heroIcon}</span>
+              <span>{isMockupLayout ? "✎" : businessFeedback.heroIcon}</span>
               <span>
                 {generatingAi
                   ? firebaseContext ? "Creating your review draft..." : "Crafting Review with AI..."

@@ -1865,3 +1865,314 @@ h1, h2, h3, .font-serif {
 .customer-journey--salon .customer-rewards-header {
   border-color: var(--biz-border);
 }
+
+/* General Store journey: same cream / sage / coffee-brown system as Café,
+   recolored with the store palette tokens. */
+.customer-journey--store {
+  background:
+    radial-gradient(ellipse at 3% 4%, rgb(150 170 120 / 20%), transparent 19rem),
+    radial-gradient(ellipse at 100% 86%, rgb(224 196 150 / 20%), transparent 21rem),
+    var(--biz-page) !important;
+}
+
+.customer-journey--store > main {
+  border-color: var(--biz-border);
+  background-color: var(--biz-page);
+}
+
+.customer-journey--store .customer-register-screen h1,
+.customer-journey--store .customer-review-screen h2,
+.customer-journey--store .customer-review-screen h3,
+.customer-journey--store .customer-rewards-screen h2 {
+  color: #37432c;
+}
+
+.customer-journey--store .customer-register-screen > button {
+  border-color: var(--biz-border);
+  color: #55663f;
+}
+
+.customer-journey--store .customer-register-form {
+  border-color: var(--biz-border);
+  background: #fffef9;
+}
+
+.customer-journey--store .customer-register-form label {
+  color: #4a5738;
+}
+
+.customer-journey--store .customer-register-form input[type="text"],
+.customer-journey--store .customer-register-form input[type="tel"] {
+  border-color: var(--biz-border);
+  background: #fffef9;
+}
+
+.customer-journey--store .customer-register-form input[type="checkbox"] {
+  accent-color: var(--biz-accent) !important;
+}
+
+.customer-journey--store .customer-register-form button[type="submit"] {
+  background: var(--biz-accent) !important;
+  box-shadow: 0 8px 18px rgb(95 122 72 / 22%);
+}
+
+.customer-journey--store .customer-register-form button[type="submit"]:hover {
+  background: var(--biz-accent-hover) !important;
+}
+
+.customer-journey--store .customer-review-header {
+  border-color: var(--biz-border) !important;
+}
+
+.customer-journey--store .customer-review-header > button {
+  border-color: var(--biz-border);
+  background: #fffef9;
+  color: #55663f;
+}
+
+.customer-journey--store .customer-review-ratings > p:first-child {
+  color: var(--biz-accent) !important;
+}
+
+.customer-journey--store .customer-review-ratings .space-y-3 > div {
+  border-color: var(--biz-border) !important;
+  border-radius: 1rem !important;
+  background: #fffef9 !important;
+  box-shadow: 0 6px 14px rgb(74 60 39 / 5%);
+}
+
+.customer-journey--store .customer-review-actions {
+  border-color: var(--biz-border) !important;
+  background: #fffef9 !important;
+}
+
+.customer-journey--store .customer-review-submit {
+  background: var(--biz-accent) !important;
+  box-shadow: 0 10px 22px rgb(95 122 72 / 24%);
+}
+
+.customer-journey--store .customer-review-submit:hover {
+  background: var(--biz-accent-hover) !important;
+}
+
+.customer-journey--store .cafe-review-art {
+  background: linear-gradient(135deg, #e9efdd 0%, #f4ead8 100%) !important;
+}
+
+.customer-journey--store .cafe-review-art::before,
+.customer-journey--store .cafe-review-art::after {
+  background: rgb(150 170 120 / 26%);
+}
+
+.customer-journey--store .cafe-rewards {
+  background:
+    radial-gradient(ellipse at 100% 0%, rgb(150 170 120 / 18%), transparent 19rem),
+    var(--biz-page);
+}
+
+.customer-journey--store .cafe-rewards-header > div h2 {
+  color: #37432c;
+}
+
+.customer-journey--store .cafe-rewards-header {
+  border-color: var(--biz-border) !important;
+}
+
+.customer-journey--store .cafe-rewards .cafe-stamp-card,
+.customer-journey--store .cafe-rewards .cafe-reward-history {
+  border-color: var(--biz-border) !important;
+  background: #fffef9 !important;
+}
+
+.customer-journey--store .cafe-rewards .cafe-rewards-info {
+  border-color: var(--biz-border) !important;
+  background: #eef2e3 !important;
+}
+
+.customer-journey--store .cafe-rewards .cafe-stamp-card button[class*="bg-[#B58A4B]"] {
+  background: var(--biz-accent) !important;
+}
+
+.customer-journey--store .cafe-rewards .cafe-stamp-card [class*="bg-[#B58A4B]"] {
+  background-color: var(--biz-accent) !important;
+}
+
+.customer-journey--store .cafe-rewards .cafe-stamp-card [class*="text-[#B58A4B]"] {
+  color: var(--biz-accent-hover) !important;
+}
+
+.customer-journey--store .cafe-pending-banner {
+  border-color: var(--biz-border) !important;
+  background: var(--biz-soft) !important;
+  color: var(--biz-accent-hover) !important;
+}
+
+/* Mockup screens (Café / General Store): tighter review layout so every
+   screen starts at the top and fits the phone frame without clipping. */
+.customer-journey--store .customer-review-screen,
+.cafe-journey .customer-review-screen {
+  padding: 0.9rem !important;
+}
+
+.customer-journey--store .customer-review-header,
+.cafe-journey .customer-review-header {
+  padding-bottom: 0.6rem;
+}
+
+.customer-journey--store .customer-review-intro,
+.cafe-journey .customer-review-intro {
+  padding: 1rem !important;
+  border-radius: 1.6rem !important;
+}
+
+.customer-journey--store .cafe-review-art,
+.cafe-journey .cafe-review-art {
+  height: 6.5rem !important;
+  margin: -1rem -1rem 0.75rem !important;
+}
+
+.customer-journey--store .customer-review-intro > h3,
+.cafe-journey .customer-review-intro > h3 {
+  font-size: 1.5rem;
+  line-height: 1.12;
+}
+
+.customer-journey--store .customer-review-intro > p,
+.cafe-journey .customer-review-intro > p {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  margin-top: 0.35rem;
+}
+
+.customer-journey--store .customer-review-ratings,
+.cafe-journey .customer-review-ratings {
+  margin-top: 0.65rem !important;
+}
+
+.customer-journey--store .customer-review-ratings > p:first-child,
+.cafe-journey .customer-review-ratings > p:first-child {
+  margin-bottom: 0.5rem;
+  font-size: 0.66rem;
+}
+
+.customer-journey--store .customer-review-ratings .space-y-3 > div,
+.cafe-journey .customer-review-ratings .space-y-3 > div {
+  min-height: 0 !important;
+  padding: 0.5rem 0.65rem !important;
+  border-radius: 0.9rem !important;
+}
+
+.customer-journey--store .customer-review-ratings .space-y-3 > div > div:first-child > span,
+.cafe-journey .customer-review-ratings .space-y-3 > div > div:first-child > span {
+  width: 2.4rem;
+  height: 2.4rem;
+  font-size: 1.15rem;
+}
+
+.customer-journey--store .customer-review-ratings > p:last-child,
+.cafe-journey .customer-review-ratings > p:last-child {
+  margin-top: 0.5rem;
+  font-size: 0.66rem;
+  line-height: 1.35;
+}
+
+.customer-journey--store .customer-review-actions,
+.cafe-journey .customer-review-actions {
+  padding: 0.7rem !important;
+  border-radius: 1.35rem !important;
+}
+
+.customer-journey--store .customer-review-submit,
+.cafe-journey .customer-review-submit {
+  min-height: 2.9rem !important;
+  padding-top: 0.6rem !important;
+  padding-bottom: 0.6rem !important;
+}
+
+.customer-journey--store .customer-register-screen,
+.cafe-journey .customer-register-screen {
+  padding: 0.9rem !important;
+}
+
+.customer-journey--store .customer-register-screen > button,
+.cafe-journey .customer-register-screen > button {
+  min-height: 2.15rem;
+}
+
+/* Customer journey inputs: no duplicated gold/pink focus rings on top of the
+   branded card styling. Focus is communicated by the field border only. */
+.customer-journey input:focus,
+.customer-journey input:focus-visible,
+.customer-journey textarea:focus,
+.customer-journey textarea:focus-visible,
+.customer-journey select:focus,
+.customer-journey select:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-color: transparent !important;
+}
+
+.customer-journey input[type="checkbox"]:focus-visible,
+.customer-journey input[type="radio"]:focus-visible,
+.customer-journey button:focus-visible {
+  outline: 2px solid var(--biz-accent, #8b642d);
+  outline-offset: 2px;
+}
+
+/* Business reference themes used by the live QR customer journey. */
+.customer-journey--restaurant {
+  background:
+    radial-gradient(ellipse at 0% 2%, rgb(31 68 46 / 11%), transparent 19rem),
+    radial-gradient(ellipse at 100% 100%, rgb(219 195 153 / 16%), transparent 22rem),
+    var(--biz-page) !important;
+}
+
+.customer-journey--restaurant > main,
+.customer-journey--salon > main {
+  border-color: var(--biz-border);
+  background-color: var(--biz-page);
+}
+
+.customer-journey--salon {
+  background:
+    radial-gradient(ellipse at 0% 2%, rgb(226 190 163 / 19%), transparent 18rem),
+    radial-gradient(ellipse at 100% 100%, rgb(167 120 82 / 10%), transparent 21rem),
+    var(--biz-page) !important;
+}
+
+.customer-journey--restaurant .customer-review-screen,
+.customer-journey--salon .customer-review-screen {
+  padding: 0.9rem !important;
+}
+
+.customer-journey--restaurant .customer-review-intro,
+.customer-journey--salon .customer-review-intro {
+  padding: 1rem !important;
+  border-radius: 1.6rem !important;
+}
+
+.customer-journey--restaurant .cafe-review-art,
+.customer-journey--salon .cafe-review-art {
+  height: 7.5rem !important;
+  margin: -1rem -1rem 0.75rem !important;
+}
+
+.customer-journey--restaurant .cafe-review-art::before,
+.customer-journey--restaurant .cafe-review-art::after,
+.customer-journey--salon .cafe-review-art::before,
+.customer-journey--salon .cafe-review-art::after {
+  display: none;
+}
+
+.customer-journey--restaurant .customer-review-ratings .space-y-3 > div,
+.customer-journey--salon .customer-review-ratings .space-y-3 > div {
+  min-height: 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 1rem;
+}
+
+.customer-journey--restaurant .customer-register-screen,
+.customer-journey--salon .customer-register-screen {
+  padding: 0.9rem !important;
+}
